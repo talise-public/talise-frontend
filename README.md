@@ -6,7 +6,7 @@
 
 The web app and API for Talise: a gasless US dollar account on Sui that sends by name, settles in under a second, and keeps the amount private.
 
-[Live app](https://app.talise.io) · [Contracts](https://github.com/talise-public/talise-contracts) · [Mobile](https://github.com/talise-public/talise-mobile) · [Docs](https://github.com/talise-public/talise-docs)
+[Website](https://talise.io) · [Contracts](https://github.com/talise-public/talise-contracts) · [Mobile](https://github.com/talise-public/talise-mobile) · [Docs](https://github.com/talise-public/talise-docs)
 
 </div>
 
@@ -14,7 +14,7 @@ The web app and API for Talise: a gasless US dollar account on Sui that sends by
 
 ## What this is
 
-This repository holds the Talise web client and its backend API, built on the Next.js App Router. It powers account creation with zkLogin, gasless sends to a `name@talise.sui` handle, private (shielded) transfers, claim links, streaming, on and off ramps, and the public beta at `app.talise.io`.
+This repository holds the Talise web client and its backend API, built on the Next.js App Router. It powers account creation with zkLogin, gasless sends to a `name@talise.sui` handle, private (shielded) transfers, claim links, streaming, on and off ramps. It serves the talise.io site and the API the Talise iOS app runs on.
 
 ## Highlights
 
