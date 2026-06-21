@@ -71,12 +71,6 @@ const MAX_API_BODY_BYTES = 1_048_576;
  */
 const APP_HOST = "app.talise.io";
 const MARKETING_HOSTS = new Set(["talise.io", "www.talise.io"]);
-// Top-level trees that must NOT be re-rooted under /app on the app host.
-// `shield` = the static WASM-prover asset tree (public/shield/*: glue, .wasm,
-// proving_key.bin, vk) the in-app private-send prover fetches at runtime; without
-// it those get rewritten to /app/shield/* and 404 ("failed to fetch proving key").
-const APP_HOST_PASSTHROUGH =
-  /^\/(app|api|auth|business|admin|c|i|u|pay|shield|_next|_vercel)(\/|$)/;
 
 function withSecurityHeaders(res: NextResponse): NextResponse {
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
@@ -188,11 +182,21 @@ export function middleware(req: NextRequest) {
 
   const host = (req.headers.get("host") ?? "").toLowerCase().split(":")[0];
 
-  // app.talise.io → serve the /app tree at the subdomain root.
-  if (host === APP_HOST && !APP_HOST_PASSTHROUGH.test(pathname)) {
-    const url = req.nextUrl.clone();
-    url.pathname = pathname === "/" ? "/app" : `/app${pathname}`;
-    return withSecurityHeaders(NextResponse.rewrite(url));
+  // app.talise.io → the web wallet is retired; everyone goes to the iOS beta.
+  // Backend stays fully alive so nothing breaks: the iOS app's API (`/api`),
+  // OAuth (`/auth`), the shield prover assets (`/shield`), public money links
+  // (`/c` `/i` `/u` `/pay`), ops (`/admin`), and framework assets
+  // (`/_next` `/_vercel`) all keep serving. Every other path (the wallet UI,
+  // `/app`, `/business`, the bare root) redirects to TestFlight.
+  if (host === APP_HOST) {
+    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|admin|_next|_vercel)(\/|$)/;
+    if (!keepAlive.test(pathname)) {
+      return NextResponse.redirect(
+        "https://testflight.apple.com/join/BFNEPYtM",
+        307
+      );
+    }
+    return withSecurityHeaders(NextResponse.next());
   }
 
   // talise.io/app/* → the canonical app host. Subpaths KEEP the /app prefix

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { USDSUI_TYPE } from "@/lib/usdsui";
-import { memoTtl } from "@/lib/perf-cache";
+import { cetusUniverse } from "@/lib/cetus-tokens";
 
 /**
  * COIN VERIFICATION — the single gate for which coins Talise shows + offers to
@@ -46,42 +46,19 @@ const VERIFIED_FLOOR = new Set(
 );
 
 /**
- * The full verified set: the floor PLUS Cetus's published verified-token list
- * (cached 1h, best-effort). `CETUS_TOKEN_LIST_URL` configures the registry
- * endpoint; if unset or the fetch fails, we degrade to the floor — which already
- * ignores all spam, so the feature is correct either way.
+ * The full verified set: the hardcoded floor PLUS every coin that has a liquid
+ * Cetus pool (fetched live from Cetus `stats_pools`, cached 1h). This is what
+ * lets real holdings like WAL, DEEP, BUCK, etc. show in the token bucket and be
+ * swapped, while no-liquidity spam (no Cetus pool) never appears. Degrades to
+ * the floor if Cetus is unreachable, so the wallet never breaks.
  */
 async function verifiedSet(): Promise<Set<string>> {
-  const url = process.env.CETUS_TOKEN_LIST_URL;
-  if (!url) return VERIFIED_FLOOR;
-  return memoTtl("cetus:verified-coins", 60 * 60 * 1000, async () => {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!res.ok) return VERIFIED_FLOOR;
-      const j = (await res.json()) as unknown;
-      // Tolerate the common Cetus shapes: a flat array or { tokens|data|list: [...] }.
-      const arr: Array<Record<string, unknown>> = Array.isArray(j)
-        ? (j as Array<Record<string, unknown>>)
-        : ((j as Record<string, unknown[]>)?.tokens ??
-            (j as Record<string, unknown[]>)?.data ??
-            (j as Record<string, unknown[]>)?.list ??
-            []) as Array<Record<string, unknown>>;
-      const set = new Set(VERIFIED_FLOOR);
-      for (const t of arr) {
-        const ct = (t.coin_type ?? t.coinType ?? t.address ?? t.type) as string | undefined;
-        const verified = (t.verified ?? t.is_verified ?? t.isVerified ?? true) as boolean;
-        // LOW-LIQUIDITY GUARD: even a "verified" coin is ignored if its pool
-        // liquidity/TVL is below the floor (when the registry exposes it) — a
-        // thin coin's swap fails. Unknown liquidity → trust the verified flag.
-        const liq = Number(t.liquidity ?? t.liquidityUsd ?? t.tvl ?? t.tvlUsd ?? NaN);
-        const liquidEnough = Number.isNaN(liq) || liq >= MIN_LIQUIDITY_USD;
-        if (ct && verified && liquidEnough) set.add(norm(ct));
-      }
-      return set;
-    } catch {
-      return VERIFIED_FLOOR;
-    }
-  });
+  void MIN_LIQUIDITY_USD; // TVL floor is now enforced inside cetusUniverse()
+  const { verified } = await cetusUniverse();
+  if (verified.size === 0) return VERIFIED_FLOOR;
+  const set = new Set(VERIFIED_FLOOR);
+  for (const c of verified) set.add(c);
+  return set;
 }
 
 /** True iff this coin is verified (floor or Cetus registry) → safe to show + convert. */

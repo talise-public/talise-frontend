@@ -320,16 +320,17 @@ export async function POST(req: Request) {
     // here. iOS resolves the actual outcome by polling the digest
     // (HomeView's optimistic-balance path already does this).
     //
-    // Onara OWNS the timeout — we must not sever it early. Onara self-bounds at
-    // 45s execution / 30s confirmation (onara/api app.ts), so it always returns
-    // a DEFINITIVE result (a digest the instant the tx broadcasts, or a clean
-    // error) within the ~60s iOS URLSession ceiling. The old 8s cap aborted the
-    // HTTP request mid-broadcast and surfaced "onara timeout after 8003ms / Send
-    // failed, no funds moved" even when Onara had ALREADY accepted the tx — the
-    // canonical Onara SDK imposes no client timeout for exactly this reason. This
-    // cap is now only a true-hang backstop: above Onara's own budget, below the
-    // iOS ceiling. Env-tunable via ONARA_SPONSOR_TIMEOUT_MS.
-    const onaraCapMs = Number(process.env.ONARA_SPONSOR_TIMEOUT_MS) || 50_000;
+    // CONTRACT: the iOS client times the whole sponsor-execute request out at
+    // 30s (ZkLoginCoordinator.zkSession). The server must return a DEFINITIVE
+    // result (success or a clean JSON error) BEFORE 30s, so the server's error
+    // wins the race instead of iOS's generic "Send timed out, no funds moved".
+    // Total server time = proof leg + this Onara leg. A cached proof is ~1s and
+    // a fresh mint a few seconds, so a 20s Onara cap keeps the total well under
+    // 30s. (A 50s cap broke this: it let the request run past iOS's 30s, so iOS
+    // severed mid-broadcast and reported a false failure on txs Onara may have
+    // already accepted.) Env-tunable via ONARA_SPONSOR_TIMEOUT_MS, but keep it
+    // under ~24s to preserve the race.
+    const onaraCapMs = Number(process.env.ONARA_SPONSOR_TIMEOUT_MS) || 20_000;
     const broadcast = (sig: string) =>
       withLegTimeout(
         onaraClient.sponsor({

@@ -96,7 +96,7 @@ export default function HeroV2() {
               <span aria-hidden>↗</span>
             </a>
             <a
-              href="/waitlist"
+              href="#start"
               className="v2-cta flex h-[52px] w-full items-center justify-center rounded-full border-2 border-[#15300c] px-4 text-[15px] font-semibold text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
             >
               How it works
