@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/shield-indexer", "schedule": "*/2 * * * *" },
+    { "path": "/api/cron/yield-rebalance", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/analytics-index", "schedule": "*/5 * * * *" }
+  ]
+}

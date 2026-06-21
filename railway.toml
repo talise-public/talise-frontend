@@ -1,0 +1,32 @@
+# Railway deployment config. Source of truth for the build/run pipeline.
+# Docs: https://docs.railway.com/reference/config-as-code
+
+[build]
+# Nixpacks auto-detects Next.js. We pin Node 20 + force pnpm (matches the
+# lockfile so Railway doesn't switch package managers between builds).
+builder = "NIXPACKS"
+
+# Run `pnpm install --frozen-lockfile` then `pnpm build`. Railway sources
+# the start command from package.json scripts.start.
+buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+
+# Cache the pnpm store + .next/cache between builds. Cuts cold builds
+# from ~3 min to ~30 s.
+nixpacksPlan = ""
+
+[deploy]
+# `next start` honours $PORT. Railway injects PORT; Next picks it up.
+startCommand = "pnpm start"
+
+# Restart if the container dies. Useful for SIGSEGV / OOM in libSQL native.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Hit /api/health every 30s — the route returns 503 if DB / Sui RPC /
+# Onara is unreachable. Railway pauses traffic to unhealthy replicas.
+healthcheckPath = "/api/health"
+healthcheckTimeout = 10
+
+[experimental]
+# Zero-downtime rolling deploys.
+enableConfigAsCode = true

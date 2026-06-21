@@ -1,0 +1,10 @@
+.next
+.git
+.data
+node_modules
+.env*
+!.env.example
+*.log
+.DS_Store
+README.md
+docs/

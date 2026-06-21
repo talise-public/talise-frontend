@@ -1,0 +1,39 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env*.local
+.env.vercel
+**/.env.vercel
+.data
+*.tsbuildinfo
+.DS_Store
+# NOTE: web/public/shield/ (WASM prover glue + 3.8MB proving key + vkey) MUST be
+# committed — the in-app prover fetches them from /shield/* at runtime; ignoring
+# them => 404 on prod ("failed to fetch proving key"). Keep them tracked.
+# Shielded-pool lifecycle prover artifact — holds note secrets, never commit.
+.shield-lifecycle-art.json
+**/.shield-lifecycle-art.json
+.vercel
+
+# Credentials — never commit signing keys / certs / local secret stores.
+*.p8
+*.p12
+*.pem
+*.key
+.secrets/
+
+# --- security hardening (never commit) ---
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.p8
+*.pem
+*.key
+*_sk.txt
+*secret*
+.shield-lifecycle-art.json

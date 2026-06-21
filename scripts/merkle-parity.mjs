@@ -1,0 +1,14 @@
+import { emptyTree, appendPair, selfTest } from "../lib/shield/merkle.ts";
+console.log("selfTest (empty subtree hashes parity):", selfTest());
+const e = emptyTree();
+const onchainEmpty = "4023688209857926016730691838838984168964497755397275208674494663143007853450";
+console.log("TS empty root        :", e.root);
+console.log("live on-chain empty  :", onchainEmpty);
+console.log("EMPTY MATCH          :", e.root === onchainEmpty ? "PASS" : "FAIL");
+const note0 = 17408295006874939298598769143181987675548030690756001296663597550777327872539n;
+const note1 = 12013773756360371331370722014999054062474954786002594294326912317717327531506n;
+const after = appendPair(e, note0, note1);
+const rustPost = "7943929642939265571698669120752355917770345621870864687289709808502377622408";
+console.log("TS post-deposit root :", after.root);
+console.log("Rust post-deposit    :", rustPost);
+console.log("POST-DEPOSIT MATCH   :", after.root === rustPost ? "PASS" : "FAIL");

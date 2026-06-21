@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["5N8DU2A9WH.io.talise.app"],
+        "components": [
+          { "/": "/c/*", "comment": "Cheque claim links open the Talise app" }
+        ]
+      }
+    ]
+  }
+}

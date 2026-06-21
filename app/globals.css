@@ -1,0 +1,583 @@
+@import "tailwindcss";
+/* Enter/exit animation utilities (animate-in / fade / zoom / slide) used by the
+   shadcn/ui Radix components (Select, DropdownMenu, …). */
+@import "tw-animate-css";
+
+/*
+ * Dark mode by default — matches the iOS app's palette so the web feels
+ * like the same product. Marketing / landing pages that want the old
+ * editorial monochrome can opt back in with `.light-page` at the root
+ * of the section.
+ *
+ * Color references mirror the iOS design system in
+ * `ios/Talise/DesignSystem/Tokens.swift`:
+ *   bg               #0A0E0B      page background, deep near-black
+ *   surface          #131815      raised tiles + cards
+ *   surface-2        #1B221E      pressable surfaces, slight lift
+ *   line             #FFFFFF12    hairline borders, 7% white
+ *   fg               #F2F4F2      primary text
+ *   fg-muted         #B9C0BB      secondary text
+ *   fg-dim           #6F7872      tertiary, labels, time
+ *   accent           #CAFFB8      Talise mint — readable accent ON dark
+ *                                  (hero word, links, eyebrows, glyphs)
+ *   accent-light     #CAFFB8      bright/mint green, glow washes, highlights
+ *   accent-deep      #4B8A37      forest green — solid CTA fill behind light
+ *                                  text, radial glow base, section accents
+ *   accent-soft      #2A2A2A      pressed-state on accent surfaces
+ *   danger           #E08D8A      sent-tx red / destructive
+ *
+ * Brand note: the two canonical greens are #CAFFB8 (mint) + #4B8A37
+ * (forest), the exact pair the iOS success screens, waitlist page, and
+ * confirmation email use. `--color-accent` now resolves to the mint so
+ * accent *text* stays WCAG-readable on the near-black bg; the forest
+ * green is only ever used as a fill behind light text (never as text on
+ * dark). The old #79D96C accent is retired. The only live consumers of
+ * `--color-accent` are the landing page, the waitlist (which wants this
+ * same bright-on-dark mint), and shared glyph/hover bits — the dashboard
+ * is archived, so shifting the token value is safe and cohesive.
+ */
+@theme {
+  --color-bg: #0a0e0b;
+  --color-surface: #131815;
+  --color-surface-2: #1b221e;
+  --color-line: #ffffff12;
+  --color-fg: #f2f4f2;
+  --color-fg-muted: #b9c0bb;
+  --color-fg-dim: #6f7872;
+  --color-accent: #caffb8;
+  --color-accent-light: #caffb8;
+  --color-accent-deep: #4b8a37;
+  --color-accent-soft: #2a2a2a;
+  --color-danger: #e08d8a;
+
+  --font-sans: "Google Sans Variable", "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Google Sans Variable", "Google Sans", system-ui, sans-serif;
+  --font-mono: var(--font-mono), "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --font-serif: var(--font-serif), "Instrument Serif", Georgia, "Times New Roman", serif;
+}
+
+/* ── shadcn/ui token bridge ──────────────────────────────────────────────
+ * Maps shadcn's semantic color names onto OUR brand tokens so every generated
+ * component (Dialog, Select, DropdownMenu, Tooltip, Tabs, Popover, …) renders
+ * in the light-mint theme — never zinc. `@theme inline` keeps the var()
+ * references intact so they resolve at runtime and flip with the .landing-mint
+ * cascade (white surfaces, ink-green text, forest primary).
+ * We intentionally do NOT remap `accent` (that Tailwind name is already our
+ * brand green) or the global radius scale (our own components use rounded-*);
+ * shadcn item-hover classes are retuned to `accent-soft` per-component instead.
+ */
+@theme inline {
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-fg);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-fg);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-fg);
+  --color-primary: var(--color-accent-deep);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-accent-soft);
+  --color-secondary-foreground: var(--color-fg);
+  --color-muted: var(--color-surface-2);
+  --color-muted-foreground: var(--color-fg-dim);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--color-line);
+  --color-input: var(--color-line);
+  --color-ring: var(--color-accent-deep);
+}
+
+/* shadcn components that reference var(--radius) directly. */
+:root {
+  --radius: 0.75rem;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * Overscroll must never flash the dark root. The light themes (.app-clean,
+ * .landing-mint) live on INNER wrappers, so rubber-band overscroll used to
+ * reveal the near-black html background above/below the page. Tint the root
+ * itself to match whichever theme is mounted (`:has()` — supported in every
+ * browser we target).
+ */
+html:has(.app-clean),
+html:has(.app-clean) body {
+  background: #fafdf8; /* .app-clean --color-bg */
+}
+html:has(.landing-mint),
+html:has(.landing-mint) body {
+  background: #f7fcf2; /* .landing-mint gradient floor */
+}
+
+/* Desktop (precise pointer): no scroll bounce at all — the page sits fixed.
+   Mobile keeps native pull/bounce, which now lands on the light tint above. */
+@media (hover: hover) and (pointer: fine) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/*
+ * Editorial light-mode scope — keep the landing page's monochrome
+ * aesthetic available by wrapping the section root in `.light-page`.
+ * Variables shadow the dark defaults; child elements pick them up via
+ * standard CSS inheritance.
+ */
+.light-page {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f5f5;
+  --color-fg: #0a0a0a;
+  --color-fg-muted: #525252;
+  --color-fg-dim: #a3a3a3;
+  --color-line: #e5e5e5;
+  --color-accent: #0a0a0a;
+  --color-accent-soft: #2a2a2a;
+
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+/*
+ * ── Premium light-mint landing scope ──────────────────────────────────
+ * The airy two-green identity from the brand mark: brand mint (#CAFFB8 /
+ * #D5FEBE) glowing at the hero and fading to near-white, ink-green text,
+ * forest (#4B8A37) accents + CTA, and white cards that lift off the mint.
+ * Scoped to the landing root only (apply `.landing-mint`) so the app /
+ * admin / iOS dark theme and their accent-contrast tokens are untouched.
+ * Variables shadow the dark defaults; children inherit them via the cascade.
+ */
+.landing-mint {
+  --color-bg: #ecf8e0;
+  --color-surface: #ffffff;
+  --color-surface-2: #e6f5d6;
+  --color-fg: #15300c;          /* deep ink-green primary text */
+  --color-fg-muted: #46663a;    /* secondary (6.5:1 on white — AA) */
+  --color-fg-dim: #557050;      /* tertiary / labels (5.0:1 on mint — AA) */
+  --color-line: #cfe7bd;        /* soft green hairline */
+  --color-accent: #3c7a2a;      /* forest — readable as accent TEXT on mint */
+  --color-accent-light: #caffb8;
+  --color-accent-deep: #3d7a29; /* solid CTA fill — 5.2:1 with white text (AA) */
+  --color-accent-soft: #dcf2cc;
+
+  color: var(--color-fg);
+  /* Saturated mint bloom at the top, easing to a near-white floor — depth,
+     not one flat fill. */
+  background:
+    radial-gradient(125% 62% at 50% -12%, #d6f4c2 0%, rgba(214, 244, 194, 0) 58%),
+    linear-gradient(180deg, #e7f6d7 0%, #f1faea 55%, #f7fcf2 100%);
+  background-attachment: fixed;
+}
+
+/*
+ * ── Clean white + green PRODUCT scope (the /app + /business surfaces) ──────
+ * The Wise-inspired skin: near-white canvas, white cards with thin hairlines,
+ * forest-green accents + soft-mint chip fills, big ink numbers, grey labels.
+ * Scoped to `.app-clean` so the mint marketing pages (.landing-mint) are
+ * untouched. Variables shadow the dark defaults; children inherit via cascade,
+ * so flipping this scope re-skins every app component for free.
+ */
+.app-clean {
+  --color-bg: #fafdf8;          /* faint warm-white canvas */
+  --color-surface: #ffffff;     /* white cards */
+  --color-surface-2: #f1f5ee;   /* soft fill — chips, secondary tiles */
+  --color-fg: #14250e;          /* deep ink-green — big numbers, headings */
+  --color-fg-muted: #586b50;    /* secondary text (AA on white) */
+  --color-fg-dim: #7e8c75;      /* tertiary / labels */
+  /* Whisper-soft translucent hairline — reads as a gentle edge on white, never
+     a hard grey box. One token re-skins every border/ring/divide in the app. */
+  --color-line: rgba(20, 37, 14, 0.07);
+  --color-accent: #2f7d31;      /* forest — links / accent text */
+  --color-accent-light: #caffb8;
+  --color-accent-deep: #2f7d31; /* solid CTA fill (white text, AA) */
+  --color-accent-soft: #e7f4e1; /* soft mint — chip / pill backgrounds */
+
+  color: var(--color-fg);
+  background: var(--color-bg);
+}
+
+/* Flat white cards — no glass blur/gradient, just a hairline + a whisper of
+   lift. Overrides the dark .talise-glass recipe within the clean scope. The
+   second selector (no space) matches when app-clean + talise-glass sit on the
+   SAME element — e.g. a portaled Sheet/Select panel that carries the theme. */
+.app-clean .talise-glass,
+.app-clean.talise-glass {
+  background: #ffffff;
+  border: 1px solid var(--color-line);
+  border-top-color: var(--color-line);
+  box-shadow: 0 1px 2px rgba(20, 40, 12, 0.04);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Borderless, hover-filled transaction rows (Wise-style). */
+.app-clean .talise-history-row {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+  transition: background 150ms ease, transform 150ms ease;
+}
+.app-clean .talise-history-row:hover {
+  background: var(--color-surface-2);
+}
+.app-clean .talise-history-row[data-direction="sent"]:hover {
+  background: color-mix(in srgb, #c95a4a 8%, var(--color-surface-2));
+}
+.app-clean .talise-history-row[data-direction="received"]:hover {
+  background: color-mix(in srgb, #2f7d31 8%, var(--color-surface-2));
+}
+
+/* The mint hero bloom doesn't belong on a clean white canvas. */
+.app-clean .talise-top-glow {
+  display: none;
+}
+
+/* White, lifted cards for the light theme — soft forest-tinted elevation
+   + hairline instead of the dark theme's white-on-black glass. */
+.landing-mint .talise-glass {
+  /* Soft, faintly mint-tinted surface — not a stark pure-white block — so
+     the cards feel part of the mint canvas rather than floating on it. */
+  background: linear-gradient(to bottom, #fbfdf7 0%, #f3faea 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #d6e8c6;
+  /* Faint lighter-top edge for a physically-lifted look on the light bg. */
+  border-top-color: #ffffff;
+  box-shadow:
+    0 14px 34px -18px rgba(35, 78, 20, 0.16),
+    0 1px 3px rgba(35, 78, 20, 0.05);
+  transition:
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.landing-mint .talise-glass:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-accent-deep) 40%, var(--color-line));
+  box-shadow:
+    0 30px 58px -18px rgba(35, 78, 20, 0.26),
+    0 4px 12px rgba(35, 78, 20, 0.08);
+}
+
+/* Softer, brighter horizon bloom for the light hero. */
+.landing-mint .talise-top-glow {
+  height: 460px;
+  background:
+    radial-gradient(
+      ellipse 105% 95% at 50% -50%,
+      rgba(75, 138, 55, 0.35) 0%,
+      rgba(75, 138, 55, 0.12) 40%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 56% 46% at 50% -6%,
+      rgba(202, 255, 184, 0.6) 0%,
+      transparent 58%
+    );
+  filter: blur(6px);
+}
+
+.landing-mint ::selection {
+  background: var(--color-accent-deep);
+  color: #ffffff;
+}
+
+/* Strip the ugly spinner arrows from <input type="number"> across browsers. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/*
+ * Liquid Glass card — mirrors the iOS `taliseGlass()` ViewModifier
+ * (DesignSystem/TopGlow.swift). Layered fill of black tint over
+ * backdrop-blur, a one-pixel white-fade top-edge stroke, and a soft
+ * elevation shadow. Apply with `class="talise-glass"`.
+ */
+.talise-glass {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 80%
+    ),
+    rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 22px 60px -10px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/*
+ * TopGlow — wide green horizon wash at the top of every authed page.
+ * Mirrors iOS's TopGlow.swift: a radial gradient centered well above
+ * the viewport (y: -60%) with a large radius so only a wide arc shows.
+ *
+ * Use by wrapping the page in:
+ *   <div class="relative">
+ *     <div class="talise-top-glow" />
+ *     ...content...
+ *   </div>
+ */
+.talise-top-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 360px;
+  pointer-events: none;
+  z-index: 0;
+  /* Forest-green (#4B8A37) deep wash with a mint (#CAFFB8) bloom on top —
+     ties the page-level horizon glow to the two canonical brand greens. */
+  background:
+    radial-gradient(
+      ellipse 100% 90% at 50% -60%,
+      rgba(75, 138, 55, 0.55) 0%,
+      rgba(75, 138, 55, 0.18) 35%,
+      rgba(75, 138, 55, 0.04) 65%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 50% 0%,
+      rgba(202, 255, 184, 0.30) 0%,
+      transparent 50%
+    );
+  filter: blur(8px);
+}
+
+/*
+ * Mobile-style authed app shell — narrow column (max 480px) centered,
+ * dark background, top glow behind. Apply to the outermost wrapper of
+ * any authed page that wants the mobile look.
+ */
+.talise-app-shell {
+  position: relative;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.talise-app-column {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 24px 140px;
+}
+
+/*
+ * History-row press tint — mirrors iOS's HistoryRowButtonStyle. At rest
+ * the row reads as a neutral glass card; on hover it picks up the
+ * directional tint (red for sent, green for received). Apply via
+ * `class="talise-history-row" data-direction="sent|received|invest|withdraw"`.
+ */
+.talise-history-row {
+  background:
+    rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  transition: background 180ms ease, transform 180ms ease;
+}
+.talise-history-row:hover {
+  background:
+    color-mix(in srgb, var(--row-tint, transparent) 18%, rgba(255, 255, 255, 0.025));
+}
+.talise-history-row[data-direction="sent"]    { --row-tint: #c95a4a; }
+.talise-history-row[data-direction="received"]{ --row-tint: #4fb35e; }
+.talise-history-row[data-direction="invest"]  { --row-tint: #4b8a37; }
+.talise-history-row[data-direction="withdraw"]{ --row-tint: #4fb35e; }
+
+/* Legacy moodboard tile class (still used by hero collage if re-enabled). */
+.tile {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease;
+}
+
+.tile:hover {
+  z-index: 5;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.025;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Phone collage entrance — gentle two-stage reveal.
+   * Glow fades + scales first (sets the stage).
+   * Artwork drops up + scales from 94% (no rotation, no shake).
+   Both respect prefers-reduced-motion via the @media block below. */
+@keyframes taliseCollageGlowIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes taliseCollageArtIn {
+  from { opacity: 0; transform: translateY(28px) scale(0.94); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.talise-collage-glow {
+  animation: taliseCollageGlowIn 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 80ms;
+}
+.talise-collage-art {
+  animation: taliseCollageArtIn 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 220ms;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity, filter;
+}
+@media (prefers-reduced-motion: reduce) {
+  .talise-collage-glow,
+  .talise-collage-art {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/*
+ * ── App-shell additions (beta web app under /app) ─────────────────────────
+ * Namespaced helpers for the dark liquid-glass app shell + primitives.
+ * Do NOT alter the @theme tokens or the .landing-mint block above.
+ */
+
+/* SlideToConfirm: never let the drag select page text. */
+.talise-noselect {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Toast entrance — rise + fade in. */
+@keyframes taliseToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.talise-toast-in {
+  animation: taliseToastIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Sheet entrance — backdrop fades, panel rises (mobile) / scales (desktop). */
+@keyframes taliseSheetBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes taliseSheetPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.talise-sheet-backdrop {
+  animation: taliseSheetBackdropIn 180ms ease both;
+}
+.talise-sheet-panel {
+  animation: taliseSheetPanelIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Soft forest-tinted light scrollbars inside the light-mint app chrome. */
+.talise-appshell ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.talise-appshell ::-webkit-scrollbar-thumb {
+  background: rgba(35, 78, 20, 0.16);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.talise-appshell ::-webkit-scrollbar-thumb:hover {
+  background: rgba(35, 78, 20, 0.28);
+  background-clip: content-box;
+}
+.talise-appshell {
+  scrollbar-color: rgba(35, 78, 20, 0.22) transparent;
+}
+
+/*
+ * History-row press tint — LIGHT-MINT override. Under .landing-mint the row
+ * reads as a clean white→faint-mint card (matching .talise-glass) with a soft
+ * forest hairline; on hover it picks up the directional tint (red for sent,
+ * green for received) over a near-white base. Keeps the same data-direction
+ * contract as the dark rule above.
+ */
+.landing-mint .talise-history-row {
+  background: linear-gradient(to bottom, #fbfdf7 0%, #f3faea 100%);
+  border: 1px solid #d6e8c6;
+  border-top-color: #ffffff;
+  border-radius: 12px;
+  box-shadow:
+    0 10px 26px -16px rgba(35, 78, 20, 0.14),
+    0 1px 2px rgba(35, 78, 20, 0.04);
+  transition: background 180ms ease, transform 180ms ease, border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.landing-mint .talise-history-row:hover {
+  background: color-mix(in srgb, var(--row-tint, transparent) 9%, #ffffff);
+  border-color: color-mix(in srgb, var(--row-tint, var(--color-accent-deep)) 30%, var(--color-line));
+}
+.landing-mint .talise-history-row[data-direction="sent"]    { --row-tint: #c95a4a; }
+.landing-mint .talise-history-row[data-direction="received"]{ --row-tint: #3d7a29; }
+.landing-mint .talise-history-row[data-direction="invest"]  { --row-tint: #3d7a29; }
+.landing-mint .talise-history-row[data-direction="withdraw"]{ --row-tint: #3d7a29; }
+
+@media (prefers-reduced-motion: reduce) {
+  .talise-toast-in,
+  .talise-sheet-backdrop,
+  .talise-sheet-panel {
+    animation: none;
+  }
+}
+
+/*
+ * Launch polish — global corner-rounding dial-down, scoped to the app shell.
+ * The app over-used rounded-3xl (24px) / rounded-2xl (16px), which read a touch
+ * too soft. This single-point override tightens them everywhere inside
+ * `.talise-appshell` without touching the marketing site (`.landing-mint`,
+ * which never carries this class) or any rounded-full pills/buttons.
+ *   rounded-3xl: 24px -> 18px
+ *   rounded-2xl: 16px -> 14px
+ */
+.talise-appshell .rounded-3xl {
+  border-radius: 1.125rem;
+}
+.talise-appshell .rounded-2xl {
+  border-radius: 0.875rem;
+}
