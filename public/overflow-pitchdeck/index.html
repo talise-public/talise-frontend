@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>talise · Deck 2026</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#0a0e0b; --surface:#131815; --surface2:#1b221e; --line:rgba(255,255,255,.09);
+  --fg:#f2f4f2; --muted:#b9c0bb; --dim:#7c857f; --mint:#caffb8; --forest:#4b8a37;
+  --danger:#e08d8a; --gold:#e7c27a;
+  --sans:'Manrope',system-ui,sans-serif; --serif:'Instrument Serif',Georgia,serif; --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+@page{ size:1280px 720px; margin:0; }
+html,body{background:var(--bg);}
+body{font-family:var(--sans);color:var(--fg);}
+
+.slide{
+  position:relative; width:1280px; height:720px; overflow:hidden;
+  background:var(--bg);
+  page-break-after:always; padding:64px 72px; display:flex; flex-direction:column;
+}
+.slide:last-child{page-break-after:auto;}
+
+/* On screen: scale each 1280x720 slide to fill the viewport width so the deck
+   uses the full viewport on desktop and is responsive on any device. The scale
+   factor is a unitless number (innerWidth / 1280) set on :root by the inline
+   script at the end of <body> — CSS calc cannot derive a unitless scale from
+   `vw` on its own. Print (the PDF) ignores this block and keeps 1280x720. */
+@media screen {
+  html,body{ margin:0; background:var(--bg); overflow-x:hidden; }
+  body{ --deck-scale: 1; }
+  .slide{
+    transform: scale(var(--deck-scale));
+    transform-origin: top left;
+    /* A scaled slide still occupies its 720px layout box; reserve the real
+       visual height so slides stack without overlap (scale>1) or gaps (<1). */
+    margin-bottom: calc((var(--deck-scale) - 1) * 720px);
+  }
+}
+
+.top{display:flex; align-items:center; justify-content:space-between; z-index:2;}
+.brand{display:flex; align-items:center; gap:11px;}
+.brand svg{width:24px; height:22px;}
+.bm{fill:var(--mint);}
+.wm{font-weight:600; letter-spacing:-.02em; font-size:17px;}
+.eyebrow{font-family:var(--mono); font-size:10.5px; letter-spacing:.28em; text-transform:uppercase; color:var(--dim);}
+.pageno{font-family:var(--mono); font-size:10.5px; color:var(--dim); letter-spacing:.1em;}
+
+.body{flex:1; display:flex; flex-direction:column; justify-content:center; z-index:2; min-height:0;}
+h1{font-weight:500; letter-spacing:-.03em; line-height:1.02; font-size:60px;}
+h2{font-weight:500; letter-spacing:-.03em; line-height:1.04; font-size:46px;}
+.kicker{font-family:var(--mono); font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:var(--mint); margin-bottom:20px;}
+.serif{font-family:var(--serif); font-style:italic; font-weight:400;}
+.mint{color:var(--mint);} .forest{color:var(--forest);} .muted{color:var(--muted);} .dim{color:var(--dim);} .gold{color:var(--gold);}
+.lead{font-size:21px; line-height:1.5; color:var(--muted); max-width:760px; font-weight:400;}
+.foot{font-family:var(--mono); font-size:10.5px; color:var(--dim); letter-spacing:.12em; z-index:2;}
+
+.row{display:flex; gap:18px;}
+.col{flex:1;}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:24px 26px;}
+.stat{font-weight:600; letter-spacing:-.04em; line-height:.95;}
+.s-xl{font-size:84px;} .s-lg{font-size:58px;} .s-md{font-size:40px;}
+.label{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin-top:10px; line-height:1.4;}
+.pill{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+  padding:6px 12px; border-radius:99px; background:rgba(202,255,184,.1); color:var(--mint); border:1px solid rgba(202,255,184,.22);}
+.bullet{display:flex; gap:13px; align-items:flex-start; margin-bottom:15px;}
+.bullet .dot{flex:none; width:9px; height:9px; border-radius:50%; background:var(--mint); margin-top:8px;}
+.bullet b{font-weight:600;}
+.bullet p{font-size:15.5px; line-height:1.45; color:var(--muted);}
+.bullet h4{font-size:18px; font-weight:500; margin-bottom:2px;}
+
+table{width:100%; border-collapse:collapse; font-size:15px;}
+th,td{text-align:left; padding:13px 16px; border-bottom:1px solid var(--line);}
+th{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); font-weight:500;}
+td.feat{color:var(--muted);}
+.yes{color:var(--mint); font-weight:600;} .no{color:#6c6f6c;}
+.us{background:rgba(202,255,184,.06);}
+.us td{color:var(--fg); font-weight:600;}
+
+/* image helpers */
+.imgfull{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;}
+.scrim{position:absolute; inset:0; z-index:1; background:linear-gradient(90deg, rgba(7,10,8,.94) 0%, rgba(7,10,8,.78) 38%, rgba(7,10,8,.25) 100%);}
+.scrim-b{position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(7,10,8,.2) 0%, rgba(7,10,8,.55) 55%, rgba(7,10,8,.96) 100%);}
+.split{display:flex; gap:40px; align-items:center; flex:1; min-height:0; z-index:2;}
+.split .txt{flex:1.1;}
+.shot{flex:.9; height:100%; display:flex; align-items:center; justify-content:center;}
+.shot img{max-height:560px; max-width:100%; border-radius:22px; border:1px solid var(--line); box-shadow:0 30px 80px rgba(0,0,0,.5);}
+
+/* revenue flow diagram (slide 10) */
+.flow{display:flex; align-items:center; justify-content:center; gap:26px; margin-top:40px; z-index:2;}
+.flow .hub{flex:none; width:190px; height:190px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-align:center;
+  background:radial-gradient(circle at 50% 40%, rgba(202,255,184,.22), rgba(202,255,184,.05)); border:1.5px solid rgba(202,255,184,.4); color:var(--mint); font-weight:600; font-size:17px;}
+.flow .edges{display:flex; flex-direction:column; gap:13px; flex:1;}
+.flow .edge{display:flex; align-items:center; gap:14px;}
+.flow .conn{flex:none; width:54px; height:2px; background:linear-gradient(90deg, rgba(202,255,184,.5), rgba(202,255,184,.15));}
+.flow .edge .card{flex:1; padding:15px 20px;}
+.flow .edge h4{font-size:16px; font-weight:600;}
+.flow .edge p{font-size:13.5px; color:var(--muted); margin-top:2px; line-height:1.4;}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute"><symbol id="logo" viewBox="0 0 583 533"><path d="M375.231 85.2803C375.232 120.604 403.867 149.24 439.191 149.24H582.036V195.141C582.036 275.133 517.696 340.098 437.943 341.108L435.271 341.125C402.04 341.546 375.232 368.614 375.231 401.944V533H345.384C260.606 533 191.88 464.274 191.88 379.496V341.12H0V303.18C8.18875e-05 219.067 67.6907 150.62 151.798 149.686L191.875 149.24V341.119H427.871C396.135 332.728 367.039 316.441 343.293 293.774L191.876 149.24H191.88V63.96C191.88 28.6358 220.516 0 255.84 0H375.231V85.2803Z"/></symbol></svg>
+
+<!-- 1. COVER -->
+<section class="slide" style="justify-content:space-between; padding:0;">
+  <img class="imgfull" src="/overflow-pitchdeck/assets/hero.png" alt="" />
+  <div class="scrim"></div>
+  <div style="position:relative; z-index:2; padding:64px 72px; display:flex; flex-direction:column; height:100%; justify-content:space-between;">
+    <div class="top">
+      <div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div>
+      <div class="eyebrow">Pitch · 2026</div>
+    </div>
+    <div style="flex:none;">
+      <h1 style="font-size:80px; max-width:1000px;">Money that moves like<br>a <span class="serif mint">message.</span></h1>
+      <p class="lead" style="margin-top:26px; font-size:23px;">A dollar account that sends by name, settles in under a second, and keeps the amount private. Built on Sui, live on mainnet.</p>
+      <div style="margin-top:26px; display:flex; gap:10px;"><span class="pill">Live on mainnet</span><span class="pill">Public beta</span><span class="pill">Sui Overflow</span></div>
+    </div>
+    <div class="foot" style="display:flex; justify-content:space-between;">
+      <span>talise.io</span><span>DeFi &amp; Payments</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. PROBLEM -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">02 · Problem</span></div>
+  <div class="body">
+    <div class="kicker">The problem</div>
+    <h1 style="max-width:980px;">Moving money is still stuck in <span class="serif" style="color:var(--danger);">2005.</span></h1>
+    <div class="row" style="margin-top:44px;">
+      <div class="col card"><div class="stat s-lg mint">6.4%</div><div class="label">Average cost to send across a border (World Bank)</div></div>
+      <div class="col card"><div class="stat s-lg mint">1 to 5 days</div><div class="label">To arrive, and only with a bank</div></div>
+      <div class="col card"><div class="stat s-lg mint">1.4B</div><div class="label">Adults still outside the banking system</div></div>
+    </div>
+    <p class="lead" style="margin-top:34px;">You pay a tax, you wait days, and you fight an app that locks up your own cash. The people who feel it most are the ones who can least afford it. <span class="serif" style="color:var(--fg);">Cash is instant. The internet should be too.</span></p>
+  </div>
+</section>
+
+<!-- 3. SOLUTION -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">03 · Solution</span></div>
+  <div class="split">
+    <div class="txt">
+      <div class="kicker">The solution</div>
+      <h1 style="max-width:560px;">A dollar account that lives inside a <span class="serif mint">conversation.</span></h1>
+      <p class="lead" style="margin-top:20px; max-width:560px;">Sign in with Google, hold dollars, and send them to a name, not a 0x address. No seed phrase, no gas, no waiting.</p>
+      <div class="row" style="margin-top:30px; gap:12px;">
+        <div class="col card" style="padding:18px 20px;"><div class="stat s-md mint">$0.00</div><div class="label">Gas to send</div></div>
+        <div class="col card" style="padding:18px 20px;"><div class="stat s-md mint">~1s</div><div class="label">To settle, final</div></div>
+      </div>
+      <div class="row" style="margin-top:12px; gap:12px;">
+        <div class="col card" style="padding:18px 20px;"><div class="stat s-md mint">Google</div><div class="label">Sign in, zkLogin</div></div>
+        <div class="col card" style="padding:18px 20px;"><div class="stat s-md mint">20+</div><div class="label">Countries reachable</div></div>
+      </div>
+    </div>
+    <div class="shot"><img src="/overflow-pitchdeck/assets/app-home-dark.png" alt="Talise home" /></div>
+  </div>
+</section>
+
+<!-- 4. HOW IT WORKS -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">04 · How it works</span></div>
+  <div class="body">
+    <div class="kicker">How it works</div>
+    <h1 style="max-width:960px;">Four invisible layers, one obvious experience.</h1>
+    <div class="row" style="margin-top:40px; gap:22px;">
+      <div class="col">
+        <div class="bullet"><div class="dot"></div><div><h4>Identity</h4><p>zkLogin turns a Google account into a self-custodial Sui wallet. The user never sees a key.</p></div></div>
+        <div class="bullet"><div class="dot"></div><div><h4>Settlement</h4><p>Balances are USDsui, a US dollar token on Sui, moved with sub-second finality.</p></div></div>
+      </div>
+      <div class="col">
+        <div class="bullet"><div class="dot"></div><div><h4>Gas</h4><p>Every send is sponsored, so the user pays nothing to transact.</p></div></div>
+        <div class="bullet"><div class="dot"></div><div><h4>Names</h4><p>Everyone claims <span class="mint">name@talise.sui</span>, a real on-chain identity that money routes to.</p></div></div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:30px;">Put together, sending a dollar feels like sending a text.</p>
+  </div>
+</section>
+
+<!-- 5. PRIVACY -->
+<section class="slide" style="padding:0;">
+  <img class="imgfull" src="/overflow-pitchdeck/assets/privacy.png" alt="" style="object-position:right;" />
+  <div class="scrim"></div>
+  <div style="position:relative; z-index:2; padding:64px 72px; display:flex; flex-direction:column; height:100%;">
+    <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">05 · Privacy</span></div>
+    <div class="body" style="max-width:680px;">
+      <div class="kicker">The part nobody else ships</div>
+      <h1>Send dollars without broadcasting them to the world.</h1>
+      <p class="lead" style="margin-top:20px;">Public chains leak every balance and every payment. Talise private send hides the amount on chain and breaks the link between sender and recipient through a relayer.</p>
+      <div style="margin-top:24px; display:flex; gap:10px;"><span class="pill">Amount hidden on chain</span><span class="pill">Sender and recipient unlinked</span></div>
+      <p class="lead" style="margin-top:22px; color:var(--fg);"><span class="serif">Real zero-knowledge settlement, live on Sui mainnet today. Not a roadmap promise.</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- 6. MORE THAN A SEND -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">06 · Primitives</span></div>
+  <div class="body">
+    <div class="kicker">More than a send</div>
+    <h1 style="max-width:900px;">Money that behaves like the <span class="serif mint">internet.</span></h1>
+    <div class="row" style="margin-top:44px;">
+      <div class="col card"><h4 style="font-size:20px; font-weight:600;">Money in a link</h4><p style="font-size:15px; color:var(--muted); line-height:1.5; margin-top:10px;">Wrap dollars in a claim link and drop it in any chat. The recipient taps, and the money is theirs. No address needed.</p></div>
+      <div class="col card"><h4 style="font-size:20px; font-weight:600;">Money over time</h4><p style="font-size:15px; color:var(--muted); line-height:1.5; margin-top:10px;">Stream a salary or a subscription by the second instead of in one lump payment.</p></div>
+      <div class="col card"><h4 style="font-size:20px; font-weight:600;">Idle dollars at work</h4><p style="font-size:15px; color:var(--muted); line-height:1.5; margin-top:10px;">Balances that sit still are put to work through on-chain lending, so the account is never dead weight between payments.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. WHY NOW -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">07 · Why now</span></div>
+  <div class="body">
+    <div class="kicker">Why now, why Sui</div>
+    <h1 style="max-width:980px;">The rails finally exist. The need has never been louder.</h1>
+    <div class="row" style="margin-top:46px;">
+      <div class="col"><div class="bullet"><div class="dot"></div><div><h4>zkLogin removed the wallet</h4><p>A Google sign in now produces a self-custodial account. Onboarding is a tap, not a tutorial.</p></div></div></div>
+      <div class="col"><div class="bullet"><div class="dot"></div><div><h4>Sponsored gas removed the toll</h4><p>The user transacts without ever holding a gas token.</p></div></div></div>
+      <div class="col"><div class="bullet"><div class="dot"></div><div><h4>Sub-second finality</h4><p>Sui settles fast enough that send and receive feel like a message, not a transfer.</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. TRACTION -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">08 · Traction</span></div>
+  <div class="split">
+    <div class="txt">
+      <div class="kicker">Traction</div>
+      <h1 style="max-width:560px;">Live in production, and the demand is real.</h1>
+      <div class="row" style="margin-top:34px; gap:12px;">
+        <div class="col card" style="padding:20px 22px;"><div class="stat s-md mint">1,900+</div><div class="label">Names on the waitlist</div></div>
+        <div class="col card" style="padding:20px 22px;"><div class="stat s-md mint">1,400+</div><div class="label">@handles claimed on chain</div></div>
+      </div>
+      <div class="card" style="margin-top:12px; padding:20px 22px;"><div class="stat s-md mint">Live</div><div class="label">On Sui mainnet, public beta shipping to iOS</div></div>
+      <p class="lead" style="margin-top:20px; font-size:17px; max-width:560px;">Real dollars have moved end to end: gasless sends, private sends, claim links, and bank cash-out all work in the shipped build.</p>
+    </div>
+    <div class="shot"><img src="/overflow-pitchdeck/assets/app-mint.png" alt="Talise app" /></div>
+  </div>
+</section>
+
+<!-- 9. MARKET -->
+<section class="slide" style="padding:0;">
+  <img class="imgfull" src="/overflow-pitchdeck/assets/corridor.png" alt="" />
+  <div class="scrim-b"></div>
+  <div style="position:relative; z-index:2; padding:64px 72px; display:flex; flex-direction:column; height:100%; justify-content:space-between;">
+    <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">09 · Market</span></div>
+    <div>
+      <div class="kicker">Market</div>
+      <h1 style="max-width:900px;">A trillion-dollar flow, entered through one <span class="serif mint">corridor.</span></h1>
+      <p class="lead" style="margin-top:18px;">Cross-border payments move trillions a year, and remittances alone are a multi-hundred-billion-dollar market that still pays the highest fees in finance. We start in one high-volume, high-pain corridor and expand corridor by corridor.</p>
+      <div style="margin-top:22px; display:flex; gap:10px;"><span class="pill">Beachhead corridor: $20B+ annual flow</span><span class="pill">Then corridor by corridor</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. BUSINESS MODEL -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">10 · Business model</span></div>
+  <div class="body">
+    <div class="kicker">Business model</div>
+    <h1 style="max-width:980px;">Sending is gasless for the user. We earn at the <span class="serif mint">edges.</span></h1>
+    <div class="flow">
+      <div class="hub">Gasless<br>for the user</div>
+      <div class="edges">
+        <div class="edge"><div class="conn"></div><div class="card"><h4>FX spread</h4><p>When dollars meet local currency at cash in and cash out.</p></div></div>
+        <div class="edge"><div class="conn"></div><div class="card"><h4>Ramp margin</h4><p>On on-ramp and off-ramp settlement through licensed partners.</p></div></div>
+        <div class="edge"><div class="conn"></div><div class="card"><h4>Yield spread</h4><p>A margin on the yield generated by idle balances.</p></div></div>
+        <div class="edge"><div class="conn"></div><div class="card"><h4>Talise for business</h4><p>Payouts, payroll streaming, and claim links for teams.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11. MOAT -->
+<section class="slide">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">11 · Defensibility</span></div>
+  <div class="body">
+    <div class="kicker">Competition and defensibility</div>
+    <h1 style="max-width:980px;">Built on an axis incumbents cannot follow.</h1>
+    <table style="margin-top:34px;">
+      <tr><th>Capability</th><th>Banks &amp; transmitters</th><th>Crypto wallets</th><th>Talise</th></tr>
+      <tr><td class="feat">Sub-second, gasless settlement</td><td class="no">No</td><td class="no">Partial</td><td class="yes">Yes</td></tr>
+      <tr class="us"><td class="feat">Send to a name, no seed phrase</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
+      <tr><td class="feat">Private, amount-hidden transfers</td><td class="no">No</td><td class="no">No</td><td class="yes">Live</td></tr>
+      <tr class="us"><td class="feat">Identity network that compounds</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
+    </table>
+    <p class="lead" style="margin-top:26px;">Every claimed name makes the graph denser, and shielded settlement that is genuinely live is rare and hard to copy.</p>
+  </div>
+</section>
+
+<!-- 12. VISION & ASK -->
+<section class="slide" style="justify-content:space-between;">
+  <div class="top"><div class="brand"><svg class="bm"><use href="#logo"/></svg><span class="wm">talise</span></div><span class="pageno">12 · Vision</span></div>
+  <div class="body" style="flex:none; margin-top:30px;">
+    <div class="kicker">The vision</div>
+    <h1 style="max-width:1000px;">A dollar account for the next billion, that works like a <span class="serif mint">message.</span></h1>
+    <p class="lead" style="margin-top:22px;">Talise starts as the fastest way to send a dollar to someone you know. It becomes the default dollar account for anyone the banking system left behind: hold, send, save, and get paid, all private, all instant, all in one app.</p>
+    <div class="row" style="margin-top:24px;">
+      <div class="col card"><h4 style="font-weight:600;">Now</h4><p style="font-size:14px; color:var(--muted); margin-top:8px; line-height:1.45;">Gasless private sends, claim links, and bank cash-out, live on mainnet.</p></div>
+      <div class="col card"><h4 style="font-weight:600;">Next</h4><p style="font-size:14px; color:var(--muted); margin-top:8px; line-height:1.45;">Deepen the first corridor, open business payouts, harden the privacy pool.</p></div>
+      <div class="col card"><h4 style="font-weight:600;">Then</h4><p style="font-size:14px; color:var(--muted); margin-top:8px; line-height:1.45;">Expand corridor by corridor into a global dollar account.</p></div>
+    </div>
+    <div class="row" style="margin-top:22px; gap:44px;">
+      <div style="flex:1;"><div class="kicker">The ask</div><p style="font-size:14px; color:var(--muted); margin-top:6px; line-height:1.45;">Win Sui Overflow 2026's DeFi &amp; Payments track, and take Talise from a live mainnet beta to the default dollar account for an underserved corridor.</p></div>
+      <div style="width:300px; flex:none;"><div class="kicker">Team</div><p style="font-size:14px; color:var(--muted); margin-top:6px; line-height:1.45;">Built solo, end to end: Move contracts, gasless infrastructure, iOS, and web.</p></div>
+    </div>
+  </div>
+  <div>
+    <p class="lead" style="font-size:20px; color:var(--fg);"><span class="serif mint">Money should be instant, borderless, private, and yours.</span></p>
+    <div class="foot" style="display:flex; justify-content:space-between; margin-top:18px;"><span>talise.io</span><span>Talise · money that moves like a message</span></div>
+  </div>
+</section>
+
+<script>
+  /* Fit the fixed 1280-wide slides to the viewport width. Sets a unitless
+     --deck-scale on <body>; the @media screen rule consumes it. Only runs on
+     screen — print is unaffected (it reads --deck-scale:1 / native layout). */
+  (function () {
+    var fit = function () {
+      document.body.style.setProperty('--deck-scale', String(window.innerWidth / 1280));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+  })();
+</script>
+</body>
+</html>

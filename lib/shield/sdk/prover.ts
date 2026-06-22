@@ -214,6 +214,21 @@ function post(msg: Record<string, unknown>): Promise<string | boolean> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Warm the prover BEFORE the user proves — call this on page load. Pre-fetches
+ * and caches the ~3.8MB proving key (IndexedDB + memory) AND instantiates the
+ * ~1.4MB WASM in the worker, in parallel. Without this the FIRST proof (the
+ * deposit leg) pays both costs inline — several seconds of the private send.
+ * Best-effort + idempotent: a failure just means the first proof loads cold.
+ */
+export async function warmUp(): Promise<void> {
+  try {
+    await Promise.all([preloadProvingKey(), post({ type: "warm" })]);
+  } catch {
+    /* best-effort; the first proof falls back to a cold load, as before */
+  }
+}
+
+/**
  * Generate a Groth16 proof off the main thread. Loads (and caches) the proving
  * key on first use. Resolves with the parsed {@link ProofOutput}.
  */

@@ -332,7 +332,16 @@ export function chequeOnchainEnabled(): boolean {
  * cheque already minted on-chain keeps working regardless of this flag.
  */
 export function chequeOnchainCreateEnabled(): boolean {
-  return chequeOnchainEnabled() && process.env.CHEQUE_ONCHAIN_CREATE === "1";
+  // PAUSED (2026-06-22): the on-chain `cheque::create` is a shared-object
+  // sponsored tx, and the gas station submits through the public fullnode,
+  // where shared-object txs are slow enough to blow the sponsor-execute window
+  // — the user just sees "Couldn't issue the cheque". Force the proven ESCROW
+  // rail (a plain gasless send to the escrow, then a server-key release at
+  // claim — which works) regardless of the env flag, until the gas station
+  // moves to a faster RPC (BlockVision gRPC). Re-enable by restoring the
+  // env-gated line below once that ships.
+  return false;
+  // return chequeOnchainEnabled() && process.env.CHEQUE_ONCHAIN_CREATE === "1";
 }
 
 /** Fully-qualified on-chain Cheque object type prefix: `${PKG}::cheque::Cheque<`. */

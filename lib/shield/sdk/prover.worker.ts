@@ -49,7 +49,12 @@ type VerifyMsg = {
   proofJson: string;
   verifyingKeyHex: string;
 };
-type InMsg = ProveMsg | VerifyMsg;
+// Warm-up: instantiate the WASM (fetch + compile the ~1.4MB binary) without
+// proving, so the first real prove() doesn't pay that cost. loadWasm() runs at
+// the top of onmessage for every message, so handling "warm" just means
+// acking once it's done.
+type WarmMsg = { id: number; type: "warm" };
+type InMsg = ProveMsg | VerifyMsg | WarmMsg;
 
 // Where the static WASM glue + binary live (served from public/).
 const GLUE_URL = "/shield/talise_privacy_circuit.js";
@@ -89,6 +94,15 @@ self.onmessage = async (e: MessageEvent<InMsg>) => {
         id: msg.id,
         ok: true,
         result,
+      });
+    } else if (msg.type === "warm") {
+      // WASM is now instantiated (loadWasm above) — ack so the caller knows the
+      // worker is hot. No proving work done.
+      void wasm;
+      (self as DedicatedWorkerGlobalScope).postMessage({
+        id: msg.id,
+        ok: true,
+        result: true,
       });
     } else {
       throw new Error(`unknown message type`);

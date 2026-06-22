@@ -257,10 +257,19 @@ export function phaseFromStatus(status: string): LinqPhase {
   if (s.includes("disbursed") || s.includes("settled") || s.includes("completed")) {
     return "completed";
   }
-  if (s.includes("timeout") || s.includes("failed") || s.includes("reject")) {
+  // Terminal failure ONLY. A Linq "timeout" is transient (the bank payout is
+  // lagging, not dead), so we treat it as still-processing and keep polling
+  // instead of flashing a premature "failed" the user then watches succeed.
+  if (s.includes("failed") || s.includes("reject")) {
     return "failed";
   }
-  if (s.includes("processing") || s.includes("queue") || s.includes("worker")) {
+  if (
+    s.includes("processing") ||
+    s.includes("queue") ||
+    s.includes("worker") ||
+    s.includes("timeout") ||
+    s.includes("pending")
+  ) {
     return "processing";
   }
   return "initiated";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { deriveShieldKeypairFromSeed } from "@/lib/shield/sdk";
+import { deriveShieldKeypairFromSeed, warmUp } from "@/lib/shield/sdk";
 import {
   proveShieldDeposit,
   shieldWithdraw,
@@ -95,6 +95,12 @@ export function ShieldProveHarness({
       // eslint-disable-next-line no-console
       console.log("[shield-prove]", m.type);
     };
+
+    // Warm the Groth16 prover NOW — on page mount, while the user is still on
+    // the amount/recipient screens. Pre-fetches the ~3.8MB proving key and
+    // instantiates the ~1.4MB WASM so the first proof (the deposit leg) skips
+    // that cold-load cost. Best-effort; safe to fire-and-forget.
+    void warmUp();
 
     // Resolver for the native deposit-signing round-trip (step 4).
     let depositResolver: ((r: { digest?: string; error?: string }) => void) | null = null;
@@ -299,13 +305,18 @@ export function ShieldProveHarness({
           const commitment = prepared.outputNote.commitment;
           let leafIndex: number | null = null;
           let postDepositRoot: string | null = null;
-          for (let i = 0; i < 90 && leafIndex === null; i++) {
+          for (let i = 0; i < 110 && leafIndex === null; i++) {
             const p = await postJson("/api/shield/merkle-path", { coinType, commitment });
             if (p.ok && typeof p.body.leafIndex === "number") {
               leafIndex = p.body.leafIndex as number;
               postDepositRoot = (p.body.root as string) ?? null;
             } else {
-              await new Promise((r) => setTimeout(r, 2000));
+              // Backoff: poll fast at first (the deposit usually indexes within
+              // a few hundred ms once the checkpoint lands), then ease off so a
+              // genuinely slow confirmation doesn't hammer the endpoint. Keeps a
+              // ~2.5min ceiling (12·0.4 + 18·1 + 80·2 ≈ 183s).
+              const delayMs = i < 12 ? 400 : i < 30 ? 1000 : 2000;
+              await new Promise((r) => setTimeout(r, delayMs));
             }
           }
           if (leafIndex === null || !postDepositRoot) {

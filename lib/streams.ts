@@ -626,10 +626,46 @@ export async function buildStreamCancelSponsored(input: {
 
 const MICROS = 1_000_000;
 
+/**
+ * How many tranches the on-chain Clock has released by `now`, derived the same
+ * way the `stream::claim_accrued` contract does: the first tranche is due at
+ * `start_ms` and one more every `interval_ms`, capped at `num_tranches`. We
+ * compute this instead of trusting `released_micros` because the stream is
+ * CRON-LESS — nothing writes `released_micros` back, so it would sit at 0
+ * forever and the bar would never move. The full amount is locked on-chain at
+ * create, so accrued tranches are guaranteed to the recipient (a claim just
+ * realizes them). Frozen for terminal states (cancelled/completed) so a stopped
+ * stream doesn't keep "accruing".
+ */
+function accruedTranches(row: StreamRow, now: number): number {
+  const num = Number(row.num_tranches);
+  const interval = Number(row.interval_ms);
+  if (num <= 0 || interval <= 0) return Number(row.tranches_done) || 0;
+  const elapsed = now - Number(row.start_ms);
+  if (elapsed < 0) return 0;
+  const due = Math.floor(elapsed / interval) + 1; // first tranche fires at start
+  return Math.max(0, Math.min(num, due));
+}
+
 /** Project a stored row into the UI-facing status shape with USD figures. */
 export function projectStream(row: StreamRow) {
   const total = Number(row.total_micros) / MICROS;
-  const released = Number(row.released_micros) / MICROS;
+  const trancheMicros = Number(row.tranche_micros);
+  const numTranches = Number(row.num_tranches);
+
+  // Active streams: progress comes from the Clock (accrued). Terminal/paused
+  // states keep their stored value (a cancelled stream stops accruing; a
+  // completed one is already full).
+  let tranchesDone: number;
+  let releasedMicros: number;
+  if (row.state === "active") {
+    tranchesDone = accruedTranches(row, Date.now());
+    releasedMicros = Math.min(Number(row.total_micros), tranchesDone * trancheMicros);
+  } else {
+    tranchesDone = Number(row.tranches_done) || 0;
+    releasedMicros = Number(row.released_micros) || 0;
+  }
+  const released = releasedMicros / MICROS;
   return {
     id: row.id,
     senderAddress: row.sender_address,
@@ -638,9 +674,9 @@ export function projectStream(row: StreamRow) {
     totalUsd: total,
     releasedUsd: released,
     remainingUsd: Math.max(0, total - released),
-    trancheUsd: Number(row.tranche_micros) / MICROS,
-    numTranches: Number(row.num_tranches),
-    tranchesDone: Number(row.tranches_done),
+    trancheUsd: trancheMicros / MICROS,
+    numTranches: numTranches,
+    tranchesDone,
     startMs: Number(row.start_ms),
     intervalMs: Number(row.interval_ms),
     nextTrancheAt: Number(row.next_tranche_at),

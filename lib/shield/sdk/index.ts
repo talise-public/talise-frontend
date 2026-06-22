@@ -51,6 +51,7 @@ export {
   prove,
   verifyProof,
   preloadProvingKey,
+  warmUp,
   loadVerifyingKey,
   SHIELD_ASSETS,
   PUBLIC_INPUT_ORDER,

@@ -10,7 +10,6 @@ import { sui, network, COIN_TYPES, USDSUI_DECIMALS } from "@/lib/sui";
 import { USDSUI_TYPE } from "@/lib/usdsui";
 import { appendPaymentKitReceipt } from "@/lib/intents/wrap-payment-kit";
 import { getRoundupConfig } from "@/lib/rewards/roundup";
-import { appendNaviSupply, SAVE_TREASURY_FEE_BPS } from "@/lib/navi-supply";
 import { onara } from "@/lib/onara";
 import { screenTransfer } from "@/lib/screening";
 import { getCurrentEpoch, getChainIdentifier } from "@/lib/sui-epoch";
@@ -749,29 +748,17 @@ export async function POST(req: Request) {
       // status+price Promise.all because it MUTATES `tx`; running it in
       // parallel with `tx.build()` would race the builder. The cost is
       // typically <5ms once the adapter is warm, which is fine.
+      // Round-up & Save is DECOUPLED (2026-06-22): we no longer bundle a NAVI
+      // supply into the send PTB. That combined shared-object PTB blew the
+      // sponsor window (send+save timed out) even though a STANDALONE NAVI
+      // supply sponsors cleanly. So we just compute the round-up amount and
+      // return it; the client fires the save as its OWN sponsored
+      // /api/earn/supply tx (the same clean path the Invest screen uses, which
+      // credits the roundup_save reward there — so the send no longer does).
       tRoundup = Date.now();
-      try {
-        if (roundupCfg.enabled && roundupCfg.percentage > 0) {
-          const computed = (amountNum * roundupCfg.percentage) / 100;
-          const cappedUsd = Math.min(computed, amountNum);
-          const microUnits = Math.round(cappedUsd * 1e6);
-          if (microUnits > 0) {
-            roundupUsd = cappedUsd;
-            await appendNaviSupply(tx, user.sui_address, roundupUsd, { treasuryFeeBps: SAVE_TREASURY_FEE_BPS });
-            appendPaymentKitReceipt(tx, {
-              kind: "invest",
-              sender: user.sui_address,
-              refs: { venue: "navi" },
-            });
-          }
-        }
-      } catch (err) {
-        // Defensive — a round-up failure must NOT block the send.
-        console.warn(
-          "[send/sponsor-prepare] round-up append failed, falling back to send-only:",
-          (err as Error).message
-        );
-        roundupUsd = 0;
+      if (roundupCfg.enabled && roundupCfg.percentage > 0) {
+        const computed = Math.min((amountNum * roundupCfg.percentage) / 100, amountNum);
+        if (Math.round(computed * 1e6) > 0) roundupUsd = computed;
       }
       tNavi = Date.now();
     } else {

@@ -325,12 +325,15 @@ export async function POST(req: Request) {
     // result (success or a clean JSON error) BEFORE 30s, so the server's error
     // wins the race instead of iOS's generic "Send timed out, no funds moved".
     // Total server time = proof leg + this Onara leg. A cached proof is ~1s and
-    // a fresh mint a few seconds, so a 20s Onara cap keeps the total well under
-    // 30s. (A 50s cap broke this: it let the request run past iOS's 30s, so iOS
-    // severed mid-broadcast and reported a false failure on txs Onara may have
-    // already accepted.) Env-tunable via ONARA_SPONSOR_TIMEOUT_MS, but keep it
-    // under ~24s to preserve the race.
-    const onaraCapMs = Number(process.env.ONARA_SPONSOR_TIMEOUT_MS) || 20_000;
+    // a fresh mint a few seconds. Since the session policy now re-auths on every
+    // cold start (proof is always freshly warmed at sign-in), the proof leg is
+    // ~1s, so a 26s Onara cap still keeps the total under iOS's 30s. The extra
+    // headroom matters for SHARED-OBJECT sponsored txs (a Save-on-send appends a
+    // NAVI supply leg; cheque/stream create), which take longer to sequence than
+    // a plain owned-coin send and were timing out at the old 20s cap. (A 50s cap
+    // broke the race: it ran past iOS's 30s and reported false failures.)
+    // Env-tunable via ONARA_SPONSOR_TIMEOUT_MS, but keep it under ~28s.
+    const onaraCapMs = Number(process.env.ONARA_SPONSOR_TIMEOUT_MS) || 26_000;
     const broadcast = (sig: string) =>
       withLegTimeout(
         onaraClient.sponsor({

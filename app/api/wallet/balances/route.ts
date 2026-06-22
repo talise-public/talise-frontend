@@ -4,6 +4,7 @@ import { userById } from "@/lib/db";
 import { USDSUI_TYPE } from "@/lib/usdsui";
 import { filterVerified } from "@/lib/coins-verified";
 import { cetusUniverse, normCoinType } from "@/lib/cetus-tokens";
+import { logoForSymbol } from "@/lib/token-logos";
 import { getSuiUsdcPrice } from "@/lib/deepbook";
 import { memoTtl } from "@/lib/perf-cache";
 
@@ -130,24 +131,34 @@ export async function GET(req: Request) {
   const balances = await Promise.all(
     verified.map(async (r) => {
       const meta = await coinMetadata(rpcUrl, r.coinType);
+      const norm = normCoinType(r.coinType);
       const symbol =
-        meta.symbol ||
-        cetus.symbol.get(normCoinType(r.coinType)) ||
-        shortSymbol(r.coinType);
+        meta.symbol || cetus.symbol.get(norm) || shortSymbol(r.coinType);
       const decimals = meta.decimals;
       const human = Number(BigInt(r.totalBalance)) / Math.pow(10, decimals);
       const isUsdsui = r.coinType === USDSUI_TYPE;
       const low = r.coinType.toLowerCase();
 
-      // USD value only where the price is trustworthy: stablecoins are 1:1,
-      // SUI uses the DeepBook spot. Everything else stays null (the amount and
-      // symbol still render; the real USD is shown at swap time).
+      // USD value: USDsui is exactly 1:1; otherwise use the Cetus-derived price
+      // (anchored on the $1 stables). Fall back to the old stable/SUI heuristics
+      // only when Cetus has no price for the coin.
       let usdValue: number | null = null;
-      if (isUsdsui || low.includes("::usdc::")) {
+      const cetusPrice = cetus.priceUsd.get(norm);
+      if (isUsdsui) {
+        usdValue = human;
+      } else if (cetusPrice != null && cetusPrice > 0) {
+        usdValue = human * cetusPrice;
+      } else if (low.includes("::usdc::")) {
         usdValue = human;
       } else if (low.includes("::sui::sui")) {
         usdValue = suiPrice > 0 ? human * suiPrice : null;
       }
+
+      // Logo: curated PNGs first (AsyncImage-safe for the majors), then the
+      // on-chain icon, then the Cetus pool logo (some are SVG — fine on web; the
+      // iOS gradient-initial fallback covers any that don't decode).
+      const logoUrl =
+        logoForSymbol(symbol) || meta.logoUrl || cetus.logo.get(norm) || null;
 
       return {
         coinType: r.coinType,
@@ -155,7 +166,7 @@ export async function GET(req: Request) {
         isUsdsui,
         symbol,
         decimals,
-        logoUrl: meta.logoUrl,
+        logoUrl,
         usdValue,
       };
     })

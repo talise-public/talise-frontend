@@ -189,6 +189,22 @@ export function middleware(req: NextRequest) {
   // (`/_next` `/_vercel`) all keep serving. Every other path (the wallet UI,
   // `/app`, `/business`, the bare root) redirects to TestFlight.
   if (host === APP_HOST) {
+    // The private-send prover harness (`/shield-prove`) must keep serving: it
+    // is the headless engine behind in-app private sends, loaded in a hidden
+    // WKWebView via /api/auth/web-session?next=/shield-prove. It lives on the
+    // /app route tree, so rewrite the clean path onto it and SERVE it. (The
+    // web-wallet retirement removed the old blanket /app rewrite, so without
+    // this the page fell through to the TestFlight redirect below — which
+    // silently broke every private send: the webview landed on TestFlight, the
+    // harness never installed, and the native send threw "not ready". The
+    // user-facing /private page stays retired on purpose.) Keep this ABOVE the
+    // keep-alive/redirect. The harness still requires the web-session cookie
+    // (only minted from a verified mobile bearer), so this exposes nothing new.
+    if (pathname === "/shield-prove") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/app/shield-prove";
+      return withSecurityHeaders(NextResponse.rewrite(url));
+    }
     const keepAlive = /^\/(api|auth|shield|c|i|u|pay|admin|_next|_vercel)(\/|$)/;
     if (!keepAlive.test(pathname)) {
       return NextResponse.redirect(
