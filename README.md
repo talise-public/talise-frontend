@@ -71,4 +71,4 @@ Every secret is read from the environment. `.env.example` documents the variable
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+Proprietary, all rights reserved. See [LICENSE](./LICENSE).
