@@ -14,7 +14,7 @@ import {
 } from "@/lib/db";
 import { shinamiEnabled, shinamiGetWallet } from "@/lib/shinami";
 import { mintZkProof } from "@/lib/zksigner";
-import { issueMobileBearer } from "@/lib/mobile-sessions";
+import { issueMobileBearer, revokeAllMobileSessions } from "@/lib/mobile-sessions";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { Ed25519PublicKey } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64 } from "@mysten/sui/utils";
@@ -398,6 +398,12 @@ export async function POST(req: Request) {
       `[mobile/exchange] proof pre-mint skipped: ${(err as Error).message}`
     );
   }
+
+  // Fresh app sign-in (Apple / native Google): revoke prior mobile_sessions
+  // rows BEFORE minting the new bearer so only the current binding remains
+  // selectable by the signer. Stops stale rows (old ephemeral key / expired
+  // max_epoch) from shadowing the fresh binding on the next deposit.
+  await revokeAllMobileSessions(user.id);
 
   const bearer = await issueMobileBearer(user.id, {
     jwt: jwtForSession,

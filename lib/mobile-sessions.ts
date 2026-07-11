@@ -187,15 +187,33 @@ export async function revokeAllMobileSessions(userId: number) {
 }
 
 /**
- * Look up the (jwt, salt) pair stored on the most recent live bearer for
- * a given user. Used by the zkLogin signer to assemble SerializedSignature
- * on mobile-originated requests (replacing the web flow's signing cookie).
+ * Look up the (jwt, salt) + binding stored on the live bearer for a given
+ * user. Used by the zkLogin signer to assemble SerializedSignature on
+ * mobile-originated requests (replacing the web flow's signing cookie).
+ *
+ * ROW SELECTION (money-safety critical): a user can accumulate several
+ * live rows — re-login inserts a fresh one and an error-triggered rebind
+ * can insert another. Picking `created_at DESC` (newest) is WRONG: the
+ * newest row can carry a STALE, already-expired `max_epoch` (e.g. a rebind
+ * that reused an old ~27-day-old ephemeral key), and Onara then rejects the
+ * signature with "ZKLogin expired at epoch N". The proof/nonce is bound to
+ * the (ephemeralPubKey, maxEpoch, randomness) triple, so the row we pick
+ * MUST be the one whose ephemeral key the client is actually signing this
+ * request with.
+ *
+ * Selection order:
+ *   1. When the caller passes `ephemeralPubKeyB64` (the key the client just
+ *      signed with), prefer the row that MATCHES it — that guarantees the
+ *      assembled proof lines up with the user signature.
+ *   2. Among candidate rows, prefer the greatest `max_epoch` (freshest,
+ *      most likely still valid) rather than the newest `created_at`.
  *
  * Returns null if no live mobile session exists, or if the stored row
  * doesn't carry signing material (legacy rows before this column existed).
  */
 export async function mobileSigningContext(
-  userId: number
+  userId: number,
+  ephemeralPubKeyB64?: string | null
 ): Promise<{
   jwt: string;
   salt: string;
@@ -204,13 +222,23 @@ export async function mobileSigningContext(
   randomness: string | null;
 } | null> {
   await ensureMobileSessionsSchema();
+  // Order: rows whose ephemeral key matches the client's signing key win
+  // first (so the proof binds to the same key the user just signed with),
+  // then greatest max_epoch (freshest still-valid binding), then newest
+  // created_at as a final tie-break. `max_epoch DESC NULLS LAST` keeps
+  // legacy NULL-binding rows from shadowing a valid bound row.
+  const wantKey = ephemeralPubKeyB64 ?? null;
   const row = await db().execute({
     sql: `SELECT jwt, salt, ephemeral_pubkey_b64, max_epoch, randomness
           FROM mobile_sessions
           WHERE user_id = ? AND revoked = 0 AND expires_at > ?
             AND jwt IS NOT NULL AND salt IS NOT NULL
-          ORDER BY created_at DESC LIMIT 1`,
-    args: [userId, Date.now()],
+          ORDER BY
+            CASE WHEN ephemeral_pubkey_b64 = ? THEN 0 ELSE 1 END ASC,
+            max_epoch DESC NULLS LAST,
+            created_at DESC
+          LIMIT 1`,
+    args: [userId, Date.now(), wantKey],
   });
   const r = row.rows[0] as unknown as {
     jwt: string;

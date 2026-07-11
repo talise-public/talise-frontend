@@ -13,6 +13,7 @@ import { requireAppAttestStructural } from "@/lib/app-attest";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { recordSendLatency, takePendingInbound } from "@/lib/perf-cache";
 import { notifyInboundSettlement } from "@/lib/notify";
+import { getCurrentEpoch } from "@/lib/sui-epoch";
 
 export const runtime = "nodejs";
 
@@ -133,15 +134,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
 
-  // Mobile callers don't have a signing cookie — pull jwt+salt from the
-  // mobile_sessions row instead. Web callers stay on the cookie path.
-  const signing = isMobileRequest(req)
-    ? await mobileSigningContext(userId)
-    : await readSigningCookie();
-  if (!signing) {
-    return NextResponse.json({ error: "No active sign-in" }, { status: 401 });
-  }
-
   let body: {
     bytesB64?: string;
     ephemeralPubKeyB64?: string;
@@ -203,6 +195,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
 
+  // Mobile callers don't have a signing cookie — pull jwt+salt + binding
+  // from the mobile_sessions row instead. Web callers stay on the cookie
+  // path. Pass the client's ephemeral pubkey so mobileSigningContext picks
+  // the row bound to THIS signing key (not merely the newest row, which can
+  // carry a stale/expired max_epoch — the exact cause of the Onara "ZKLogin
+  // expired at epoch N" deposit failures).
+  const signing = isMobileRequest(req)
+    ? await mobileSigningContext(userId, body.ephemeralPubKeyB64)
+    : await readSigningCookie();
+  if (!signing) {
+    return NextResponse.json({ error: "No active sign-in" }, { status: 401 });
+  }
+
   // Mobile callers: ALWAYS prefer the (ephPubKey, maxEpoch,
   // randomness) values stored at sign-in time. The JWT's nonce was
   // Poseidon-hashed from those values, so the prover only accepts
@@ -238,6 +243,41 @@ export async function POST(req: Request) {
   const ephemeralPubKeyB64 = bound?.ephemeralPubKeyB64 ?? body.ephemeralPubKeyB64;
   const maxEpochToUse = bound?.maxEpoch ?? body.maxEpoch;
   const randomnessToUse = bound?.randomness ?? body.randomness;
+
+  // Expired-binding guard (mobile only). The zkLogin nonce is bound to
+  // `maxEpochToUse` at sign-in and CANNOT be swapped afterward, so if that
+  // epoch is already past on chain the proof is dead — Onara would reject it
+  // with the cryptic "ZKLogin expired at epoch N, current epoch M". Catch it
+  // HERE and return the same clean rebind signal the iOS client already
+  // handles (mapExecuteError → SessionError.rebindRequired → sign-in prompt),
+  // mirroring the null-binding guard above. The epoch read is memoized 30s in
+  // lib/sui-epoch, so this doesn't add a fullnode round-trip to the hot path.
+  //
+  // NOTE: does NOT touch the send/gasless rail — gasless-submit uses
+  // body.maxEpoch on its own path and never calls this route.
+  if (isMobileRequest(req)) {
+    try {
+      const currentEpoch = await getCurrentEpoch();
+      if (maxEpochToUse <= currentEpoch) {
+        console.warn(
+          `[zk/sponsor-execute] expired binding for user=${userId}: maxEpoch=${maxEpochToUse} <= currentEpoch=${currentEpoch} — routing to rebind`
+        );
+        return NextResponse.json(
+          {
+            error: "Sign in again — your session has expired.",
+            code: "session_rebind_required",
+          },
+          { status: 401 }
+        );
+      }
+    } catch (e) {
+      // If we cannot read the epoch (fullnode blip), DON'T block the send —
+      // fall through and let Onara be the authority. This preserves the
+      // working rail: at worst the user sees the old Onara error on the rare
+      // occasion the epoch read fails AND the binding is genuinely expired.
+      console.warn("[zk/sponsor-execute] epoch pre-check unavailable — proceeding:", e);
+    }
+  }
 
   // Pin to non-undefined locals — TS doesn't carry the validation-block
   // narrowing of `body.*` through the IIFE closure below.

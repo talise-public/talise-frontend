@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { redirectUriFromRequest, verify } from "@/lib/auth";
 import { clearStateCookie, readStateCookie, cookieDomain } from "@/lib/session";
 import { completeSignIn } from "@/lib/auth-exchange";
-import { issueMobileBearer } from "@/lib/mobile-sessions";
+import { issueMobileBearer, revokeAllMobileSessions } from "@/lib/mobile-sessions";
 import { createAgentWallet, agentWalletsEnabled } from "@/lib/agent-wallets";
 
 export const runtime = "nodejs";
@@ -92,7 +92,9 @@ export async function GET(req: Request) {
   if (state.startsWith("cli.")) {
     const parsed = parseLoopbackState(state);
     if (!parsed) return redirectAuthError(req, state, "bad_state");
-    const done = await completeMobileExchange(req, state);
+    // CLI path: do NOT revoke the user's other sessions — a `talise login`
+    // must not sign the user out of their phone (or another CLI session).
+    const done = await completeMobileExchange(req, state, { revokePrior: false });
     if (!done.ok) return redirectAuthError(req, state, done.err);
     const cb = new URL(`http://127.0.0.1:${parsed.port}/cb`);
     cb.searchParams.set("token", done.bearer);
@@ -115,7 +117,12 @@ export async function GET(req: Request) {
   }
 
   // ── MOBILE (`m1.`): full exchange, bounce to the app scheme.
-  const done = await completeMobileExchange(req, state);
+  // Revoke the user's prior mobile sessions first so a fresh app sign-in
+  // leaves exactly one selectable binding — this stops STALE rows (e.g. an
+  // old ephemeral key with an already-expired max_epoch) from lingering and
+  // being picked by the signer on the next deposit. CLI sessions are on their
+  // own path and are intentionally spared (revokePrior:false above).
+  const done = await completeMobileExchange(req, state, { revokePrior: true });
   if (!done.ok) return redirectAuthError(req, state, done.err);
   const callback = new URL("talise://auth/callback");
   callback.searchParams.set("token", done.bearer);
@@ -141,7 +148,11 @@ type ExchangeResult =
  * sign-in, persist the signing material into `mobile_sessions`, and mint the
  * bearer. Returns the bearer + the binding the client must sign against.
  */
-async function completeMobileExchange(req: Request, state: string): Promise<ExchangeResult> {
+async function completeMobileExchange(
+  req: Request,
+  state: string,
+  opts: { revokePrior?: boolean } = {}
+): Promise<ExchangeResult> {
   const expected = await readStateCookie();
   if (!expected || expected !== state) {
     return { ok: false, err: "bad_state" };
@@ -183,6 +194,16 @@ async function completeMobileExchange(req: Request, state: string): Promise<Exch
   }
   // Clear with the SAME Domain/path the binding cookie was set with.
   jar.delete({ name: "talise_m1_binding", domain: cookieDomain(), path: "/" });
+
+  // Fresh app sign-in: revoke the user's prior mobile_sessions rows BEFORE
+  // inserting the new one, so only the current binding is selectable by the
+  // signer. Prevents stale rows (old ephemeral key / expired max_epoch) from
+  // shadowing the fresh binding on the next deposit. Gated to the mobile-app
+  // path — CLI sign-in passes revokePrior:false to avoid logging the user out
+  // of their phone or another CLI session.
+  if (opts.revokePrior) {
+    await revokeAllMobileSessions(user.id);
+  }
 
   const bearer = await issueMobileBearer(user.id, {
     jwt: idToken,
