@@ -2,17 +2,25 @@ import { NextResponse } from "next/server";
 import { denyUnlessAppApproved } from "@/lib/app-access";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { userById } from "@/lib/db";
-import { deletePayoutTeam } from "@/lib/payout-teams";
+import { deletePayoutTeam, payoutTeamById } from "@/lib/payout-teams";
+import {
+  payrollOnchainEnabled,
+  buildTeamDeleteSponsored,
+} from "@/lib/payroll-onchain";
 
 export const runtime = "nodejs";
 
 /**
  * DELETE /api/payouts/teams/[id]
  *
- * Removes one of the caller's saved payout teams. Ownership is enforced in the
- * DELETE's WHERE clause (id + user_id), so a team that isn't the caller's is a
- * no-op (idempotent 200). Auth + the private-beta guardrail mirror the sibling
- * batch routes exactly.
+ * Removes one of the caller's saved payout teams. Two shapes:
+ *   • `{ mode: "db", ok, removed }` — DB-only team (or on-chain disabled):
+ *     deleted immediately. Ownership enforced in the WHERE clause (idempotent).
+ *   • `{ mode: "onchain", bytes }`  — on-chain team: returns sponsor-ready
+ *     `payroll::delete` bytes to sign; the DB row is removed afterwards by
+ *     POST /api/payouts/teams/[id]/record. The DB row is NOT removed yet.
+ *
+ * Auth + the private-beta guardrail mirror the sibling batch routes exactly.
  */
 
 export async function DELETE(
@@ -38,6 +46,26 @@ export async function DELETE(
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
 
+  // On-chain team → hand back sponsor-ready delete bytes; the DB row is removed
+  // in the record step after the client signs. DB-only teams delete now.
+  if (payrollOnchainEnabled()) {
+    const team = await payoutTeamById(teamId, userId);
+    if (team?.chainObjectId) {
+      try {
+        const { bytes } = await buildTeamDeleteSponsored({
+          senderAddress: user.sui_address,
+          teamObjectId: team.chainObjectId,
+        });
+        return NextResponse.json({ mode: "onchain", bytes });
+      } catch (err) {
+        return NextResponse.json(
+          { error: (err as Error).message ?? "couldn't prepare delete" },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   const removed = await deletePayoutTeam(teamId, userId);
-  return NextResponse.json({ ok: true, removed });
+  return NextResponse.json({ mode: "db", ok: true, removed });
 }

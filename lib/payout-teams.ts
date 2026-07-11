@@ -21,7 +21,7 @@ import { db, ensureSchema, schemaVersionGate } from "@/lib/db";
 
 let _schemaReady: Promise<void> | null = null;
 // Bump whenever ANY DDL below changes (mirrors the cheques/streams discipline).
-const PAYOUT_TEAMS_SCHEMA_VERSION = "2026-06-10.1";
+const PAYOUT_TEAMS_SCHEMA_VERSION = "2026-06-25.1";
 
 export function ensurePayoutTeamsSchema(): Promise<void> {
   if (_schemaReady) return _schemaReady;
@@ -48,6 +48,13 @@ export function ensurePayoutTeamsSchema(): Promise<void> {
         updated_at BIGINT NOT NULL
       )
     `);
+    // On-chain teams: the `talise_payroll::payroll::Team` shared-object id this
+    // roster mirrors. NULL for legacy DB-only teams (and whenever the on-chain
+    // path is disabled). Display + index only — pay still re-resolves the
+    // recipient strings in `members`.
+    await c.execute(
+      `ALTER TABLE payout_teams ADD COLUMN IF NOT EXISTS chain_object_id TEXT`
+    );
     // Owner dashboard read (their teams, newest-touched first).
     await c.execute(
       `CREATE INDEX IF NOT EXISTS idx_payout_teams_user ON payout_teams(user_id, updated_at DESC)`
@@ -84,6 +91,7 @@ interface PayoutTeamRow {
   members: string;
   created_at: number;
   updated_at: number;
+  chain_object_id: string | null;
 }
 
 export interface PayoutTeam {
@@ -93,6 +101,8 @@ export interface PayoutTeam {
   members: PayoutTeamMember[];
   createdAt: number;
   updatedAt: number;
+  /** On-chain Team object id, or null for DB-only teams. */
+  chainObjectId: string | null;
 }
 
 const MAX_TEAMS_PER_USER = 50;
@@ -119,6 +129,7 @@ function projectTeam(row: PayoutTeamRow): PayoutTeam {
     members,
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
+    chainObjectId: row.chain_object_id ?? null,
   };
 }
 
@@ -166,6 +177,35 @@ export async function payoutTeamsFor(userId: number): Promise<PayoutTeam[]> {
   return (r.rows as unknown as PayoutTeamRow[]).map(projectTeam);
 }
 
+/** Look up one of the caller's teams by name (for the on-chain edit path —
+ * an existing name with a `chainObjectId` means "edit", else "create"). */
+export async function payoutTeamByName(
+  userId: number,
+  name: string
+): Promise<PayoutTeam | null> {
+  await ensurePayoutTeamsSchema();
+  const r = await db().execute({
+    sql: "SELECT * FROM payout_teams WHERE user_id = ? AND name = ? LIMIT 1",
+    args: [userId, name.trim().slice(0, MAX_NAME)],
+  });
+  const row = r.rows[0] as unknown as PayoutTeamRow | undefined;
+  return row ? projectTeam(row) : null;
+}
+
+/** Look up one of the caller's teams by id (ownership enforced by user_id). */
+export async function payoutTeamById(
+  id: string,
+  userId: number
+): Promise<PayoutTeam | null> {
+  await ensurePayoutTeamsSchema();
+  const r = await db().execute({
+    sql: "SELECT * FROM payout_teams WHERE id = ? AND user_id = ? LIMIT 1",
+    args: [id, userId],
+  });
+  const row = r.rows[0] as unknown as PayoutTeamRow | undefined;
+  return row ? projectTeam(row) : null;
+}
+
 /**
  * Upsert a team by (user, name). A new name inserts; an existing name replaces
  * its members + bumps updated_at. Returns the saved team.
@@ -174,11 +214,14 @@ export async function upsertPayoutTeam(input: {
   userId: number;
   name: string;
   members: PayoutTeamMember[];
+  /** On-chain Team object id to record alongside the roster (optional). */
+  chainObjectId?: string | null;
 }): Promise<PayoutTeam> {
   await ensurePayoutTeamsSchema();
   const name = input.name.trim().slice(0, MAX_NAME);
   if (!name) throw new Error("A team needs a name.");
   const members = sanitizeMembers(input.members);
+  const chainObjectId = input.chainObjectId ?? null;
   const now = Date.now();
   const c = db();
 
@@ -200,11 +243,13 @@ export async function upsertPayoutTeam(input: {
 
   const id = `pot_${randomUUID().replace(/-/g, "")}`;
   await c.execute({
-    sql: `INSERT INTO payout_teams (id, user_id, name, members, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO payout_teams (id, user_id, name, members, created_at, updated_at, chain_object_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT (user_id, name)
-          DO UPDATE SET members = EXCLUDED.members, updated_at = EXCLUDED.updated_at`,
-    args: [id, input.userId, name, JSON.stringify(members), now, now],
+          DO UPDATE SET members = EXCLUDED.members,
+                        updated_at = EXCLUDED.updated_at,
+                        chain_object_id = COALESCE(EXCLUDED.chain_object_id, payout_teams.chain_object_id)`,
+    args: [id, input.userId, name, JSON.stringify(members), now, now, chainObjectId],
   });
 
   const r = await c.execute({

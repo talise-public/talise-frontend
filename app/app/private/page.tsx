@@ -17,7 +17,7 @@ const DISPLAY = { fontFamily: "var(--font-display-v2)" } as const;
  * Reached from the iOS "Send private tx" tile (which opens this on the web app,
  * so the Groth16 proof is built in the user's own session; the relayer only
  * sponsors gas, never the note secrets). The shielded pool is published on
- * mainnet as a $10/tx operator-trusted pilot, but the SUBSYSTEM is gated by
+ * mainnet as a $2.50/tx operator-trusted pilot, but the SUBSYSTEM is gated by
  * `shieldConfigured()` (SHIELD_PKG + SHIELD_POOL_USDSUI) — which stays UNSET in
  * prod until the relayer keypair is funded + the env is set. So this page tells
  * the truth: explainer + honest pilot disclosure, and either "switching on"
@@ -25,7 +25,7 @@ const DISPLAY = { fontFamily: "var(--font-display-v2)" } as const;
  */
 export default function PrivatePage() {
   const live = shieldConfigured();
-  const capUsd = "$10";
+  const capUsd = "$2.50";
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-7 pb-10 pt-1">

@@ -312,17 +312,16 @@ export function buildUsdsuiBatchWithReceipts(opts: {
 }): { build: (tx: Transaction) => void } {
   const client = paymentKitClient();
   const registryId = globalRegistryId();
-  // Stable per-batch timestamp so all legs share the same timestamp slice;
-  // the random suffix + label keep nonces unique within the batch.
-  const batchTs = Date.now().toString(36);
 
   return {
     build: (tx: Transaction) => {
       for (let i = 0; i < opts.recipients.length; i++) {
         const r = opts.recipients[i];
-        const sfx = r.label ? `:${r.label.slice(0, 20)}` : "";
-        const rand = Math.floor(Math.random() * 1e9).toString(36);
-        const nonce = `${opts.kind}:${opts.sender.slice(2, 8)}:${r.address.slice(2, 8)}:${batchTs}:${rand}:${i}${sfx}`;
+        // Use the SAME compact nonce shape as single sends (`nonceFor`) — the
+        // Payment Kit `validate_nonce` rejects over-long nonces (EInvalidNonce),
+        // and the old `${kind}:…:${i}:${label}` form blew past that cap. A short
+        // fixed prefix + the leg index keeps every nonce unique within the batch.
+        const nonce = nonceFor("pb", opts.sender, r.address, String(i));
         const amountMicro = BigInt(Math.round(r.amountUsdsui * 1e6));
         tx.add(
           client.calls.processRegistryPayment({

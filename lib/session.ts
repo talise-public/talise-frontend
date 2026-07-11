@@ -7,7 +7,7 @@ import { sign, verify } from "./auth";
  *  shared across talise.io, www.talise.io AND app.talise.io — the OAuth
  *  callback runs on www, the app lives on the app subdomain. Unset locally and
  *  on previews (a mismatched Domain gets the cookie silently rejected). */
-function cookieDomain(): string | undefined {
+export function cookieDomain(): string | undefined {
   const d = process.env.COOKIE_DOMAIN?.trim();
   return d || undefined;
 }

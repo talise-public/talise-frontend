@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { userById } from "@/lib/db";
 import { getChequeForClaim, countryAllowlist, microsToUsd } from "@/lib/cheques";
+import { fetchAndOpenNote } from "@/lib/cheque-note";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,10 @@ export async function GET(
   const now = Date.now();
   const expired = cq.expiresAt < now;
 
+  // Private note: the link holds the secret, so the holder can decrypt the
+  // sender's message (fetched from Walrus). Best-effort — null if absent/unreadable.
+  const note = await fetchAndOpenNote(secret, cq.noteBlobId);
+
   return NextResponse.json({
     id: cq.id,
     amountUsd: microsToUsd(cq.amountMicros),
@@ -37,6 +42,7 @@ export async function GET(
     payeeLabel: cq.payeeLabel,
     memo: cq.memo,
     signatureName: cq.signatureName,
+    note,
     creatorDisplay,
     allowedCountries, // [] = any country; non-empty = IP must geolocate into it
     requireCaptcha: true,

@@ -185,7 +185,7 @@ export function middleware(req: NextRequest) {
   // app.talise.io → the web wallet is retired; everyone goes to the iOS beta.
   // Backend stays fully alive so nothing breaks: the iOS app's API (`/api`),
   // OAuth (`/auth`), the shield prover assets (`/shield`), public money links
-  // (`/c` `/i` `/u` `/pay`), ops (`/admin`), and framework assets
+  // (`/c` `/i` `/u` `/pay` `/req`), ops (`/admin`), and framework assets
   // (`/_next` `/_vercel`) all keep serving. Every other path (the wallet UI,
   // `/app`, `/business`, the bare root) redirects to TestFlight.
   if (host === APP_HOST) {
@@ -205,12 +205,26 @@ export function middleware(req: NextRequest) {
       url.pathname = "/app/shield-prove";
       return withSecurityHeaders(NextResponse.rewrite(url));
     }
-    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|admin|_next|_vercel)(\/|$)/;
-    if (!keepAlive.test(pathname)) {
+    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|req|admin|_next|_vercel)(\/|$)/;
+    if (keepAlive.test(pathname)) {
+      return withSecurityHeaders(NextResponse.next());
+    }
+    // Web wallet is OPEN: serve the /app tree on app.talise.io so users can use
+    // the web app (the UI already gates sign-in + waiting room itself). Reverse
+    // it with WEB_APP_OPEN=false to retire back to the iOS-only TestFlight
+    // redirect. The iOS backend (keep-alive paths above) is unaffected either way.
+    if (process.env.WEB_APP_OPEN === "false") {
       return NextResponse.redirect(
         "https://testflight.apple.com/join/BFNEPYtM",
         307
       );
+    }
+    // The app's pages live under the /app route tree and its nav uses /app/*
+    // hrefs. Map the bare host root + any non-/app clean path onto that tree.
+    if (!pathname.startsWith("/app")) {
+      const url = req.nextUrl.clone();
+      url.pathname = pathname === "/" ? "/app" : `/app${pathname}`;
+      return withSecurityHeaders(NextResponse.rewrite(url));
     }
     return withSecurityHeaders(NextResponse.next());
   }

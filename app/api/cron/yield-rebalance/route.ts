@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { db, ensureSchema } from "@/lib/db";
 import { getYieldComparison } from "@/lib/yield";
 import { rebalanceDecision, type VenueSnapshot } from "@/lib/yield/router";
@@ -31,13 +32,8 @@ const SNAPSHOT_KEY = "yield_best_daily";
  * Auth: Vercel injects `Authorization: Bearer $CRON_SECRET` on scheduled runs.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (secret) {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = requireCron(req);
+  if (denied) return denied;
 
   try {
     await ensureSchema();

@@ -22,6 +22,7 @@ export default defineConfig({
   },
   test: {
     include: ["__tests__/sui/**/*.test.ts"],
+    setupFiles: ["__tests__/sui/_setup.integration.ts"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     // Mainnet rate-limits aggressive parallelism; one test file at a time is

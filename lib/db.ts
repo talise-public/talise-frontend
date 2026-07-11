@@ -649,7 +649,13 @@ async function doEnsureSchema(): Promise<void> {
       digest TEXT,
       created_at BIGINT
     )`,
+    // The team this batch paid (when it came from a saved team) — lets the
+    // activity feed label the row "Paid {team}" with a team icon instead of
+    // naming one arbitrary recipient. NULL for ad-hoc (non-team) batches.
+    `ALTER TABLE payout_batches ADD COLUMN IF NOT EXISTS team_name TEXT`,
+    `ALTER TABLE payout_batches ADD COLUMN IF NOT EXISTS team_id TEXT`,
     `CREATE INDEX IF NOT EXISTS idx_payout_batches_user ON payout_batches(user_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_payout_batches_digest ON payout_batches(digest)`,
     // Per-recipient legs of a batch. `resolved_address` is the SuiNS-resolved
     // 0x address the PTB actually pays; `input_handle` preserves what the user
     // typed (@alice / alice.talise.sui / 0x…) for audit. `idx` is the leg's
@@ -788,6 +794,7 @@ async function doEnsureSchema(): Promise<void> {
         CHECK (kyc_tier IN ('none', 'lite', 'standard', 'enhanced')),
       provider TEXT,
       provider_customer_id TEXT,
+      kyc_link_id TEXT,
       status TEXT NOT NULL DEFAULT 'unverified'
         CHECK (status IN ('unverified', 'pending', 'approved', 'rejected', 'expired')),
       country TEXT,
@@ -795,6 +802,10 @@ async function doEnsureSchema(): Promise<void> {
       monthly_limit_cents BIGINT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
+    // Bridge KYC-Links id (link.id) — the stable poll handle while the Bridge
+    // customer_id is still null (it's null until the user starts KYC). Added
+    // via ALTER so existing onramp_kyc rows pick it up too.
+    `ALTER TABLE onramp_kyc ADD COLUMN IF NOT EXISTS kyc_link_id TEXT`,
     `CREATE INDEX IF NOT EXISTS idx_onramp_kyc_provider_customer
        ON onramp_kyc (provider_customer_id)
        WHERE provider_customer_id IS NOT NULL`,

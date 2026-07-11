@@ -161,7 +161,7 @@ export async function POST(req: Request) {
       op === "deposit"
         ? (await depositToGoal({ userId, goalId, amountUsd })).goal
         : (await withdrawFromGoal({ userId, goalId, amountUsd })).goal;
-    return NextResponse.json({ goal: updated });
+    return NextResponse.json({ goal: goalToWire(updated) });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message ?? "record failed" }, { status: 500 });
   }

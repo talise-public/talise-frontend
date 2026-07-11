@@ -1,12 +1,12 @@
 import "server-only";
 
 import {
-  coinWithBalance,
   Transaction,
   type TransactionObjectArgument,
 } from "@mysten/sui/transactions";
 import { USDSUI_TYPE } from "./usdsui";
 import { USDSUI_DECIMALS } from "./sui";
+import { sourceUsdsuiCoin } from "./usdsui-coin";
 import {
   buildNaviCreateAccount,
   buildNaviSupply,
@@ -140,17 +140,17 @@ export function appendCreateVault(
  * is sourced via `coinWithBalance({ useGasCoin: false })` so it never touches
  * the sponsor's gas coin (see sponsor-prepare).
  */
-export function appendCreateVaultWith(
+export async function appendCreateVaultWith(
   tx: Transaction,
-  opts: { name: string; targetUsdsui: number; amountUsdsui: number }
-): void {
+  opts: { name: string; targetUsdsui: number; amountUsdsui: number; sender: string }
+): Promise<void> {
   const pkg = requireGoalVaultPackageId();
   const name = opts.name.trim().slice(0, 64);
   const onchain = toMicros(opts.amountUsdsui);
   if (onchain <= 0n) throw new Error("amount too small");
-  const coin = tx.add(
-    coinWithBalance({ type: USDSUI_TYPE, balance: onchain, useGasCoin: false })
-  );
+  // Source from coins OR the accumulator (most users' USDsui is in the
+  // accumulator → a coins-only split reverts). See lib/usdsui-coin.ts.
+  const coin = await sourceUsdsuiCoin(tx, opts.sender, onchain);
   tx.moveCall({
     target: target(pkg, "create_with"),
     typeArguments: [USDSUI_TYPE],
@@ -169,16 +169,15 @@ export function appendCreateVaultWith(
  * deposit coin is split via `coinWithBalance({ useGasCoin: false })`, mirroring
  * `appendNaviSupply`.
  */
-export function appendDepositToVault(
+export async function appendDepositToVault(
   tx: Transaction,
-  opts: { vaultId: string; amountUsdsui: number }
-): void {
+  opts: { vaultId: string; amountUsdsui: number; sender: string }
+): Promise<void> {
   const pkg = requireGoalVaultPackageId();
   const onchain = toMicros(opts.amountUsdsui);
   if (onchain <= 0n) throw new Error("amount too small");
-  const coin = tx.add(
-    coinWithBalance({ type: USDSUI_TYPE, balance: onchain, useGasCoin: false })
-  );
+  // Source from coins OR the accumulator (see lib/usdsui-coin.ts).
+  const coin = await sourceUsdsuiCoin(tx, opts.sender, onchain);
   tx.moveCall({
     target: target(pkg, "deposit"),
     typeArguments: [USDSUI_TYPE],
@@ -203,10 +202,14 @@ export function appendWithdrawFromVault(
     amountUsdsui: number;
     owner: string;
     transferToOwner?: boolean;
+    /** Exact micro-units to withdraw, overriding `amountUsdsui`. The route uses
+     *  this to clamp to the vault's real on-chain principal so the withdraw can
+     *  never abort with EInsufficientBalance (301) when the DB tracker drifted. */
+    amountMicrosOverride?: bigint;
   }
 ): TransactionObjectArgument {
   const pkg = requireGoalVaultPackageId();
-  const onchain = toMicros(opts.amountUsdsui);
+  const onchain = opts.amountMicrosOverride ?? toMicros(opts.amountUsdsui);
   if (onchain <= 0n) throw new Error("amount too small");
   const [coin] = tx.moveCall({
     target: target(pkg, "withdraw"),

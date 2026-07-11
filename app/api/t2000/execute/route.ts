@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { denyUnlessAppApproved } from "@/lib/app-access";
 import { readSessionEntryId } from "@/lib/session";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { userById } from "@/lib/db";
@@ -37,6 +38,10 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
+  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // the app allowlist before it can originate any value-moving call.
+  const denied = await denyUnlessAppApproved(userId);
+  if (denied) return denied;
   // Per-user global rate limit on this money route (anti-abuse / anti-DDoS).
   const rl = await rateLimitAsync({ key: `t2000-execute:user:${userId}`, limit: 30, windowSec: 3600 });
   if (!rl.ok) {

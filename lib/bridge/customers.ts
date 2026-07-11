@@ -102,16 +102,27 @@ export async function createKycLink(input: {
   /** Stable Talise-owned key (e.g. `kyc-<userId>`) for idempotent retries. */
   idempotencyKey: string;
 }): Promise<BridgeKycLink> {
-  return bridgeFetch<BridgeKycLink>("kyc_links", {
-    method: "POST",
-    idempotencyKey: input.idempotencyKey,
-    body: {
-      email: input.email,
-      type: input.type ?? "individual",
-      ...(input.fullName ? { full_name: input.fullName } : {}),
-      ...(input.redirectUri ? { redirect_uri: input.redirectUri } : {}),
-    },
-  });
+  try {
+    return await bridgeFetch<BridgeKycLink>("kyc_links", {
+      method: "POST",
+      idempotencyKey: input.idempotencyKey,
+      body: {
+        email: input.email,
+        type: input.type ?? "individual",
+        ...(input.fullName ? { full_name: input.fullName } : {}),
+        ...(input.redirectUri ? { redirect_uri: input.redirectUri } : {}),
+      },
+    });
+  } catch (e) {
+    // Bridge returns 400 `duplicate_record` when a KYC link already exists for
+    // this email — and INCLUDES the existing link in the error body. That's the
+    // common case on any second "Verify" tap (Bridge keys kyc_links by email,
+    // independent of our Idempotency-Key). Treat it as success and reuse the
+    // existing link rather than failing the whole flow.
+    const body = (e as { body?: { existing_kyc_link?: BridgeKycLink } }).body;
+    if (body?.existing_kyc_link) return body.existing_kyc_link;
+    throw e;
+  }
 }
 
 /** Poll a KYC link's status (kyc_status + tos_status + linked customer_id). */

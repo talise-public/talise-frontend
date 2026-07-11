@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
+import { denyUnlessAppApproved } from "@/lib/app-access";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { userById } from "@/lib/db";
 import { usdWithdrawalAllowed, USD_WITHDRAWAL_CLOSED_MESSAGE } from "@/lib/offramp-access";
@@ -47,6 +48,8 @@ export async function POST(req: Request) {
       { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 3600) } }
     );
   }
+  const denied = await denyUnlessAppApproved(userId);
+  if (denied) return denied;
   const user = await userById(userId);
   if (!user) return NextResponse.json({ error: "user not found" }, { status: 404 });
   // USD withdrawal is gated to an allowlist during pilot (rolandojude18 only).

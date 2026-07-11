@@ -18,6 +18,7 @@ import {
   StatusPill,
   Sheet,
   Field,
+  Segmented,
   Eyebrow,
   MicroLabel,
   EmptyState,
@@ -612,22 +613,12 @@ function CreateContractSheet({
         {/* Cadence selector */}
         <div>
           <Eyebrow className="mb-2.5 block">Cadence</Eyebrow>
-          <div className="flex flex-wrap gap-2">
-            {CADENCES.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCadence(c.id)}
-                className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
-                  cadence === c.id
-                    ? "bg-[#15300c] text-[#f7fcf2]"
-                    : "border border-[#15300c]/15 bg-white/60 text-[#3a5230] backdrop-blur-sm hover:text-[#15300c]"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          <Segmented<Cadence>
+            value={cadence}
+            onChange={setCadence}
+            options={CADENCES.map((c) => ({ value: c.id, label: c.label }))}
+            ariaLabel="Pay cadence"
+          />
         </div>
 
         {/* Live preview */}

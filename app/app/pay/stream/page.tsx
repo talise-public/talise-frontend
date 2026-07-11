@@ -8,6 +8,8 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
   StopIcon,
+  PauseIcon,
+  PlayIcon,
   RadioIcon,
 } from "@hugeicons/core-free-icons";
 import {
@@ -16,7 +18,9 @@ import {
   Spinner,
   EmptyState,
   StatusPill,
+  Segmented,
   useSignAndSend,
+  useToast,
   resolveRecipient,
   api,
   ApiError,
@@ -367,8 +371,8 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
         className="space-y-5 rounded-[28px] bg-[#f7fcf2] p-5"
         style={{ boxShadow: "10px 10px 0 #15300c" }}
       >
-        <ChipRow label="Over" options={DURATIONS} value={durationMin} onChange={setDurationMin} />
-        <ChipRow label="Every" options={INTERVALS} value={intervalMin} onChange={setIntervalMin} />
+        <ScheduleSelect label="Over" options={DURATIONS} value={durationMin} onChange={setDurationMin} />
+        <ScheduleSelect label="Every" options={INTERVALS} value={intervalMin} onChange={setIntervalMin} />
       </div>
 
       {/* Live preview / status */}
@@ -409,7 +413,10 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
   );
 }
 
-function ChipRow({
+// Labelled wrapper around the shared glass <Segmented> control — keeps the
+// schedule selectors (duration + interval) consistent with the rest of the
+// design system instead of bespoke chip buttons.
+function ScheduleSelect({
   label,
   options,
   value,
@@ -425,25 +432,12 @@ function ChipRow({
       <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#3d7a29]">
         {label}
       </span>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => {
-          const on = value === o.min;
-          return (
-            <button
-              key={o.min}
-              type="button"
-              onClick={() => onChange(o.min)}
-              className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
-                on
-                  ? "bg-[#CAFFB8] text-[#15300c]"
-                  : "border border-[#15300c]/15 bg-white/60 text-[#3a5230] backdrop-blur-sm hover:border-[#15300c]/30 hover:text-[#15300c]"
-              }`}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </div>
+      <Segmented
+        ariaLabel={label}
+        value={value}
+        onChange={onChange}
+        options={options.map((o) => ({ value: o.min, label: o.label }))}
+      />
     </div>
   );
 }
@@ -451,6 +445,7 @@ function ChipRow({
 // ── LIST ─────────────────────────────────────────────────────────────────
 
 function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => void }) {
+  const { toast } = useToast();
   const [streams, setStreams] = useState<ProjectedStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -458,6 +453,8 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [pausing, setPausing] = useState<string | null>(null);
+  const [pauseError, setPauseError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -532,6 +529,37 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
     [load]
   );
 
+  // Sender-only pause/resume. Unlike create/claim/cancel these are pure state
+  // flips on the DB row (the escrow keeps the funds) — the routes return a
+  // plain `{ ok, state }` with no sponsor-ready bytes, so there's nothing to
+  // sign: just POST, toast, and refresh the projected list.
+  const pauseResume = useCallback(
+    async (s: ProjectedStream) => {
+      const resuming = s.state === "paused";
+      setPausing(s.id);
+      setPauseError(null);
+      try {
+        await api<{ ok?: boolean; state?: string }>(
+          `/api/streams/${s.id}/${resuming ? "resume" : "pause"}`,
+          { method: "POST", body: {} }
+        );
+        toast(resuming ? "Stream resumed" : "Stream paused", "success");
+        await load();
+      } catch (e) {
+        setPauseError(
+          friendlyError(
+            e,
+            `Couldn't ${resuming ? "resume" : "pause"} the stream right now.`,
+            "Streaming"
+          )
+        );
+      } finally {
+        setPausing(null);
+      }
+    },
+    [load, toast]
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -566,10 +594,16 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
     <div className="space-y-3">
       {cancelError && <InlineError>{cancelError}</InlineError>}
       {claimError && <InlineError>{claimError}</InlineError>}
+      {pauseError && <InlineError>{pauseError}</InlineError>}
       {streams.map((s) => {
         const progress = s.totalUsd > 0 ? Math.min(1, s.releasedUsd / s.totalUsd) : 0;
         const canCancel = s.role !== "recipient" && (s.state === "active" || s.state === "paused");
         const canClaim = s.role === "recipient" && s.state === "active" && s.releasedUsd < s.totalUsd;
+        // Sender can pause an active stream or resume a paused one — same
+        // ownership + non-terminal gate the backend enforces.
+        const canPauseResume =
+          s.role !== "recipient" && (s.state === "active" || s.state === "paused");
+        const isPaused = s.state === "paused";
         return (
           <div
             key={s.id}
@@ -622,6 +656,27 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
                 onClick={() => claim(s)}
               >
                 {claiming === s.id ? "Claiming…" : "Claim available"}
+              </PrimaryButton>
+            )}
+
+            {canPauseResume && (
+              <PrimaryButton
+                variant="ghost"
+                full
+                loading={pausing === s.id}
+                disabled={pausing != null && pausing !== s.id}
+                onClick={() => pauseResume(s)}
+              >
+                {pausing !== s.id && (
+                  <HugeiconsIcon icon={isPaused ? PlayIcon : PauseIcon} size={15} />
+                )}
+                {pausing === s.id
+                  ? isPaused
+                    ? "Resuming…"
+                    : "Pausing…"
+                  : isPaused
+                    ? "Resume stream"
+                    : "Pause stream"}
               </PrimaryButton>
             )}
 

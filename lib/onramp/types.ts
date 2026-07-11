@@ -137,6 +137,10 @@ export interface CustomerResult {
    * widget (Transak) leave this unset.
    */
   kycUrl?: string;
+  /** Bridge hosted Terms-of-Service URL (link.tos_link). */
+  tosUrl?: string;
+  /** Bridge kyc_links id (link.id) — the stable handle for status polling. */
+  kycLinkId?: string;
 }
 
 /** Input to {@link OnrampProvider.createOnrampSession}. */

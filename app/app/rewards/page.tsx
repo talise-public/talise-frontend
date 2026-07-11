@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Coins01Icon } from "@hugeicons/core-free-icons";
 import {
+  BackButton,
   EmptyState,
   PrimaryButton,
   api,
@@ -73,6 +74,8 @@ export default function RewardsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
+      <BackButton href="/app/earn" />
+
       {/* Page header */}
       <header className="space-y-2">
         <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#3d7a29]">

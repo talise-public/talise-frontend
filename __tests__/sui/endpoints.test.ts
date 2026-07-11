@@ -56,12 +56,12 @@ import {
   isFallbackEligible,
 } from "../../lib/sui-endpoints";
 
-const PRIMARY_URL = "https://fullnode.mainnet.sui.io:443";
-// The dead `archive.mainnet.sui.io` host was removed from the registry
-// (it 404s the gRPC service), so the second endpoint in the chain is now
-// the first KEYED provider. We set SHINAMI_API_KEY in the fallback tests so
-// Shinami becomes endpoint #2 and the wrapper has a real second hop.
-const SECONDARY_URL = "https://api.us1.shinami.com/sui/node/v1";
+// Hayabusa (unconfirmedlabs gRPC-Web proxy) was placed FIRST in the registry,
+// so it is endpoint #1. The public Mysten fullnode is #2 (both keyless), and
+// Shinami (#3) only enters when SHINAMI_API_KEY is set. So the deterministic
+// two-hop chain the fallback tests exercise is Hayabusa -> fullnode.
+const PRIMARY_URL = "https://hayabusa.mainnet.unconfirmed.cloud:443";
+const SECONDARY_URL = "https://fullnode.mainnet.sui.io:443";
 
 function unavailableError(): Error {
   // Mimic `@protobuf-ts/runtime-rpc/RpcError`: an Error subclass with a
@@ -210,6 +210,9 @@ describe("sui-endpoints fallback wrapper", () => {
     // the gRPC service (NOT_FOUND). The wrapper must keep going and resolve
     // on a later endpoint rather than throwing "Not Found". We add a third
     // keyed provider (Dwellir) as the eventual healthy hop.
+    // Deterministic 3-hop chain: Hayabusa (#1) -> fullnode (#2) -> Dwellir.
+    // Drop Shinami so it doesn't wedge itself between fullnode and Dwellir.
+    delete process.env.SHINAMI_API_KEY;
     process.env.DWELLIR_API_KEY = "test-dwellir-key";
     const DWELLIR_URL = "https://api-sui-mainnet-full.n.dwellir.com:443";
 

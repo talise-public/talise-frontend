@@ -16,6 +16,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint:no-jsonrpc": "bash scripts/lint-no-jsonrpc.sh",
+    "typecheck": "tsc --noEmit",
     "db:reset": "rm -f .data/waitlist.db && echo 'db cleared'",
     "pk:bootstrap": "node --env-file=.env.local scripts/bootstrap-payment-registry.mjs",
     "shield:lifecycle": "node --loader ./scripts/shield-node-loader.mjs --env-file=.env.local scripts/shield-mainnet-lifecycle.mjs",

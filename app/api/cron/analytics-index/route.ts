@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { runIndexBatch } from "@/lib/analytics/reindex";
 
 export const runtime = "nodejs";
@@ -23,13 +24,8 @@ export const maxDuration = 60;
  * invocations when CRON_SECRET is set — require it then; allow when unset (dev).
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (secret) {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = requireCron(req);
+  if (denied) return denied;
 
   const BUDGET_MS = 50_000;
   const start = Date.now();

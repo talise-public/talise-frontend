@@ -29,7 +29,11 @@ import {
 const TEST_DIGEST = "3stu52xPwLZDTtA5kfTk9HaFYn8wnys2YGeQSTeF2xqZ";
 
 describe("normalize-tx (gRPC → NormalizedTransaction)", () => {
-  it("produces a shape every verifier site can read uniformly", async () => {
+  // SKIPPED: the pinned mainnet digest below has been PRUNED by public
+  // fullnodes ("Transaction not found"), so this live-mainnet fetch can't run
+  // deterministically in CI. The normalize logic itself is unchanged; this
+  // needs a durable fixture (recorded gRPC response) instead of a live query.
+  it.skip("produces a shape every verifier site can read uniformly", async () => {
     const client = getGrpcClient();
     const raw = await client.getTransaction({
       digest: TEST_DIGEST,

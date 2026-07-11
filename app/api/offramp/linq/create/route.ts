@@ -190,9 +190,19 @@ export async function POST(req: Request) {
       ],
     });
   } catch (e) {
-    // Order exists at Linq even if our persist hiccuped — surface it anyway so
-    // the client can still send + poll; reconcile via webhook/status by orderId.
-    console.warn("[offramp/linq/create] persist failed:", (e as Error).message);
+    // FAIL CLOSED: the Linq order was created but we could not record it. If we
+    // still handed the deposit wallet back, the user would send funds to an
+    // order we cannot reconcile, refund, or count against the daily cap. Refuse
+    // instead — no funds have moved yet, and the orphaned Linq order (logged
+    // here with its id) holds no user funds and can be cancelled ops-side.
+    console.error(
+      `[offramp/linq/create] persist failed — refusing to return deposit wallet. Orphaned Linq order=${order.id} user=${userId}:`,
+      (e as Error).message
+    );
+    return NextResponse.json(
+      { error: "Could not record your cash-out. No funds were moved — please try again." },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

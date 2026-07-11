@@ -12,6 +12,7 @@ import { onara } from "@/lib/onara";
 import { getChainIdentifier, getCurrentEpoch } from "@/lib/sui-epoch";
 import { getNormalizedTransaction } from "@/lib/sui-shapes";
 import { verifyTurnstile, turnstileConfigured } from "@/lib/turnstile";
+import { sealAndStoreNote } from "@/lib/cheque-note";
 
 /**
  * Talise Cheques — claimable USDsui links presented as real-life cheques.
@@ -84,6 +85,8 @@ export type ChequeRow = {
   payeeLabel: string | null;
   memo: string | null;
   signatureName: string | null;
+  /** Walrus blob id of the encrypted private note (null if none). */
+  noteBlobId: string | null;
   status: ChequeStatus;
   fundDigest: string | null;
   claimDigest: string | null;
@@ -103,7 +106,7 @@ let _schemaReady: Promise<void> | null = null;
 // Bump this whenever ANY DDL statement below changes — the one-SELECT version
 // gate skips the whole replay (≈12 round-trips, seconds on a remote DB) on
 // every cold start while the stored marker matches.
-const CHEQUES_SCHEMA_VERSION = "2026-06-10.1";
+const CHEQUES_SCHEMA_VERSION = "2026-06-24.1";
 
 export function ensureChequesSchema(): Promise<void> {
   if (_schemaReady) return _schemaReady;
@@ -142,6 +145,7 @@ export function ensureChequesSchema(): Promise<void> {
         payee_label        TEXT,
         memo               TEXT,
         signature_name     TEXT,
+        note_blob_id       TEXT,
         status             TEXT NOT NULL DEFAULT 'draft',
         fund_digest        TEXT,
         release_digest     TEXT,
@@ -169,6 +173,7 @@ export function ensureChequesSchema(): Promise<void> {
       `reclaim_digest   TEXT`,
       `claimer_country  TEXT`,
       `reclaimed_at     BIGINT`,
+      `note_blob_id     TEXT`,
     ]) {
       await c.execute(`ALTER TABLE cheques ADD COLUMN IF NOT EXISTS ${col}`);
     }
@@ -366,20 +371,33 @@ export async function createCheque(input: {
   payeeLabel?: string | null;
   memo?: string | null;
   signatureName?: string | null;
+  /** Optional private message — encrypted with the claim secret + stored on Walrus. */
+  note?: string | null;
   gates: ChequeGate[];
   ttlMs?: number;
-}): Promise<{ id: string; secret: string; expiresAt: number }> {
+}): Promise<{ id: string; secret: string; expiresAt: number; noteBlobId: string | null }> {
   await ensureChequesSchema();
   const id = newChequeId();
   const secret = newClaimSecret();
   const now = Date.now();
   const expiresAt = now + (input.ttlMs ?? CHEQUE_TTL_MS);
+  // Best-effort: a private note is encrypted with the claim secret and stored on
+  // Walrus. If Walrus is slow/unavailable we still create the cheque (note just
+  // omitted) — the money link must never fail because of an attached message.
+  let noteBlobId: string | null = null;
+  if (input.note && input.note.trim()) {
+    try {
+      noteBlobId = await sealAndStoreNote(secret, input.note);
+    } catch (e) {
+      console.warn(`[cheques] note → Walrus failed (proceeding without): ${(e as Error).message}`);
+    }
+  }
   await db().execute({
     sql: `INSERT INTO cheques
             (id, creator_user_id, creator_address, amount_micros, asset,
-             secret_hash, payee_label, memo, signature_name, status,
+             secret_hash, payee_label, memo, signature_name, note_blob_id, status,
              expires_at, created_at)
-          VALUES (?, ?, ?, ?, 'USDsui', ?, ?, ?, ?, 'draft', ?, ?)`,
+          VALUES (?, ?, ?, ?, 'USDsui', ?, ?, ?, ?, ?, 'draft', ?, ?)`,
     args: [
       id,
       input.creatorUserId,
@@ -389,6 +407,7 @@ export async function createCheque(input: {
       input.payeeLabel ?? null,
       input.memo ?? null,
       input.signatureName ?? null,
+      noteBlobId,
       expiresAt,
       now,
     ],
@@ -403,14 +422,14 @@ export async function createCheque(input: {
       });
     }
   }
-  return { id, secret, expiresAt };
+  return { id, secret, expiresAt, noteBlobId };
 }
 
 export async function getCheque(id: string): Promise<ChequeRow | null> {
   await ensureChequesSchema();
   const r = await db().execute({
     sql: `SELECT id, cheque_object_id, creator_user_id, creator_address,
-                 amount_micros, asset, payee_label, memo, signature_name,
+                 amount_micros, asset, payee_label, memo, signature_name, note_blob_id,
                  status, fund_digest, claim_digest, reclaim_digest,
                  claimed_by_user_id, claimed_to_address, claimer_country,
                  expires_at, created_at, funded_at, claimed_at
@@ -429,6 +448,7 @@ export async function getCheque(id: string): Promise<ChequeRow | null> {
     payeeLabel: (row.payee_label as string | null) ?? null,
     memo: (row.memo as string | null) ?? null,
     signatureName: (row.signature_name as string | null) ?? null,
+    noteBlobId: (row.note_blob_id as string | null) ?? null,
     status: String(row.status) as ChequeStatus,
     fundDigest: (row.fund_digest as string | null) ?? null,
     claimDigest: (row.claim_digest as string | null) ?? null,

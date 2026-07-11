@@ -331,6 +331,10 @@ vi.mock("@/lib/suins-operator", () => ({
   }),
   mintSubname: (...args: unknown[]) => mintSubnameMock(...args),
   suinsOperatorEnabled: () => true,
+  assertOperatorGas: async () => {},
+  LowOperatorGasError: class LowOperatorGasError extends Error {},
+  OPERATOR_GAS_BLOCK_SUI: 0.02,
+  OPERATOR_GAS_WARN_SUI: 0.05,
 }));
 
 // Email send — no-op success.

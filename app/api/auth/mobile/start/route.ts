@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { sign, redirectUriFromRequest } from "@/lib/auth";
+import { setStateCookie, cookieDomain } from "@/lib/session";
 import { Ed25519PublicKey } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64 } from "@mysten/sui/utils";
 import { generateNonce } from "@mysten/sui/zklogin";
@@ -117,16 +118,17 @@ export async function GET(req: Request) {
     ).toString("base64url")
   );
 
+  // Set the OAuth state through the SAME shared helper the web flow uses, so
+  // the cookie carries the `.talise.io` Domain (COOKIE_DOMAIN) exactly like
+  // `readStateCookie`/`clearStateCookie` expect. Setting it host-only here (the
+  // old bug) let a stale domain-scoped `talise_oauth_state` from a prior web
+  // attempt coexist and shadow the fresh one — the callback would read the
+  // wrong value and reject the sign-in with `bad_state`. One scope, one cookie.
+  await setStateCookie(state);
   const jar = await cookies();
-  jar.set("talise_oauth_state", sign(state), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 300,
-  });
   jar.set(STATE_BINDING_COOKIE, binding, {
     httpOnly: true,
+    domain: cookieDomain(),
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",

@@ -114,6 +114,7 @@ export type SerializedEntry = {
   roundupUsdsui: ActivityEntry["roundupUsdsui"];
   otherCoin: ActivityEntry["otherCoin"];
   offramp: ActivityEntry["offramp"];
+  team: ActivityEntry["team"];
 };
 
 function serializeEntries(entries: ActivityEntry[]): SerializedEntry[] {
@@ -132,6 +133,8 @@ function serializeEntries(entries: ActivityEntry[]): SerializedEntry[] {
     otherCoin: e.otherCoin,
     // Cash-out detail when this send is a Linq off-ramp (set by enrichOfframps).
     offramp: e.offramp ?? null,
+    // Team-payout detail when this send's digest is a batch (set by enrichTeamPayouts).
+    team: e.team ?? null,
   }));
 }
 
@@ -187,6 +190,60 @@ async function enrichOfframps(
     });
   } catch (err) {
     console.warn(`[activity-snapshot] offramp enrich failed: ${(err as Error).message}`);
+    return entries;
+  }
+}
+
+/**
+ * Relabel "sent" rows whose tx digest matches a TEAM payout batch. A team is
+ * paid in ONE PTB with many legs, so the chain scan collapses it to a single
+ * "Sent to <one recipient>" row; here we look the digest up in `payout_batches`
+ * and, when it carries a `team_name`, attach `{ name, recipientCount }` so
+ * History can render "Paid {team}" with a team icon. Best-effort — any failure
+ * leaves the rows untouched.
+ */
+async function enrichTeamPayouts(
+  userId: number,
+  entries: SerializedEntry[]
+): Promise<SerializedEntry[]> {
+  const digests = entries
+    .filter((e) => e.direction === "sent" && e.digest)
+    .map((e) => e.digest);
+  if (digests.length === 0) return entries;
+  try {
+    await ensureSchema();
+    const placeholders = digests.map(() => "?").join(", ");
+    const r = await db().execute({
+      sql: `SELECT digest, team_name, recipient_count
+              FROM payout_batches
+             WHERE user_id = ? AND team_name IS NOT NULL
+               AND digest IN (${placeholders})`,
+      args: [String(userId), ...digests],
+    });
+    if (r.rows.length === 0) return entries;
+    const byDigest = new Map<string, Record<string, unknown>>();
+    for (const row of r.rows as Array<Record<string, unknown>>) {
+      const d = String(row.digest ?? "");
+      if (d) byDigest.set(d, row);
+    }
+    return entries.map((e) => {
+      if (e.direction !== "sent" || !e.digest) return e;
+      const batch = byDigest.get(e.digest);
+      if (!batch) return e;
+      const name = String(batch.team_name ?? "").trim();
+      if (!name) return e;
+      return {
+        ...e,
+        // Name the team, not one arbitrary leg's recipient.
+        counterpartyName: name,
+        team: {
+          name,
+          recipientCount: Number(batch.recipient_count ?? 0),
+        },
+      };
+    });
+  } catch (err) {
+    console.warn(`[activity-snapshot] team enrich failed: ${(err as Error).message}`);
     return entries;
   }
 }
@@ -256,7 +313,10 @@ export async function computeLiveActivity(
         [] as ActivityEntry[]
       )
     : await cachedActivity(user.sui_address, limit, user.talise_vault_id ?? null);
-  const fresh = await enrichOfframps(user.id, serializeEntries(raw));
+  const fresh = await enrichTeamPayouts(
+    user.id,
+    await enrichOfframps(user.id, serializeEntries(raw))
+  );
 
   const prev = await readActivitySnapshot(user.id);
   const prevEntries = (prev?.entries as SerializedEntry[] | undefined) ?? [];

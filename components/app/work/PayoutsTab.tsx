@@ -13,9 +13,11 @@ import {
   FloppyDiskIcon,
   Tick02Icon,
   Cancel01Icon,
+  PencilEdit02Icon,
 } from "@hugeicons/core-free-icons";
 import {
   GlassCard,
+  GlassPill,
   PrimaryButton,
   Sheet,
   Eyebrow,
@@ -235,6 +237,9 @@ function BatchPayoutSheet({
   const [savingTeam, setSavingTeam] = useState(false);
   const [teamNameOpen, setTeamNameOpen] = useState(false);
   const [teamName, setTeamName] = useState("");
+  // The team currently being edited in place (its roster + name loaded into the
+  // editor). Null when building a fresh roster / saving a brand-new team.
+  const [editingTeam, setEditingTeam] = useState<SavedTeam | null>(null);
 
   const reset = useCallback(() => {
     setRows([emptyRow()]);
@@ -244,6 +249,7 @@ function BatchPayoutSheet({
     setDone(null);
     setTeamNameOpen(false);
     setTeamName("");
+    setEditingTeam(null);
   }, []);
 
   // Reset to a clean slate whenever the sheet (re)opens.
@@ -429,22 +435,36 @@ function BatchPayoutSheet({
 
   // ── Saved teams ────────────────────────────────────────────────────────
   // Load a team into the form: every member becomes a person card with its
-  // saved amount prefilled (editable). Replaces the current roster.
-  const loadTeam = useCallback((team: SavedTeam) => {
-    const next = team.members
-      .filter((m) => m.recipient && m.recipient.trim())
-      .slice(0, MAX_RECIPIENTS)
-      .map((m) =>
-        rowFrom(
-          m.recipient.trim(),
-          m.amount != null && Number.isFinite(m.amount) ? String(m.amount) : "",
-          (m.label ?? "").trim()
-        )
-      );
-    setRows(next.length === 0 ? [emptyRow()] : next);
-    setStage("build");
-    toast(`Loaded "${team.name}"`, "success");
-  }, [toast]);
+  // saved amount prefilled (editable). Replaces the current roster. With
+  // `{ editing: true }` the name is prefilled + the save row opened so the next
+  // save UPDATES this team in place (same name → server reuses its object id).
+  const loadTeam = useCallback(
+    (team: SavedTeam, opts?: { editing?: boolean }) => {
+      const next = team.members
+        .filter((m) => m.recipient && m.recipient.trim())
+        .slice(0, MAX_RECIPIENTS)
+        .map((m) =>
+          rowFrom(
+            m.recipient.trim(),
+            m.amount != null && Number.isFinite(m.amount) ? String(m.amount) : "",
+            (m.label ?? "").trim()
+          )
+        );
+      setRows(next.length === 0 ? [emptyRow()] : next);
+      setStage("build");
+      if (opts?.editing) {
+        setEditingTeam(team);
+        setTeamName(team.name);
+        setTeamNameOpen(true);
+        toast(`Editing "${team.name}"`, "neutral");
+      } else {
+        // A plain load (to re-pay) is not an edit — clear any edit context.
+        setEditingTeam(null);
+        toast(`Loaded "${team.name}"`, "success");
+      }
+    },
+    [toast]
+  );
 
   const deleteTeam = useCallback(
     async (team: SavedTeam) => {
@@ -475,35 +495,81 @@ function BatchPayoutSheet({
   );
   const canSaveTeam = teamMembers.length > 0 && !anyError;
 
+  // Save (create) OR update the current roster as a named team. Mirrors the
+  // batch pipeline shape: prepare → (on-chain) sign → record.
+  //   • on-chain disabled → POST /api/payouts/teams does a plain DB upsert and
+  //     returns the team directly.
+  //   • on-chain enabled  → POST returns sponsor-ready `payroll::create` /
+  //     `set_roster` bytes we sign, then POST …/teams/record finalizes the DB
+  //     row. The prepare response carries `chainObjectId` when an existing
+  //     team (matched by name) is being edited; threading it into /record makes
+  //     the server REUSE that on-chain object id (an in-place edit) instead of
+  //     parsing a freshly-created one from the digest.
   const saveTeam = useCallback(async () => {
     const name = teamName.trim();
     if (!name) {
       toast("Give the team a name.", "neutral");
       return;
     }
+    const editing = !!editingTeam;
     setSavingTeam(true);
     try {
-      const r = await api<{ team: SavedTeam }>("/api/payouts/teams", {
+      const prep = await api<{
+        mode?: "db" | "onchain";
+        team?: SavedTeam;
+        edit?: boolean;
+        chainObjectId?: string;
+        name?: string;
+        bytes?: string;
+      }>("/api/payouts/teams", {
         method: "POST",
         body: { name, members: teamMembers },
       });
+
+      let saved: SavedTeam;
+      if (prep.mode === "onchain" && prep.bytes) {
+        // Sign the sponsor-ready roster-mutation bytes with the zkLogin
+        // ephemeral key + sponsor-execute.
+        const { digest } = await signSponsorReadyBytes(prep.bytes, {
+          kind: "payroll-team",
+        });
+        // Finalize the DB row. Passing `chainObjectId` (present for edits) keeps
+        // the existing on-chain Team object id; omitting it on create lets the
+        // server parse the new id from the confirmed digest.
+        const rec = await api<{ team: SavedTeam }>("/api/payouts/teams/record", {
+          method: "POST",
+          body: {
+            digest,
+            name,
+            members: teamMembers,
+            chainObjectId: prep.chainObjectId,
+          },
+        });
+        saved = rec.team;
+      } else {
+        // Legacy / on-chain-disabled: the DB upsert already returned the team.
+        if (!prep.team) throw new Error("Couldn't save the team.");
+        saved = prep.team;
+      }
+
       // Upsert into local list (replace by id or name).
       setTeams((cur) => {
-        const without = cur.filter((t) => t.id !== r.team.id && t.name !== r.team.name);
-        return [r.team, ...without];
+        const without = cur.filter((t) => t.id !== saved.id && t.name !== saved.name);
+        return [saved, ...without];
       });
       setTeamNameOpen(false);
       setTeamName("");
-      toast(`Saved "${r.team.name}"`, "success");
+      setEditingTeam(null);
+      toast(`${editing ? "Updated" : "Saved"} "${saved.name}"`, "success");
     } catch (err) {
       toast(
-        err instanceof ApiError ? err.message : "Couldn't save the team.",
+        err instanceof ApiError ? friendlyError(err, "Couldn't save the team.") : "Couldn't save the team.",
         "danger"
       );
     } finally {
       setSavingTeam(false);
     }
-  }, [teamName, teamMembers, toast]);
+  }, [teamName, teamMembers, editingTeam, toast]);
 
   // The full pay pipeline: prepare → sign + sponsor-execute → record.
   const payBatch = useCallback(async () => {
@@ -594,24 +660,34 @@ function BatchPayoutSheet({
                 {teams.map((t) => (
                   <span
                     key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#15300c]/15 bg-white/60 px-1 py-1 pl-3 backdrop-blur-sm"
+                    className="inline-flex items-center rounded-full border border-[#15300c]/15 bg-white/60 backdrop-blur-sm transition-[border-color] duration-150 hover:border-[#15300c]/30"
                   >
+                    {/* Tap the name to load this team into the editor (to re-pay). */}
                     <button
                       type="button"
                       onClick={() => loadTeam(t)}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#15300c] transition-opacity hover:opacity-70"
+                      className="inline-flex items-center gap-1.5 py-1.5 pl-3 pr-1 text-[12px] font-medium text-[#15300c] transition-opacity hover:opacity-70"
                     >
                       <HugeiconsIcon icon={UserGroupIcon} size={13} strokeWidth={1.8} className="text-[#3a5230]" />
                       {t.name}
                       <span className="text-[#3d7a29]">· {t.members.length}</span>
                     </button>
+                    {/* Edit — load roster + name back in to update it in place. */}
+                    <button
+                      type="button"
+                      onClick={() => loadTeam(t, { editing: true })}
+                      aria-label={`Edit ${t.name}`}
+                      className="flex size-7 items-center justify-center rounded-full text-[#3d7a29] transition-colors hover:bg-[#CAFFB8] hover:text-[#15300c]"
+                    >
+                      <HugeiconsIcon icon={PencilEdit02Icon} size={13} strokeWidth={1.8} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => void deleteTeam(t)}
                       aria-label={`Delete ${t.name}`}
-                      className="flex size-5 items-center justify-center rounded-full text-[#3d7a29] transition-colors hover:text-[#c0532f]"
+                      className="flex size-7 items-center justify-center rounded-full text-[#3d7a29] transition-colors hover:text-[#c0532f]"
                     >
-                      <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                      <HugeiconsIcon icon={Cancel01Icon} size={13} strokeWidth={2} />
                     </button>
                   </span>
                 ))}
@@ -684,15 +760,17 @@ function BatchPayoutSheet({
                 />
               ))}
             </div>
-            <button
-              type="button"
-              onClick={addRow}
-              disabled={rows.length >= MAX_RECIPIENTS}
-              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#15300c]/15 py-2.5 text-[13px] font-medium text-[#3d7a29] transition-colors hover:bg-[#CAFFB8] disabled:opacity-40"
-            >
-              <HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={2} />
-              Add person
-            </button>
+            <div className="mt-3">
+              <PrimaryButton
+                onClick={addRow}
+                disabled={rows.length >= MAX_RECIPIENTS}
+                variant="ghost"
+                full
+              >
+                <HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={2} />
+                Add person
+              </PrimaryButton>
+            </div>
             {rows.length >= MAX_RECIPIENTS && (
               <p className="mt-1.5 text-[12px] text-[#3d7a29]">
                 Max {MAX_RECIPIENTS} recipients per batch.
@@ -726,14 +804,14 @@ function BatchPayoutSheet({
                   One per line: handle,amount,label — e.g. @alice,500,Design · label optional
                 </p>
                 {pasteText.trim() && (
-                  <button
-                    type="button"
+                  <GlassPill
                     onClick={applyPaste}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#CAFFB8] px-3.5 py-1.5 text-[12px] font-medium text-[#15300c] transition-opacity hover:opacity-80"
+                    tint="#CAFFB8"
+                    size="sm"
+                    icon={<HugeiconsIcon icon={Add01Icon} size={13} strokeWidth={2} />}
                   >
-                    <HugeiconsIcon icon={Add01Icon} size={13} strokeWidth={2} />
                     Add pasted recipients
-                  </button>
+                  </GlassPill>
                 )}
               </div>
             )}
@@ -751,7 +829,10 @@ function BatchPayoutSheet({
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === "Enter") void saveTeam();
-                      if (e.key === "Escape") setTeamNameOpen(false);
+                      if (e.key === "Escape") {
+                        setTeamNameOpen(false);
+                        setEditingTeam(null);
+                      }
                     }}
                     className="min-w-0 flex-1 rounded-xl border border-[#15300c]/15 bg-white/60 px-3 py-2.5 text-[13px] text-[#15300c] outline-none backdrop-blur-sm placeholder:text-[#3d7a29] focus:ring-2 focus:ring-[#3d7a29]/45"
                   />
@@ -762,11 +843,14 @@ function BatchPayoutSheet({
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#CAFFB8] px-3.5 py-2.5 text-[13px] font-medium text-[#15300c] transition-opacity hover:opacity-80 disabled:opacity-40"
                   >
                     {savingTeam ? <Spinner size={13} /> : <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={2} />}
-                    Save
+                    {editingTeam ? "Update" : "Save"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTeamNameOpen(false)}
+                    onClick={() => {
+                      setTeamNameOpen(false);
+                      setEditingTeam(null);
+                    }}
                     aria-label="Cancel"
                     className="flex size-9 shrink-0 items-center justify-center rounded-xl text-[#3d7a29] transition-colors hover:text-[#15300c]"
                   >

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { userById } from "@/lib/db";
 import { usdWithdrawalAllowed, USD_WITHDRAWAL_CLOSED_MESSAGE } from "@/lib/offramp-access";
-import { getOnrampKyc } from "@/lib/onramp/kyc-store";
+import { getOnrampKyc, upsertOnrampKyc } from "@/lib/onramp/kyc-store";
+import { refreshBridgeKyc } from "@/lib/onramp/bridge";
 import { bridgeConfigured } from "@/lib/bridge/client";
 import {
   createUsAchExternalAccount,
@@ -66,12 +67,31 @@ export async function POST(req: Request) {
 
   // The Bridge customer is shared with the on-ramp; off-ramp requires it.
   const kyc = await getOnrampKyc(userId);
-  const customerId = kyc?.providerCustomerId;
+  let customerId = kyc?.providerCustomerId;
   if (!customerId) {
     return NextResponse.json(
       { error: "complete identity verification first", code: "NO_BRIDGE_CUSTOMER" },
       { status: 409 }
     );
+  }
+
+  // KYC must be APPROVED before we can register a payout route. If the cached
+  // status is stale, refresh once from Bridge; persist + continue on approval,
+  // otherwise block the cash-out until verification clears.
+  if (kyc!.status !== "approved") {
+    const r = await refreshBridgeKyc({ kycLinkId: kyc!.kycLinkId, providerCustomerId: customerId });
+    if (r.status === "approved") {
+      await upsertOnrampKyc(userId, {
+        status: "approved",
+        providerCustomerId: r.customerId ?? undefined,
+      });
+      customerId = r.customerId ?? customerId;
+    } else {
+      return NextResponse.json(
+        { error: "Finish identity verification first.", code: "KYC_NOT_APPROVED", status: r.status },
+        { status: 409 }
+      );
+    }
   }
 
   let body: {

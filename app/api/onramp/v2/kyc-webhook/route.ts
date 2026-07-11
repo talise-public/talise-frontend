@@ -69,8 +69,10 @@ export async function POST(req: Request) {
   let userId: number | null = null;
   try {
     const r = await db().execute({
-      sql: "SELECT user_id FROM onramp_kyc WHERE provider_customer_id = ? LIMIT 1",
-      args: [event.providerCustomerId],
+      // Match EITHER column: kyc_link events carry the link id before a
+      // customer id exists, so resolve on provider_customer_id OR kyc_link_id.
+      sql: "SELECT user_id FROM onramp_kyc WHERE provider_customer_id = ? OR kyc_link_id = ? LIMIT 1",
+      args: [event.providerCustomerId, event.providerCustomerId],
     });
     const row = r.rows[0] as { user_id?: number } | undefined;
     userId = typeof row?.user_id === "number" ? row.user_id : null;

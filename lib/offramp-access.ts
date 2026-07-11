@@ -3,20 +3,11 @@ import "server-only";
 /**
  * USD withdrawal (Bridge USD-wire cash-out) access gate.
  *
- * While USD withdrawal is piloted, it is CLOSED to everyone except an explicit
- * allowlist. This is separate from the general app-access allowlist
- * (lib/app-access.ts) — a user can be fully app-approved yet still not be able
- * to initiate a USD wire withdrawal.
- *
- * Resolution order:
- *   1. `USD_WITHDRAWAL_OPEN=true`  → open to everyone (the "ship it" switch).
- *   2. otherwise, allow only accounts whose email is in
- *      `USD_WITHDRAWAL_ALLOWED_EMAILS` OR whose @handle is in
- *      `USD_WITHDRAWAL_ALLOWED_HANDLES` (both comma-separated, case-insensitive).
- *
- * Defaults (when the env vars are unset) restrict it to the maintainer,
- * `rolandojude18`, so a fresh deploy is closed-by-default without needing the
- * env set. Server-authoritative — the iOS app surfaces the 403 as "coming soon".
+ * LOCKED for now (closed by default) while KYC + the US cash-out flow are paused.
+ * Re-open to everyone with `USD_WITHDRAWAL_OPEN=true`. The maintainer allowlist
+ * (`USD_WITHDRAWAL_ALLOWED_EMAILS` / `_HANDLES`, default `rolandojude18`) always
+ * passes so testing keeps working. Cash-out also independently requires approved
+ * Bridge KYC. Server-authoritative — the iOS app surfaces the 403 as "coming soon".
  */
 const DEFAULT_EMAILS = "rolandojude18@gmail.com";
 const DEFAULT_HANDLES = "rolandojude18";
@@ -35,8 +26,9 @@ export function usdWithdrawalAllowed(user: {
   email?: string | null;
   talise_username?: string | null;
 }): boolean {
+  // LOCKED for now: closed by default. Flip back on with `USD_WITHDRAWAL_OPEN=true`.
   if (process.env.USD_WITHDRAWAL_OPEN?.trim().toLowerCase() === "true") return true;
-
+  // Otherwise allow only the maintainer allowlist (keeps testing working).
   const email = user.email?.trim().toLowerCase();
   if (email && list(process.env.USD_WITHDRAWAL_ALLOWED_EMAILS, DEFAULT_EMAILS).includes(email)) {
     return true;

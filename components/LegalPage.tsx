@@ -33,12 +33,6 @@ export function LegalPage({
           <Diamond />
           <span>talise</span>
         </Link>
-        <Link
-          href="/waitlist"
-          className="inline-flex h-9 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-4 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent-deep)] hover:text-[var(--color-accent-deep)] sm:px-5"
-        >
-          Join the waitlist
-        </Link>
       </header>
 
       <main className="relative z-10 mx-auto w-full max-w-[720px] px-6 pb-24 pt-10 md:pt-16">

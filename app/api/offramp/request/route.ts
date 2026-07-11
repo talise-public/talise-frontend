@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, ensureSchema, userById } from "@/lib/db";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
+import { denyUnlessAppApproved } from "@/lib/app-access";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { resolveLinqBank } from "@/lib/linq-banks";
 import { getUsdsuiBalance } from "@/lib/sui";
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
+  const denied = await denyUnlessAppApproved(userId);
+  if (denied) return denied;
   const user = await userById(userId);
   if (!user) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });

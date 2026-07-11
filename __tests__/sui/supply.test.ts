@@ -68,6 +68,10 @@ vi.mock("@/lib/navi-supply", () => ({
       });
     }
   ),
+  // The route also imports these from navi-supply; omitting them makes
+  // BigInt(SAVE_TREASURY_FEE_BPS) throw on undefined → route 500s.
+  SAVE_TREASURY_FEE_BPS: 100,
+  TREASURY_WALLET: "0x000000000000000000000000000000000000000000000000000000000000dead",
 }));
 
 // `appendPaymentKitReceipt` internally appends a `processRegistryPayment`

@@ -173,6 +173,16 @@ export type ActivityEntry = {
     rate: number;
     orderId: string;
   } | null;
+  /**
+   * Set when this "sent" row's digest matches a TEAM payout batch (a saved
+   * team paid in one PTB). The activity route enriches it from `payout_batches`.
+   * Lets History render "Paid {name}" with a team icon and the recipient count,
+   * instead of naming one arbitrary leg's recipient. Null for ordinary sends.
+   */
+  team?: {
+    name: string;
+    recipientCount: number;
+  } | null;
 };
 
 /**

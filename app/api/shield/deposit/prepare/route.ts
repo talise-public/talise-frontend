@@ -38,8 +38,10 @@ export const dynamic = "force-dynamic";
  */
 const SHIELD_INAPP_SEND_ENABLED = process.env.SHIELD_INAPP_SEND_ENABLED === "true";
 
-// $10 per-tx cap (USDsui 6dp) — matches the on-chain pool max_deposit.
-const MAX_DEPOSIT_MICROS = 10_000_000n;
+// $2.50 per-tx cap (USDsui 6dp). App-level pilot cap; the on-chain pool
+// max_deposit stays at $10, so this is the stricter limit that all app
+// traffic is held to.
+const MAX_DEPOSIT_MICROS = 2_500_000n;
 // Same generous fixed gas budget as the other sponsored prepares (0.06 SUI).
 const SPONSOR_GAS_BUDGET_MIST = 60_000_000n;
 
@@ -114,7 +116,7 @@ export async function POST(req: Request) {
   }
   if (amountMicros > MAX_DEPOSIT_MICROS) {
     return NextResponse.json(
-      { error: "Private sends are capped at $10 during the pilot.", code: "OVER_CAP" },
+      { error: "Private sends are capped at $2.50 during the pilot.", code: "OVER_CAP" },
       { status: 400 }
     );
   }

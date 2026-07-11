@@ -164,8 +164,10 @@ export async function readSamPosition(
   const [state, balance] = await Promise.all([
     fetchSamVaultState(),
     sui()
-      .getBalance({ owner: address, coinType: cfg.shareType } as never)
-      .then((b: unknown) => Number((b as { totalBalance?: string }).totalBalance ?? 0))
+      // gRPC `getBalance` returns `{ balance: { balance } }` — the JSON-RPC
+      // `totalBalance` field doesn't exist on this shape (it always read 0).
+      .getBalance({ owner: address, coinType: cfg.shareType })
+      .then((b) => Number(b.balance?.balance ?? 0))
       .catch(() => 0),
   ]);
   if (!state) return null;

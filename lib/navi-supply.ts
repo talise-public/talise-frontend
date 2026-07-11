@@ -1,15 +1,13 @@
 import "server-only";
 
-import {
-  coinWithBalance,
-  Transaction,
-} from "@mysten/sui/transactions";
+import { Transaction } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import { NaviAdapter } from "@t2000/sdk";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { USDSUI_TYPE, isUsdsui } from "./usdsui";
+import { isUsdsui } from "./usdsui";
 import { USDSUI_DECIMALS, sui } from "./sui";
 import { memoTtl } from "./perf-cache";
+import { sourceUsdsuiCoin } from "./usdsui-coin";
+import { naviGrpcCompatClient } from "./navi-grpc-client";
 
 /**
  * NAVI USDsui supply / withdraw — sponsor-friendly PTB builders.
@@ -47,38 +45,29 @@ export const SAVE_TREASURY_FEE_BPS = 100;
 
 let _adapter: NaviAdapter | null = null;
 let _adapterReady: Promise<NaviAdapter> | null = null;
-let _naviJsonRpcClient: SuiJsonRpcClient | null = null;
 
 /**
- * Dedicated JSON-RPC client for the NAVI SDK. We CANNOT reuse the
- * shared `sui()` (gRPC fallback proxy) here because `@t2000/sdk` 2.11
- * internally calls `client.devInspectTransactionBlock(...)` — a
- * legacy JSON-RPC method that the gRPC proxy doesn't expose. The
- * previous code passed `sui() as never` and the NAVI position read
- * threw `TypeError: t.devInspectTransactionBlock is not a function`,
- * which the withdraw route caught and surfaced to iOS as
- * "Withdraw is taking longer than usual" (since the old withTimeout
- * helper collapsed errors into the timeout fallback). The error
- * mapping in b640a35 already distinguishes timeout vs error; this
- * fix removes the underlying error itself.
+ * gRPC-NATIVE NAVI. `@t2000/sdk`'s NaviAdapter (and the Pyth SDK it delegates
+ * to for oracle refresh) was written against the legacy JSON-RPC `SuiClient`
+ * surface — it calls `devInspectTransactionBlock`, `getObject`,
+ * `multiGetObjects`, `getDynamicFieldObject`, `getCoins`/`getBalance`. Talise's
+ * transport is gRPC-only, so we feed the adapter a compatibility client
+ * (`naviGrpcCompatClient`) that maps every one of those onto gRPC primitives
+ * and reshapes the results into the JSON-RPC shapes the SDK reads.
+ *
+ * This retires the previous JSON-RPC dependency (`SUI_JSONRPC_URL` / the
+ * public mainnet fullnode that is being decommissioned) for NAVI Earn. See
+ * `lib/navi-grpc-client.ts` for the full mapping + rationale, and
+ * `scripts/navi-grpc-validate.mjs` for the read-only parity proof that the
+ * gRPC-native position read matches the JSON-RPC path bit-for-bit.
  */
-function naviJsonRpcClient(): SuiJsonRpcClient {
-  if (_naviJsonRpcClient) return _naviJsonRpcClient;
-  const url =
-    process.env.SUI_JSONRPC_URL?.trim() ||
-    "https://fullnode.mainnet.sui.io:443";
-  _naviJsonRpcClient = new SuiJsonRpcClient({ url, network: "mainnet" });
-  return _naviJsonRpcClient;
-}
-
 async function adapter(): Promise<NaviAdapter> {
   if (_adapter) return _adapter;
   if (_adapterReady) return _adapterReady;
   _adapterReady = (async () => {
     const a = new NaviAdapter();
-    // Use a dedicated JSON-RPC SuiClient (NOT the gRPC proxy) per the
-    // comment above naviJsonRpcClient().
-    await a.init(naviJsonRpcClient() as never);
+    // gRPC-backed JSON-RPC-compat client (NOT a real JSON-RPC SuiClient).
+    await a.init(naviGrpcCompatClient() as never);
     _adapter = a;
     return a;
   })();
@@ -140,9 +129,10 @@ export async function appendNaviSupply(
   if (onchain <= 0n) {
     throw new Error("amount too small");
   }
-  const coin = tx.add(
-    coinWithBalance({ type: USDSUI_TYPE, balance: onchain, useGasCoin: false })
-  );
+  // Source from coins OR the Address-Balance accumulator — most users' USDsui is
+  // in the accumulator (gasless rail), where a coins-only `coinWithBalance` would
+  // revert (this silently broke earn supply + spend-and-save). See lib/usdsui-coin.ts.
+  const coin = await sourceUsdsuiCoin(tx, senderAddress, onchain);
 
   // Treasury fee: split `feeBps` off the supply coin and send it to the
   // treasury wallet atomically, then supply the remainder. `splitCoins`
@@ -188,11 +178,19 @@ export async function appendNaviWithdraw(
       throw new Error("no NAVI USDsui position to withdraw");
     }
   }
+  // skipPythUpdate: the SDK's client-side Pyth VAA push is a broken branch over
+  // our gRPC client (its price-table dynamic-object-field read fails there), and
+  // when exactly one feed is stale it leaves an undestroyed hot potato in the
+  // tx, so the withdraw PTB aborts. Skipping it keeps NAVI's required
+  // oracle_pro::update_single_price_v2 calls (the health-check refresh) and
+  // relies on the keeper-refreshed on-chain Pyth price. Verified: the withdraw
+  // PTB is byte-identical to the JSON-RPC path's surviving case.
   const { coin } = await a.addWithdrawToTx(
     tx,
     senderAddress,
     amount,
-    NAVI_ASSET
+    NAVI_ASSET,
+    { skipPythUpdate: true }
   );
   tx.transferObjects([coin], senderAddress);
 }
@@ -376,12 +374,19 @@ export async function readNaviUsdsuiSupply(address: string): Promise<number> {
       arguments: [tx.object(cfg.storage), tx.pure.address(address)],
     });
 
-    const inspect = await naviJsonRpcClient().devInspectTransactionBlock({
+    const inspect = (await (
+      naviGrpcCompatClient() as {
+        devInspectTransactionBlock: (p: {
+          transactionBlock: Transaction;
+          sender: string;
+        }) => Promise<{ results?: Array<{ returnValues?: Array<[number[], string]> }> }>;
+      }
+    ).devInspectTransactionBlock({
       transactionBlock: tx,
       sender: address,
-    });
+    }));
     const bytes = inspect.results?.[0]?.returnValues?.[0]?.[0];
-    if (!bytes) return 0;
+    if (!bytes || bytes.length === 0) return 0;
 
     const rows = bcs.vector(UserStateInfo).parse(Uint8Array.from(bytes));
     const row = rows.find((r) => Number(r.asset_id) === Number(usdsui.id));

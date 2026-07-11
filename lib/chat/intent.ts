@@ -13,12 +13,23 @@
 
 export type YieldVenueId = "navi" | "deepbook";
 
+/**
+ * `localAmount` + `localCurrency` carry the amount the user actually said in
+ * their own currency ("1000 naira"). When present, the server computes the
+ * EXACT usd ( = localAmount / Talise rate ) at full precision, so the value
+ * round-trips back to ~₦1000 instead of drifting from a cents-rounded `amount`.
+ * `amount` (usd) stays as the agent's estimate / fallback.
+ */
+type LocalAmount = { localAmount?: number; localCurrency?: string };
+
 export type ChatStep =
-  | { kind: "send"; amount: number; recipient: string }
+  | ({ kind: "send"; amount: number; recipient: string } & LocalAmount)
   | { kind: "swap"; from: "USDsui" | "SUI"; to: "USDsui" | "SUI"; amount: number }
-  | { kind: "save"; amount: number; venue?: YieldVenueId }
-  | { kind: "withdraw"; amount: number; venue?: YieldVenueId }
+  | ({ kind: "save"; amount: number; venue?: YieldVenueId } & LocalAmount)
+  | ({ kind: "withdraw"; amount: number; venue?: YieldVenueId } & LocalAmount)
   | { kind: "claim_rewards" }
+  | ({ kind: "cash_out"; amount: number } & LocalAmount)
+  | ({ kind: "request"; amount: number; note?: string } & LocalAmount)
   | { kind: "check_balance" }
   | { kind: "check_yield" }
   | { kind: "show_activity"; limit?: number };
@@ -78,6 +89,10 @@ export function stepLabel(step: ChatStep): string {
     }
     case "claim_rewards":
       return "Claim rewards";
+    case "cash_out":
+      return `Cash out $${step.amount.toFixed(2)} to your bank`;
+    case "request":
+      return `Request $${step.amount.toFixed(2)}${step.note ? ` for ${step.note}` : ""}`;
     case "check_balance":
       return "Show balance";
     case "check_yield":

@@ -9,9 +9,9 @@
  * NEXT_PUBLIC_ONRAMP_ENABLED flips on it becomes a real "Buy USDsui" card
  * that opens <AddMoneyModal>.
  *
- * Cash-out (off-ramp) is the live action: NGN via Linq. Queued corridors
- * (KES/GHS) collapse into a single overlapped-flag stack row — greyscaled
- * circles + one "Coming soon" pill — instead of a dead full row each.
+ * Cash-out (off-ramp) is the live action: NGN bank payout, capped server-side
+ * ($200/account/day). Queued corridors (KES/GHS) collapse into a single
+ * overlapped-flag stack row — greyscaled circles + one "Coming soon" pill.
  */
 
 import { useEffect, useState } from "react";
@@ -28,17 +28,25 @@ import { WithdrawToBankSheet } from "@/components/app/ramps/WithdrawToBankSheet"
 import { AddMoneyModal } from "@/components/app/AddMoneyModal";
 
 const NOTIFY_KEY = "talise:ramp-notify:onramp";
-// Hard lock on BOTH ramps in the web app for now (on-ramp + off-ramp). Flip to
-// false to restore: on-ramp falls back to NEXT_PUBLIC_ONRAMP_ENABLED, off-ramp
-// goes live again.
-const RAMPS_LOCKED = true;
-const ONRAMP_ENABLED =
-  !RAMPS_LOCKED && process.env.NEXT_PUBLIC_ONRAMP_ENABLED === "true";
+// Off-ramp (cash-out) is OPEN in the web app. Exposure is bounded by the
+// server-side daily cap (OFFRAMP_MAX_USD = $200/account/day, enforced on every
+// order in lib/linq.ts). Set true to re-lock the cash-out card.
+const OFFRAMP_LOCKED = false;
+// Per-day cash-out cap, mirrored for a subtle UI note (keep in sync with
+// OFFRAMP_MAX_USD in lib/linq.ts — that server value is the real enforcement).
+const OFFRAMP_CAP_USD = 200;
+// On-ramp (card top-up via Transak) is NOT live yet — keep it hard OFF so the
+// top-up card stays the grey "notify me" state and never opens a checkout that
+// can't complete. Restore the env check once the processor actually works:
+//   const ONRAMP_ENABLED = process.env.NEXT_PUBLIC_ONRAMP_ENABLED === "true";
+const ONRAMP_ENABLED = false;
 
 /** Queued off-ramp corridors — rendered as one overlapped grey flag stack. */
 const COMING_SOON_CORRIDORS: { cc: string; country: string }[] = [
   { cc: "ke", country: "Kenya" },
   { cc: "gh", country: "Ghana" },
+  { cc: "id", country: "Indonesia" },
+  { cc: "ph", country: "Philippines" },
 ];
 
 export default function RampsPage() {
@@ -62,8 +70,8 @@ export default function RampsPage() {
           {/* Short on phones; the fuller line reads on wider screens. */}
           <span className="sm:hidden">Cash out to your bank, settled in under a second.</span>
           <span className="hidden sm:inline">
-            Cash out straight to your bank via Linq, a live rate, one clear
-            fee, settled in under a second.
+            Cash out straight to your bank — a live rate, one clear fee,
+            settled in under a second.
           </span>
         </p>
       </header>
@@ -108,7 +116,7 @@ export default function RampsPage() {
                 <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#3d7a29]">NGN</span>
               </span>
             </span>
-            <StatusPill label={RAMPS_LOCKED ? "Coming soon" : "Live"} tone={RAMPS_LOCKED ? "neutral" : "success"} />
+            <StatusPill label={OFFRAMP_LOCKED ? "Coming soon" : "Live"} tone={OFFRAMP_LOCKED ? "neutral" : "success"} />
           </li>
           {/* Queued corridors: one overlapped, greyscaled flag stack — not a
               dead full row per country. */}
@@ -135,12 +143,17 @@ export default function RampsPage() {
         <div className="relative mt-8">
           <button
             type="button"
-            onClick={() => { if (!RAMPS_LOCKED) setWithdrawOpen(true); }}
-            disabled={RAMPS_LOCKED}
+            onClick={() => { if (!OFFRAMP_LOCKED) setWithdrawOpen(true); }}
+            disabled={OFFRAMP_LOCKED}
             className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#15300c] px-6 text-[15px] font-semibold text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#15300c]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7fcf2] disabled:cursor-not-allowed disabled:bg-[#15300c]/30 disabled:hover:translate-y-0"
           >
-            {RAMPS_LOCKED ? "Cash-out coming soon" : "Cash out to your bank"}
+            {OFFRAMP_LOCKED ? "Cash-out coming soon" : "Cash out to your bank"}
           </button>
+          {!OFFRAMP_LOCKED && (
+            <p className="relative mt-3 text-center font-mono text-[11px] text-[#3d7a29]">
+              Capped at ${OFFRAMP_CAP_USD} a day while we scale.
+            </p>
+          )}
         </div>
       </div>
 

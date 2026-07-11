@@ -17,7 +17,12 @@ import {
 } from "./types";
 import { computeRequirements } from "./requirements";
 import { bridgeDeveloperFeePercent } from "@/lib/bridge/client";
-import { createKycLink, mapBridgeKycStatus } from "@/lib/bridge/customers";
+import {
+  createKycLink,
+  getKycLink,
+  getCustomer,
+  mapBridgeKycStatus,
+} from "@/lib/bridge/customers";
 import {
   createVirtualAccount,
   listVirtualAccounts,
@@ -99,6 +104,8 @@ export const bridgeAdapter: OnrampProvider = {
       providerCustomerId: link.customer_id ?? link.id,
       status: mapBridgeKycStatus(link.kyc_status),
       kycUrl: link.kyc_link,
+      tosUrl: link.tos_link,
+      kycLinkId: link.id,
     };
   },
 
@@ -255,4 +262,49 @@ function mapTier(v: unknown): OnrampKycTier | undefined {
 
 function numOrNull(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Poll Bridge for the freshest KYC state of a stored record and resolve the
+ * real customer id. Used by the status endpoint + cash-out guard so we don't
+ * depend on webhooks reaching the server (they don't, on localhost). When a
+ * customer id is known, the CUSTOMER status is authoritative (active/rejected);
+ * otherwise we fall back to the KYC link's kyc_status.
+ */
+export async function refreshBridgeKyc(input: {
+  kycLinkId?: string | null;
+  providerCustomerId?: string | null;
+}): Promise<{
+  status: OnrampKycStatus;
+  customerId: string | null;
+  kycStatus?: string;
+  tosStatus?: string;
+}> {
+  let customerId: string | null = null;
+  let statusStr: string | undefined;
+  let kycStatus: string | undefined;
+  let tosStatus: string | undefined;
+
+  if (input.kycLinkId) {
+    // The link is the stable handle — it carries kyc_status + the (eventual)
+    // customer_id, which is null until the user actually starts KYC.
+    const link = await getKycLink(input.kycLinkId);
+    kycStatus = link.kyc_status;
+    tosStatus = link.tos_status;
+    customerId = link.customer_id ?? null;
+    statusStr = link.kyc_status;
+  }
+
+  if (customerId) {
+    // A real customer exists — its status is authoritative over the link's.
+    const c = await getCustomer(customerId);
+    statusStr = c.status;
+  } else if (!input.kycLinkId && input.providerCustomerId) {
+    // No link on record, but we have a customer id (older flow) — poll it.
+    const c = await getCustomer(input.providerCustomerId);
+    statusStr = c.status;
+    customerId = input.providerCustomerId;
+  }
+
+  return { status: mapBridgeKycStatus(statusStr), customerId, kycStatus, tosStatus };
 }

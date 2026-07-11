@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { denyUnlessAppApproved } from "@/lib/app-access";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { userById } from "@/lib/db";
 import { fromBase64, toBase64 } from "@mysten/sui/utils";
 import { Transaction } from "@mysten/sui/transactions";
@@ -40,6 +41,17 @@ export async function POST(req: Request) {
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
+  // Per-user anti-abuse cap. Sponsoring does real work (RPC + Onara round-trips)
+  // even when the user never submits the signed tx, so an approved-but-abusive
+  // client could otherwise burn our gas-station/RPC budget by hammering trip 1.
+  // 120/hr is far above any legitimate use (downstream gasless-submit is 30/hr).
+  const rl = await rateLimitAsync({ key: `zk-sponsor:user:${userId}`, limit: 120, windowSec: 3600 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 3600) } }
+    );
+  }
   const user = await userById(userId);
   if (!user) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });

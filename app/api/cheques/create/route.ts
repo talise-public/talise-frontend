@@ -61,6 +61,8 @@ export async function POST(req: Request) {
     payeeLabel?: string;
     memo?: string;
     signatureName?: string;
+    /** Optional private message — encrypted with the claim secret, stored on Walrus. */
+    note?: string;
     /** Optional ISO-3166 alpha-2 country allowlist. Empty/absent = any country.
      *  The captcha is always enforced at web claims regardless. */
     allowedCountries?: string[];
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
     payeeLabel: body.payeeLabel?.slice(0, 80) ?? null,
     memo: body.memo?.slice(0, 140) ?? null,
     signatureName: body.signatureName?.slice(0, 60) ?? user.business_name ?? user.name ?? null,
+    note: body.note ?? null,
     gates,
   });
 

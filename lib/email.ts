@@ -1,3 +1,5 @@
+import "server-only";
+
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import {

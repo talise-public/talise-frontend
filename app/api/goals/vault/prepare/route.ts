@@ -19,6 +19,7 @@ import {
   appendVaultYieldAdd,
   appendVaultYieldWithdraw,
 } from "@/lib/goal-vault-ptb";
+import { readGoalVaultPrincipalMicros } from "@/lib/usdsui-coin";
 
 /** Yield (NAVI) goal ops are gated behind their own flag — the on-chain
  *  AccountCap-in-vault custody must be validated on a TestFlight build with a
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
       if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
       const targetUsd = Number(body.targetUsd) || 0;
       if (Number.isFinite(amountUsd) && amountUsd > 0) {
-        appendCreateVaultWith(tx, { name, targetUsdsui: targetUsd, amountUsdsui: amountUsd });
+        await appendCreateVaultWith(tx, { name, targetUsdsui: targetUsd, amountUsdsui: amountUsd, sender: user.sui_address });
       } else {
         appendCreateVault(tx, { name, targetUsdsui: targetUsd });
       }
@@ -133,11 +134,36 @@ export async function POST(req: Request) {
         );
       }
       if (op === "deposit") {
-        appendDepositToVault(tx, { vaultId: goal.vaultObjectId, amountUsdsui: amountUsd });
+        await appendDepositToVault(tx, { vaultId: goal.vaultObjectId, amountUsdsui: amountUsd, sender: user.sui_address });
       } else if (op === "withdraw") {
+        // Clamp the withdraw to the vault's REAL on-chain principal so it can
+        // never abort with EInsufficientBalance (301) when the DB tracker has
+        // drifted above the chain (e.g. legacy DB-tracked deposits, or deposits
+        // that reverted before the coin-sourcing fix). If the vault holds nothing
+        // on chain, hand the client back to the DB-tracking rail (GOAL_NOT_ON_CHAIN).
+        const requested = BigInt(Math.round(amountUsd * 1e6));
+        const principal = await readGoalVaultPrincipalMicros(goal.vaultObjectId);
+        if (principal === null) {
+          // Couldn't read the on-chain principal (RPC/GraphQL lag or an
+          // unexpected Balance shape). Proceeding unclamped risks the very
+          // MoveAbort 301 the clamp prevents, so ask the client to retry rather
+          // than build a tx that may revert on-chain.
+          return NextResponse.json(
+            { error: "couldn't read the goal's on-chain balance — try again in a moment", code: "PRINCIPAL_READ_FAILED" },
+            { status: 503 }
+          );
+        }
+        if (principal <= 0n) {
+          return NextResponse.json(
+            { error: "goal has no on-chain balance to withdraw", code: "GOAL_NOT_ON_CHAIN" },
+            { status: 409 }
+          );
+        }
+        const clamped = requested > principal ? principal : requested;
         appendWithdrawFromVault(tx, {
           vaultId: goal.vaultObjectId,
           amountUsdsui: amountUsd,
+          amountMicrosOverride: clamped,
           owner: user.sui_address,
         });
       } else if (op === "yield-start") {
