@@ -25,12 +25,12 @@ export const runtime = "nodejs";
  *
  * Runs an agentic-finance op via `@t2000/sdk` (NAVI lending + Cetus
  * aggregator). The SDK builds the PTB internally, signs with a zkLogin
- * signer, and broadcasts — we just hydrate the signer from the user's
+ * signer, and broadcasts, we just hydrate the signer from the user's
  * session and forward the call.
  *
  * Client must POST the ephemeral PRIVATE key (bech32 `suiprivkey1…`) so we
  * can rebuild the zkLogin signer here. The ephemeral key is a one-shot
- * 55-minute artifact — security tradeoff documented in WEB_ARCHITECTURE.md.
+ * 55-minute artifact, security tradeoff documented in WEB_ARCHITECTURE.md.
  * For a stricter setup, run the SDK browser-side via `@t2000/sdk/browser`.
  */
 export async function POST(req: Request) {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     ephemeralPubKeyB64?: string;
     maxEpoch?: number;
     randomness?: string;
-    /** Optional cached zk proof — skips the 2-4s Shinami round trip. */
+    /** Optional cached zk proof, skips the 2-4s Shinami round trip. */
     cachedProof?: ZkLoginProof;
   };
   let body: Body;
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
   ) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
-  // F11: validate the money amount — `typeof === number` above still admits
+  // F11: validate the money amount, `typeof === number` above still admits
   // NaN / Infinity / negative / absurd values that flow into the signing path.
   if (amountRequired) {
     const amt = body.amount as number;
@@ -215,7 +215,7 @@ export async function POST(req: Request) {
       digest: result.digest ?? "",
       result,
       // On cache miss we return the freshly-minted proof so the client can
-      // reuse it next time — saves the 2-4s Shinami round trip.
+      // reuse it next time, saves the 2-4s Shinami round trip.
       freshProof: isFresh ? zkProof : undefined,
     });
   } catch (err) {

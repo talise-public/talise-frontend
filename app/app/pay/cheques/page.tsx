@@ -100,7 +100,7 @@ export default function ChequesPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
-      {/* Keep the Pay sub-nav visible on this sibling route too — without it
+      {/* Keep the Pay sub-nav visible on this sibling route too, without it
           mobile users who tapped into Cheques lost the way back to
           Send/Request/Stream. */}
       <PaySubNav />
@@ -109,8 +109,8 @@ export default function ChequesPage() {
           Cheques
         </span>
         <h1
-          className="text-[clamp(26px,5vw,34px)] font-[800] uppercase leading-[1.02] tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[clamp(26px,5vw,34px)] font-[500] leading-[1.02] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Money in a link
         </h1>
@@ -273,7 +273,7 @@ function WriteTab({ onIssued }: { onIssued: () => void }) {
       {/* Form fields */}
       <div
         className="divide-y divide-[#15300c]/10 overflow-hidden rounded-[28px] bg-[#f7fcf2]"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         {/* Amount */}
         <div className="px-5 py-4">
@@ -283,7 +283,7 @@ function WriteTab({ onIssued }: { onIssued: () => void }) {
           <div className="mt-2 flex items-center gap-1.5">
             <span
               className="text-[22px] text-[#3a5230]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
             >
               $
             </span>
@@ -292,8 +292,8 @@ function WriteTab({ onIssued }: { onIssued: () => void }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="0.00"
-              className="w-full bg-transparent text-[28px] font-[800] tracking-[-0.02em] text-[#15300c] tabular-nums outline-none placeholder:text-[#3d7a29]/60"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="w-full bg-transparent text-[28px] font-[800] tracking-[-0.05em] text-[#15300c] tabular-nums outline-none placeholder:text-[#3d7a29]/60"
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif' }}
             />
           </div>
         </div>
@@ -435,7 +435,7 @@ function IssuedView({
         await navigator.share(data);
         return;
       } catch {
-        /* user cancelled — fall through to copy */
+        /* user cancelled, fall through to copy */
       }
     }
     void copy();
@@ -470,15 +470,15 @@ function IssuedView({
   return (
     <div className="space-y-6 text-center">
       <h2
-        className="text-[22px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-        style={{ fontFamily: "var(--font-display-v2)" }}
+        className="text-[22px] font-[500] tracking-[-0.05em] text-[#15300c]"
+        style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
       >
         {reclaimed ? "Cheque reclaimed" : "Cheque issued"}
       </h2>
 
       <ChequeCard
         amountUsd={resp.amountUsd}
-        payee={payee || "—"}
+        payee={payee || "-"}
         memo={memo}
         signature={signature}
         chequeNo={resp.chequeId.slice(-5)}
@@ -575,7 +575,7 @@ function CashTab() {
       if (m) id = decodeURIComponent(m[1]);
       secret = u.searchParams.get("s") ?? u.hash.replace(/^#/, "");
     } catch {
-      // Not a full URL — try the hash form directly.
+      // Not a full URL, try the hash form directly.
       const hashIdx = trimmed.indexOf("#");
       const queryIdx = trimmed.indexOf("?s=");
       const slash = trimmed.lastIndexOf("/c/");
@@ -732,7 +732,7 @@ function CashTab() {
     <div className="space-y-4">
       <div
         className="space-y-4 rounded-[28px] bg-[#f7fcf2] p-5"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         <div>
           <label className="block font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-[#3d7a29]">
@@ -774,7 +774,7 @@ function MineTab({
 
   // Stale-while-revalidate: paint the last-known list from sessionStorage
   // INSTANTLY (no skeleton on revisit), then refresh quietly. The list is
-  // display-only here — every mutating action re-validates server-side.
+  // display-only here, every mutating action re-validates server-side.
   const CACHE_KEY = "talise:cheques:mine";
 
   const load = useCallback(async (background = false) => {
@@ -787,7 +787,7 @@ function MineTab({
       try {
         sessionStorage.setItem(CACHE_KEY, JSON.stringify(next));
       } catch {
-        /* storage blocked — non-fatal */
+        /* storage blocked, non-fatal */
       }
     } catch (e) {
       if (!background) {
@@ -809,7 +809,7 @@ function MineTab({
         seeded = true;
       }
     } catch {
-      /* corrupt cache — fall through to a foreground load */
+      /* corrupt cache, fall through to a foreground load */
     }
     void load(seeded);
   }, [load, reloadSignal]);
@@ -885,7 +885,7 @@ function MineTab({
         <div
           key={row.id}
           className="rounded-[28px] bg-[#f7fcf2] p-5"
-          style={{ boxShadow: "10px 10px 0 #15300c" }}
+          style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
         >
           {/* Amount + status header */}
           <div className="flex items-start justify-between gap-3">

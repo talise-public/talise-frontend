@@ -5,7 +5,7 @@ import { requireAdminApi } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/admin/transactions — the headline section. Successful /
+ * GET /api/admin/transactions, the headline section. Successful /
  * pending / failed across the three transaction sources:
  *
  *   onchain   = tx_history (post-confirmation ⇒ always "success")

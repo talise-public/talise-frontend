@@ -82,7 +82,7 @@ export async function POST(
     return NextResponse.json({ error: "batch not found" }, { status: 404 });
   }
 
-  // Owner check — the batch must belong to the caller. user_id is stored as a
+  // Owner check, the batch must belong to the caller. user_id is stored as a
   // string at prepare time; compare stringified.
   if (String(row.user_id) !== String(userId)) {
     return NextResponse.json({ error: "not your batch" }, { status: 403 });

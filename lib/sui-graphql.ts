@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Minimal Sui GraphQL client — additive read layer.
+ * Minimal Sui GraphQL client, additive read layer.
  *
  * Sits in parallel to `lib/sui.ts` (the JSON-RPC / gRPC client). It exists
  * because several heavy read paths spend most of their wall-clock waiting on
@@ -21,7 +21,7 @@ import "server-only";
  *     it sees. `batchCoinMetadata` issues one POST with one alias per coin
  *     type, returning every result together.
  *
- * The write path (txs) stays on the JSON-RPC / gRPC client — GraphQL is
+ * The write path (txs) stays on the JSON-RPC / gRPC client, GraphQL is
  * read-only here. Don't move signing/execution through this module.
  *
  * Implementation notes:
@@ -31,11 +31,11 @@ import "server-only";
  *   - Tiny in-process TTL cache keyed by (query + variables). Most heavy
  *     reads repeat within a single render path so one cache layer pays for
  *     itself. The cache is process-wide (not per-request) so Next.js handler
- *     instances share it — matches the existing `coinInfoCache` /
+ *     instances share it, matches the existing `coinInfoCache` /
  *     vault-state caches.
  *
  * Schema gotchas (Sui GraphQL):
- *   - Dynamic fields are queried via `address(address: $parentUid)` — i.e.
+ *   - Dynamic fields are queried via `address(address: $parentUid)`, i.e.
  *     the bag's UID address, NOT through `object(...).asMoveObject`. The
  *     parent we pass is the bag's `id.id`, not the vault id.
  *   - `MoveValue.json` represents `vector<u8>` as a **Base64 blob string**,
@@ -46,13 +46,13 @@ import "server-only";
  *     level nullability forces a defensive check.
  *   - `DynamicField.value` is a union of `MoveValue | MoveObject`. Balance<T>
  *     stored by-value lands on the `MoveValue` branch.
- *   - `Address.objects.filter.type` accepts a type-tag PREFIX too — passing
+ *   - `Address.objects.filter.type` accepts a type-tag PREFIX too, passing
  *     `<pkg>::auto_swap::AutoSwapCap` matches every instantiation. This is
  *     how we filter caps without listing the user's full inventory.
  */
 
 // Canonical Mysten-hosted mainnet GraphQL indexer. The legacy
-// `sui-mainnet.mystenlabs.com` host was retired — it now refuses
+// `sui-mainnet.mystenlabs.com` host was retired, it now refuses
 // connections (`fetch failed`) from most networks, which silently broke
 // `batchCoinMetadata` (it fell through to its catch and returned
 // type-string-derived symbols with default 9 decimals on EVERY coin).
@@ -86,7 +86,7 @@ export class SuiGraphQLError extends Error {
   }
 }
 
-/** 10s TTL — same horizon as the existing per-user vault-state cache. */
+/** 10s TTL, same horizon as the existing per-user vault-state cache. */
 const CACHE_TTL_MS = 10_000;
 // 512 (was 256): write-once coin-metadata entries and time-windowed
 // tx-history entries share this LRU, so under concurrent users a small cap
@@ -142,7 +142,10 @@ export async function gql<T = unknown>(
     method: "POST",
     headers: { "content-type": "application/json" },
     body,
-    signal: opts.signal,
+    // Default a 10s ceiling so callers that don't pass a signal (e.g.
+    // /api/me/nfts) can't hang on a slow GraphQL endpoint. An explicit
+    // caller signal still takes precedence.
+    signal: opts.signal ?? AbortSignal.timeout(10_000),
     // Next.js' fetch-cache integration would persist this server-side across
     // requests, which is exactly what we DON'T want for live chain data.
     cache: "no-store",
@@ -172,7 +175,7 @@ export function _clearGraphQLCache() {
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Vault state query — vault contents + caps in one POST.
+// Vault state query, vault contents + caps in one POST.
 //
 // We deliberately split this from the bag-DF read because the bag's UID is
 // only known after parsing the vault contents. The two queries together still
@@ -273,7 +276,7 @@ export type GraphQLBagDynamicFieldsResponse = {
 };
 
 /**
- * Dynamic fields on a bag UID — paginated.
+ * Dynamic fields on a bag UID, paginated.
  *
  * For Talise vaults the typical user holds <10 coin types so a single page
  * (default 50) suffices. The caller still handles cursor continuation
@@ -378,7 +381,7 @@ export async function batchCoinMetadata(
       }
     });
   } catch {
-    // Failure mode mirrors the original per-call try/catch — fall back to
+    // Failure mode mirrors the original per-call try/catch, fall back to
     // a type-string-derived symbol with default 9 decimals.
     for (const t of unique) {
       out.set(t, { symbol: coinSymbolFromType(t), decimals: 9 });
@@ -415,7 +418,7 @@ export function decodeBagKeyVectorU8(value: unknown): string {
     try {
       const buf = Buffer.from(value, "base64");
       const s = buf.toString("utf8");
-      // Cheap sanity check — Move type-name strings only ever contain
+      // Cheap sanity check, Move type-name strings only ever contain
       // printable ASCII (alphanumerics, `:`, `<`, `>`, `_`, `0x` hex). If
       // that holds, the base64 decode was correct.
       if (s.length > 0 && /^[\x20-\x7e]+$/.test(s)) return s;
@@ -440,7 +443,7 @@ export function decodeBagKeyVectorU8(value: unknown): string {
 // are a thin singleton wrapper around `@mysten/sui/graphql`'s `SuiGraphQLClient`
 // so new call sites can use the typed SDK surface (`gql.tada`-style documents)
 // without each one paying for client construction. Mirrors the `sui()` /
-// `sui()` pattern in `./sui.ts` — same network resolution, same
+// `sui()` pattern in `./sui.ts`, same network resolution, same
 // process-wide cache key (network + url) so a single
 // `NEXT_PUBLIC_SUI_NETWORK` env var keeps every client in lockstep.
 
@@ -476,7 +479,7 @@ let _gqlClientKey = "";
 
 /**
  * Cached `SuiGraphQLClient` for the active network. Prefer this over hand-
- * rolled `fetch` for new call sites — it integrates with `graphql` typed
+ * rolled `fetch` for new call sites, it integrates with `graphql` typed
  * documents and matches the singleton ergonomics of `sui()`.
  */
 export function suiGraphQL(): SuiGraphQLClient {

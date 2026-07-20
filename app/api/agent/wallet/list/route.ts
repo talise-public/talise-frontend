@@ -4,7 +4,7 @@ import { agentWalletsEnabled, listAgentWallets } from "@/lib/agent-wallets";
 
 export const runtime = "nodejs";
 
-/** GET /api/agent/wallet/list — the caller's custodial agent wallets. */
+/** GET /api/agent/wallet/list, the caller's custodial agent wallets. */
 export async function GET(req: Request) {
   if (!agentWalletsEnabled()) return NextResponse.json({ wallets: [] });
   const userId = await readEntryIdFromRequest(req);

@@ -3,7 +3,7 @@ import "server-only";
 import { db, ensureSchema, recordRewardsEvent, type User } from "@/lib/db";
 
 /**
- * Talise Rewards — earn engine.
+ * Talise Rewards, earn engine.
  *
  * Wires up the "you spend, you earn" loop that the original
  * referral-only rewards system was missing. Every successful sponsored
@@ -12,7 +12,7 @@ import { db, ensureSchema, recordRewardsEvent, type User } from "@/lib/db";
  * monthly saved/spent, and tier.
  *
  * Called from `/api/zk/sponsor-execute` after Onara confirms broadcast
- * — we only credit settled work, not the build step. If the row write
+ *, we only credit settled work, not the build step. If the row write
  * fails, we swallow the error: rewards are nice-to-have, the user's
  * money already moved.
  *
@@ -24,7 +24,7 @@ import { db, ensureSchema, recordRewardsEvent, type User } from "@/lib/db";
  *   roundup   → 5  pts per $1 swept     (`kind: "roundup_save"`)
  *   goal      → 4  pts per $1 deposited (`kind: "goal_deposit"`)
  *
- * Rates are intentionally biased toward saving — sends are the funnel,
+ * Rates are intentionally biased toward saving, sends are the funnel,
  * but saves are the behavior we want to reinforce. We'll tune from
  * usage data; for now the numbers are documented in `POINT_RATES`
  * so the iOS Rewards card can render them too.
@@ -35,7 +35,7 @@ export type EarnTrigger = "send" | "invest" | "withdraw" | "roundup" | "goal" | 
 
 /**
  * Points-per-USD rates keyed by trigger. The rates intentionally bias
- * toward saving — sends are the funnel, but saves are the behavior we
+ * toward saving, sends are the funnel, but saves are the behavior we
  * want to reinforce. Exported so iOS can render "earn 3 pts per $1
  * saved" without duplicating the values.
  */
@@ -45,11 +45,11 @@ export const POINT_RATES: Record<EarnTrigger, number> = {
   withdraw: 0,
   roundup: 5,
   // Goal deposits earn NOTHING. A goal deposit is an UNVERIFIED self-report
-  // (no money moves on-chain), so awarding points for it is freely farmable —
+  // (no money moves on-chain), so awarding points for it is freely farmable -
   // one account rigged it to 1,008,671,212 pts. Tracking still works; points
   // don't. (Closes the "goal" trigger on sponsor-execute too.)
   goal: 0,
-  // Auto-swap into USDsui (Cetus) — reward the conversion that puts the
+  // Auto-swap into USDsui (Cetus), reward the conversion that puts the
   // user into the spendable/savable stablecoin. 1 pt per $1 converted.
   swap: 1,
 };
@@ -61,7 +61,7 @@ export const POINT_RATES: Record<EarnTrigger, number> = {
  * to (handy for an inline "+12 pts" toast on the success screen).
  *
  * Idempotency: we DON'T dedupe by digest here. The caller is the
- * sponsor-execute route which only invokes this on success — duplicate
+ * sponsor-execute route which only invokes this on success, duplicate
  * sponsor-execute calls would be a much bigger bug. If we ever process
  * webhooks or chain-indexer events we'll add a `(user_id, digest)`
  * UNIQUE on a side table.
@@ -73,7 +73,7 @@ export async function awardForTx(opts: {
   amountUsd: number;
   /** Tx digest for the audit trail. */
   digest?: string;
-  /** Venue (`navi`, `deepbook`) for invest/withdraw — optional. */
+  /** Venue (`navi`, `deepbook`) for invest/withdraw, optional. */
   venue?: string;
 }): Promise<{ points: number }> {
   await ensureSchema();
@@ -83,11 +83,11 @@ export async function awardForTx(opts: {
 
   const rate = POINT_RATES[opts.trigger] ?? 0;
   // Floor to whole points, but always award at least 1 pt for a
-  // positive trigger amount (when the rate itself is non-zero —
+  // positive trigger amount (when the rate itself is non-zero -
   // withdraws have rate 0 and stay at 0).
   //
   // Earlier revision used a bare `Math.floor` which silently zeroed
-  // out every sub-$1 action — the exact realistic case for the
+  // out every sub-$1 action, the exact realistic case for the
   // African remittance corridor, where typical sends are ~$0.04-$5
   // USD-equivalent. The user reported "points count broken"; the
   // events were writing fine, the math was rounding their action
@@ -110,7 +110,7 @@ export async function awardForTx(opts: {
     : opts.trigger === "swap" ? "swap_earn"
     : "goal_deposit";
 
-  // Always write the event row (even when points === 0) — it's the
+  // Always write the event row (even when points === 0), it's the
   // activity-feed source of truth for Rewards. recordRewardsEvent
   // also bumps `users.points_total` so a 0-pt row is a clean no-op
   // on the balance.
@@ -173,7 +173,7 @@ export function tierForPoints(points: number): {
 }
 
 /**
- * Read the lifetime tallies + tier for a user. Cheap — one query on
+ * Read the lifetime tallies + tier for a user. Cheap, one query on
  * the users row. Cached in the rewards summary response.
  */
 export async function getRewardsExtras(userId: number): Promise<{

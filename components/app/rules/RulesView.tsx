@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * RulesView — programmable money / automations (/app/rules).
+ * RulesView, programmable money / automations (/app/rules).
  *
  * A rule pairs a TRIGGER with an ACTION; for launch the one executable action
  * is a scheduled `send` ("pay rent on the 1st", "send $50 every week"). Each
- * rule is NON-CUSTODIAL — it's backed by an on-chain `standing_order` pot the
+ * rule is NON-CUSTODIAL, it's backed by an on-chain `standing_order` pot the
  * user owns, funded up front with one-or-more payments' worth. A backend worker
  * can only release the pre-set amount to the pre-set recipient on schedule;
  * cancelling refunds the remaining pot.
  *
  * Create is a two-step prepare → sign → record (same sponsored-bytes path as the
- * goal vault / cheques / streams — `signSponsorReadyBytes`):
+ * goal vault / cheques / streams, `signSponsorReadyBytes`):
  *   • GET  /api/rules            → { rules, enabled }. `enabled === false` means
  *                                  the feature isn't switched on yet → we render
  *                                  a clean "coming soon" state.
@@ -166,7 +166,7 @@ export function RulesView() {
     void load();
   }, [load]);
 
-  // Fire due rules on open — there is NO cron. `execute_due` is permissionless
+  // Fire due rules on open, there is NO cron. `execute_due` is permissionless
   // on-chain, so the owner's open app triggers any due scheduled payment:
   // prepare → sign → record. The contract is the gate (it aborts ENotDue if a
   // rule isn't actually due), so every step here is best-effort and safe to skip.
@@ -185,7 +185,7 @@ export function RulesView() {
         await api(`/api/rules/${rule.id}/executed`, { method: "POST", body: { digest } });
         fired++;
       } catch {
-        // ENotDue / NO_ORDER / transient — the contract is the gate; just skip.
+        // ENotDue / NO_ORDER / transient, the contract is the gate; just skip.
       }
     }
     if (fired > 0) {
@@ -221,13 +221,13 @@ export function RulesView() {
           Automations
         </div>
         <h1
-          className="mt-2 text-[clamp(24px,4vw,34px)] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="mt-2 text-[clamp(24px,4vw,34px)] font-[500] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Money that runs itself.
         </h1>
         <p className="mt-2 max-w-xl text-[14px] leading-[1.5] text-[#3a5230]">
-          Set a rule once and Talise pays it on schedule — rent on the 1st, an
+          Set a rule once and Talise pays it on schedule, rent on the 1st, an
           allowance every week. Funded from your Rules Pocket, sent gaslessly.
         </p>
       </header>
@@ -240,7 +240,7 @@ export function RulesView() {
         <GlassCard className="p-2">
           <EmptyState
             icon={<HugeiconsIcon icon={RepeatIcon} size={26} strokeWidth={1.6} />}
-            title="Automations — coming soon"
+            title="Automations, coming soon"
             subtitle="Scheduled, hands-off payments are almost here. You'll be able to set a rule and let it run."
           />
         </GlassCard>
@@ -351,7 +351,7 @@ function RuleRow({
         <span className="flex shrink-0 flex-col items-end gap-1.5">
           <span
             className="text-[15px] font-semibold text-[#15300c]"
-            style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}
+            style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
           >
             {formatUsd(amountUsd, { fixed: true })}
           </span>
@@ -450,7 +450,7 @@ function CreateRuleSheet({
     if (!canSubmit || amountUsd == null || prefundUsd == null) return;
     setSubmitting(true);
     try {
-      // 1) PREPARE — server validates + screens, returns sponsor-ready
+      // 1) PREPARE, server validates + screens, returns sponsor-ready
       //    `standing_order::create` bytes that fund the rule's pot.
       const prep = await api<PrepareResp>("/api/rules", {
         method: "POST",
@@ -465,10 +465,10 @@ function CreateRuleSheet({
         },
       });
 
-      // 2) SIGN — same sponsored-bytes path as the goal vault / cheques / streams.
+      // 2) SIGN, same sponsored-bytes path as the goal vault / cheques / streams.
       const { digest } = await signSponsorReadyBytes(prep.bytes, { kind: "rule-create" });
 
-      // 3) RECORD — activate the rule with the funding digest + echoed record.
+      // 3) RECORD, activate the rule with the funding digest + echoed record.
       await api("/api/rules/record", {
         method: "POST",
         body: { digest, firstDueMs: prep.firstDueMs, ...prep.record },
@@ -515,7 +515,7 @@ function CreateRuleSheet({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Amount" hint="Per run, in USD">
             <div className="flex items-center gap-1.5 rounded-xl border border-[#15300c]/15 bg-white/60 px-3.5 py-2.5 backdrop-blur-sm focus-within:ring-2 focus-within:ring-[#3d7a29]/45">
-              <span className="text-[18px] text-[#3a5230]" style={{ fontFamily: "var(--font-display-v2)" }}>
+              <span className="text-[18px] text-[#3a5230]" style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}>
                 $
               </span>
               <input
@@ -557,12 +557,12 @@ function CreateRuleSheet({
               inputMode="numeric"
               placeholder="1"
               className={inputCls}
-              style={{ fontVariantNumeric: "tabular-nums" }}
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
             />
           </Field>
         )}
 
-        <Field label="Load the pot" hint="How much to fund up front — the rule pays from its own pot">
+        <Field label="Load the pot" hint="How much to fund up front, the rule pays from its own pot">
           <Segmented<number>
             ariaLabel="How many payments to fund up front"
             value={payments}
@@ -573,7 +573,7 @@ function CreateRuleSheet({
 
         {amountUsd != null && prefundUsd != null && (
           <p className="text-[12px] text-[#3a5230]">
-            Funds the rule&apos;s pot — {payments} payment{payments === 1 ? "" : "s"} of{" "}
+            Funds the rule&apos;s pot, {payments} payment{payments === 1 ? "" : "s"} of{" "}
             {formatUsd(amountUsd, { fixed: true })} ({formatUsd(prefundUsd, { fixed: true })} total).
           </p>
         )}
@@ -582,7 +582,7 @@ function CreateRuleSheet({
           Create rule
         </PrimaryButton>
         <p className="text-center text-[12px] text-[#3d7a29]">
-          You&apos;ll sign once to fund the pot. Payouts pull from it gaslessly — and the
+          You&apos;ll sign once to fund the pot. Payouts pull from it gaslessly, and the
           remaining balance is refunded if you cancel.
         </p>
       </div>
@@ -608,7 +608,7 @@ function DeleteSheet({
     if (!rule) return;
     setSubmitting(true);
     try {
-      // 1) CANCEL — fetch the owner-signed `cancel` bytes (refunds the pot).
+      // 1) CANCEL, fetch the owner-signed `cancel` bytes (refunds the pot).
       //    409/NO_ORDER means there's no on-chain pot to refund → just DELETE.
       try {
         const cancel = await api<CancelResp>(`/api/rules/${rule.id}/cancel`, { method: "POST" });
@@ -618,7 +618,7 @@ function DeleteSheet({
           err instanceof ApiError && (err.code === "NO_ORDER" || err.status === 409);
         if (!noOrder) throw err;
       }
-      // 2) DELETE — clear the row.
+      // 2) DELETE, clear the row.
       await api(`/api/rules/${rule.id}`, { method: "DELETE" });
       toast("Rule cancelled", "neutral");
       onDone();

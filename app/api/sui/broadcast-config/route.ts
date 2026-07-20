@@ -13,22 +13,22 @@ import { shinamiSuiNodeJsonRpc } from "@/lib/shinami";
  * SHAPE:
  *   {
  *     url: string,                       // e.g. "https://api.us1.shinami.com/sui/node/v1"
- *     headers: Record<string, string>,   // e.g. { "X-Api-Key": "<KEY>" } — empty {} for public
+ *     headers: Record<string, string>,   // e.g. { "X-Api-Key": "<KEY>" }, empty {} for public
  *     provider: "shinami" | "public"     // for iOS telemetry / dashboards
  *   }
  *
  * SECURITY NOTE: when `provider === "shinami"` this endpoint ships the
  * Shinami node key (`X-Api-Key`) directly to the iOS client.
  *
- *   - The Shinami **node** key is a metered-RPC credential — it has
+ *   - The Shinami **node** key is a metered-RPC credential, it has
  *     no signing capability, can't initiate sponsored transactions,
  *     and can't read or move user funds. The blast radius of a
  *     leaked node key is "someone uses our quota" (rate-limited
  *     reads + a paid-tier bill we already cap at our chosen plan).
  *
  *   - The Shinami **gas-station** / **wallet** keys are a different
- *     story — they can sponsor transactions and resolve zkLogin
- *     wallets. Those MUST stay server-side (see `lib/shinami.ts` —
+ *     story, they can sponsor transactions and resolve zkLogin
+ *     wallets. Those MUST stay server-side (see `lib/shinami.ts` -
  *     `apiKey()` reads them and never exposes them through any
  *     route).
  *
@@ -39,7 +39,7 @@ import { shinamiSuiNodeJsonRpc } from "@/lib/shinami";
  *     rest of the gasless path uses (mobile bearer / session).
  *
  * CACHING: `Cache-Control: private, max-age=900` (15 min). iOS will
- * cache this aggressively — every send round-tripping for the URL
+ * cache this aggressively, every send round-tripping for the URL
  * would add ~80ms per call, which defeats the point of paying for a
  * faster RPC. 15 min is long enough to amortize the cost and short
  * enough that a key rotation propagates within a working session.
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   // hit the prepare endpoint can hit this one. Both have the same
   // threat model (the Shinami node key is exposed by /broadcast-config
   // but the prepare endpoint runs the actual gasless build that would
-  // call Shinami server-side either way — there is no escalation here
+  // call Shinami server-side either way, there is no escalation here
   // beyond what an already-authenticated client could already do).
   const userId = await readEntryIdFromRequest(req);
   if (!userId) {

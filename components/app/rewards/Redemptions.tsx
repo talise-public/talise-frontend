@@ -87,7 +87,7 @@ export function Redemptions({
     setError(null);
     try {
       await api("/api/rewards/redeem", { method: "POST", body: { sku: active.sku } });
-      toast(`Redeemed — ${active.label}`, "success");
+      toast(`Redeemed, ${active.label}`, "success");
       setActive(null);
       onRedeemed();
     } catch (err) {
@@ -200,7 +200,7 @@ function PerkCard({
   pointsTotal: number;
   onRedeem: () => void;
 }) {
-  // Shown only when !canAfford — the gap between cost and the user's balance.
+  // Shown only when !canAfford, the gap between cost and the user's balance.
   const shortfall = Math.max(0, item.pointsCost - pointsTotal);
   return (
     <GlassCard className="flex flex-col gap-3.5 p-5">

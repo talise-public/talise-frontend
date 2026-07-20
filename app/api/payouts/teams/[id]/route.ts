@@ -14,9 +14,9 @@ export const runtime = "nodejs";
  * DELETE /api/payouts/teams/[id]
  *
  * Removes one of the caller's saved payout teams. Two shapes:
- *   • `{ mode: "db", ok, removed }` — DB-only team (or on-chain disabled):
+ *   • `{ mode: "db", ok, removed }`, DB-only team (or on-chain disabled):
  *     deleted immediately. Ownership enforced in the WHERE clause (idempotent).
- *   • `{ mode: "onchain", bytes }`  — on-chain team: returns sponsor-ready
+ *   • `{ mode: "onchain", bytes }`, on-chain team: returns sponsor-ready
  *     `payroll::delete` bytes to sign; the DB row is removed afterwards by
  *     POST /api/payouts/teams/[id]/record. The DB row is NOT removed yet.
  *

@@ -17,7 +17,7 @@ export const runtime = "nodejs";
  * POST /api/cheques/:id/claim/release  { secret, turnstileToken }
  *
  * The choke point. Re-validates the secret, runs the claim gates SERVER-SIDE
- * (captcha + optional IP-country allowlist — never trusts the
+ * (captcha + optional IP-country allowlist, never trusts the
  * client), atomically claims the row (double-claim lock), then releases
  * escrow→claimer.
  */
@@ -69,10 +69,10 @@ export async function POST(
     });
     const msg =
       elig.reason === "captcha"
-        ? "Captcha check failed — please try again."
+        ? "Captcha check failed, please try again."
         : elig.reason === "country"
           ? "This cheque can't be claimed from your country."
-          : "We couldn't verify your location for this cheque's country rule — please try again.";
+          : "We couldn't verify your location for this cheque's country rule, please try again.";
     return NextResponse.json({ error: msg, code: "GATE_FAILED", reason: elig.reason }, { status: 403 });
   }
 

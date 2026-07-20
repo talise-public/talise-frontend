@@ -7,7 +7,7 @@ import { moneyRulesEnabled, resumeRule } from "@/lib/money-rules";
 export const runtime = "nodejs";
 
 /**
- * POST /api/rules/[id]/resume — re-arm a paused rule. next_due_at is recomputed
+ * POST /api/rules/[id]/resume, re-arm a paused rule. next_due_at is recomputed
  * from now so a long-paused rule doesn't fire a backlog at once. Ownership-gated.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

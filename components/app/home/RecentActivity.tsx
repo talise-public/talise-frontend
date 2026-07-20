@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Recent activity preview — the top 5 entries from useActivity rendered as
+ * Recent activity preview, the top 5 entries from useActivity rendered as
  * compact glass rows (direction disc, title + counterparty, relative time, and
  * a signed localized amount). "View all" routes to the full Activity page.
  *
  * useActivity already listens for the global `talise:tx` event and re-pulls
  * fresh, so a send/receive made elsewhere in the app reflects here without a
  * manual refresh. We keep prior rows visible during a refresh (no skeleton
- * flash) once we've loaded at least once — same UX as iOS.
+ * flash) once we've loaded at least once, same UX as iOS.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -64,7 +64,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
       offrampState(o.status) === "done" ? null : offrampChipLabel(o.status);
     return (
       <div
-        className="flex items-center gap-3.5 rounded-[16px] border border-[#15300c]/10 bg-white/60 px-3.5 py-3 backdrop-blur-sm transition-colors hover:border-[#15300c]/20"
+        className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-[var(--color-surface-2)]"
         data-direction="sent"
       >
         <span
@@ -118,7 +118,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
 
   return (
     <div
-      className="flex items-center gap-3.5 rounded-[16px] border border-[#15300c]/10 bg-white/60 px-3.5 py-3 backdrop-blur-sm transition-colors hover:border-[#15300c]/20"
+      className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-[var(--color-surface-2)]"
       data-direction={entry.direction}
     >
       <span
@@ -153,7 +153,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
 
 function RowSkeleton() {
   return (
-    <div className="flex items-center gap-3.5 rounded-[16px] border border-[#15300c]/10 bg-white/60 px-3.5 py-3 backdrop-blur-sm">
+    <div className="flex items-center gap-3.5 px-4 py-3.5">
       <span className="size-9 shrink-0 animate-pulse rounded-full bg-[#15300c]/10" />
       <span className="min-w-0 flex-1 space-y-2">
         <span className="block h-2.5 w-24 animate-pulse rounded-full bg-[#15300c]/10" />
@@ -195,7 +195,7 @@ export function RecentActivity() {
       </div>
 
       {showSkeleton ? (
-        <div className="space-y-2.5">
+        <div className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)]">
           <RowSkeleton />
           <RowSkeleton />
           <RowSkeleton />
@@ -227,7 +227,7 @@ export function RecentActivity() {
           />
         </GlassCard>
       ) : (
-        <div className="space-y-2.5">
+        <div className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)]">
           {top.map((e) => (
             <ActivityRow
               key={

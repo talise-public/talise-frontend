@@ -29,7 +29,7 @@ export function ReferralCapture() {
         keepalive: true,
       }).catch(() => {});
     } catch {
-      /* no-op — capture is best-effort */
+      /* no-op, capture is best-effort */
     }
   }, []);
 

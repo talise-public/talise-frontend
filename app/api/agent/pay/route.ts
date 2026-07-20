@@ -13,15 +13,15 @@ export const runtime = "nodejs";
 const ADDRESS_RE = /^0x[a-f0-9]{64}$/i;
 
 /**
- * POST /api/agent/pay — custodial agent payment.
+ * POST /api/agent/pay, custodial agent payment.
  *
  * Auth: `Authorization: Bearer tak_…` (an agent-wallet token). The server signs
  * server-side with the wallet's custodied ephemeral key. Runs the SAME guards as
- * a normal send — app-access allowlist, compliance screening, the rolling send
- * limit — plus the wallet's own daily USD cap (reserved before the send, released
+ * a normal send, app-access allowlist, compliance screening, the rolling send
+ * limit, plus the wallet's own daily USD cap (reserved before the send, released
  * on failure). USDsui only, gasless. Feature-gated OFF by default.
  *
- * Body: `{ to, amount, memo? }` — `to` is any recipient form (resolved here).
+ * Body: `{ to, amount, memo? }`, `to` is any recipient form (resolved here).
  */
 export async function POST(req: Request) {
   if (!agentWalletsEnabled()) {
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "can't pay your own wallet" }, { status: 400 });
   }
 
-  // Compliance screen — HARD STOP (fail-closed on a sanctioned hit).
+  // Compliance screen, HARD STOP (fail-closed on a sanctioned hit).
   const screen = await screenTransfer({
     senderAddr: wallet.suiAddress,
     recipientAddr: resolved.address,
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       capRemaining: reserved.remaining,
     });
   } catch (err) {
-    // The money did NOT move — release the reservation so the cap isn't burned.
+    // The money did NOT move, release the reservation so the cap isn't burned.
     await releaseAgentSpend(wallet.id, amount);
     const msg = (err as Error).message ?? "send failed";
     console.warn(`[agent/pay] wallet=${wallet.id} failed: ${msg}`);

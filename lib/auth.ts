@@ -24,7 +24,7 @@ export function googleRedirectUri(): string {
 /**
  * Derive the OAuth redirect URI from the incoming request's host. Used by
  * server-side flows that want the redirect to land back on whichever host
- * the user is talking to — e.g. mobile sign-in routes through
+ * the user is talking to, e.g. mobile sign-in routes through
  * `app.talise.io/auth/callback`, the web flow stays on
  * `talise.io/auth/callback`. Both hosts must be registered as Authorized
  * Redirect URIs in Google Cloud Console.
@@ -79,7 +79,7 @@ export function buildGoogleAuthUrl(state: string, redirectUri?: string): string 
 
 /**
  * Exchange the auth code for tokens. Google enforces that `redirect_uri`
- * here matches the value sent in the initial auth request — callers should
+ * here matches the value sent in the initial auth request, callers should
  * pass `redirectUriFromRequest(req)` so both legs use the same host.
  */
 export async function exchangeCodeForTokens(

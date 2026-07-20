@@ -90,13 +90,13 @@ export function WithdrawSheet({
       {v && (
         <div className="space-y-5 pb-1">
           <h2
-            className="text-[20px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-            style={{ fontFamily: "var(--font-display-v2)" }}
+            className="text-[20px] font-[500] tracking-[-0.05em] text-[#15300c]"
+            style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
           >
             Your {venueLabel(v.venue)} earnings
           </h2>
 
-          {/* Position stat rows — clean flat card */}
+          {/* Position stat rows, clean flat card */}
           <GlassCard className="overflow-hidden !p-0" radius={20}>
             <PositionRow label="Supplied" value={formatUsd(supplied, { fixed: true })} />
             <Divider />
@@ -114,7 +114,7 @@ export function WithdrawSheet({
             <Divider />
             <PositionRow
               label="Earning / day"
-              value={supplied > 0 && apy > 0 ? formatUsd(dailyEarning) : "—"}
+              value={supplied > 0 && apy > 0 ? formatUsd(dailyEarning) : "-"}
             />
           </GlassCard>
 
@@ -132,7 +132,7 @@ export function WithdrawSheet({
                   setError(null);
                 }}
                 placeholder="0.00"
-                className="w-full bg-transparent text-[20px] font-medium tracking-[-0.01em] tabular-nums text-[#15300c] outline-none placeholder:text-[#3d7a29]"
+                className="w-full bg-transparent text-[20px] font-medium tracking-[-0.05em] tabular-nums text-[#15300c] outline-none placeholder:text-[#3d7a29]"
               />
               <GlassPill
                 size="sm"
@@ -209,7 +209,7 @@ function PositionRow({
     <div className="flex items-center justify-between px-4 py-3">
       <span className="text-[13px] text-[#3a5230]">{label}</span>
       <span
-        className={`text-[14px] font-medium tracking-[-0.01em] tabular-nums ${
+        className={`text-[14px] font-medium tracking-[-0.05em] tabular-nums ${
           accent ? "text-[#3d7a29]" : "text-[#15300c]"
         }`}
       >

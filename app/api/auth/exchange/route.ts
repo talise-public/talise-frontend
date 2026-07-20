@@ -17,7 +17,7 @@ export const runtime = "nodejs";
  * POSTs the code+state here, so the loader animates while THIS request runs
  * the real exchange (Google → Shinami wallet → upsert → cookies).
  *
- * State is validated against the same httpOnly cookie the authorize leg set —
+ * State is validated against the same httpOnly cookie the authorize leg set -
  * identical CSRF posture to the old single-request flow, just split across
  * two requests of the same browser session.
  */
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   try {
     const result = await completeSignIn({
       code,
-      // Web uses the static env redirect URI — it must match what the client
+      // Web uses the static env redirect URI, it must match what the client
       // used at authorize-time (Vercel may 307 apex↔www between legs).
       redirectUri: googleRedirectUri(),
       country: req.headers.get("x-vercel-ip-country"),

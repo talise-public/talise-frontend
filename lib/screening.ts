@@ -5,15 +5,15 @@ import "server-only";
  *
  * Two independent legs, composed by `screenTransfer`:
  *
- *   1. NAME SANCTIONS — fuzzy match a counterparty name against a small
+ *   1. NAME SANCTIONS, fuzzy match a counterparty name against a small
  *      embedded OFAC-style sample list. This is a HARD STOP and is
  *      FAIL-CLOSED: an explicit list hit blocks the transfer. The list
  *      here is a tiny illustrative sample; production swaps in the real
  *      OFAC SDN consolidated list (and any internal denylist) behind the
- *      same `SanctionsListProvider` interface — `screenName` never has to
+ *      same `SanctionsListProvider` interface, `screenName` never has to
  *      change. See `EMBEDDED_SANCTIONS_SAMPLE` below.
  *
- *   2. ADDRESS RISK — score an on-chain address through a transaction-
+ *   2. ADDRESS RISK, score an on-chain address through a transaction-
  *      monitoring provider (Chainalysis KYT / TRM Labs shape). This leg
  *      is FAIL-OPEN: a provider/transport error logs and ALLOWS the send
  *      so a vendor outage can't 500 every transfer. Only a successful
@@ -22,7 +22,7 @@ import "server-only";
  *      deterministic mock scorer; production swaps in the real vendor
  *      behind the same `AddressRiskProvider` interface.
  *
- * Nothing here is wired to the DB — screening is a pure, side-effect-free
+ * Nothing here is wired to the DB, screening is a pure, side-effect-free
  * gate that callers invoke before building/broadcasting a transaction.
  * The provider seams (`setSanctionsListProvider`, `setAddressRiskProvider`)
  * let infra swap in real vendors without touching call sites.
@@ -35,7 +35,7 @@ import "server-only";
 /**
  * Source of sanctioned-party names. The embedded sample implements this;
  * production replaces it with a loader for the OFAC SDN consolidated list
- * (and any internal denylist) — same shape, so `screenName` is unchanged.
+ * (and any internal denylist), same shape, so `screenName` is unchanged.
  */
 export interface SanctionsListProvider {
   /** Returns the canonical list of sanctioned-party display names. */
@@ -43,7 +43,7 @@ export interface SanctionsListProvider {
 }
 
 /**
- * Tiny illustrative OFAC-style sample. NOT the real consolidated list —
+ * Tiny illustrative OFAC-style sample. NOT the real consolidated list -
  * it exists so the matcher + hard-stop wiring are exercisable end-to-end.
  * Swap via `setSanctionsListProvider(realOfacLoader)` in production.
  */
@@ -189,7 +189,7 @@ export interface AddressRiskResult {
  * Provider seam for on-chain address risk. The mock below implements this;
  * production swaps in a Chainalysis KYT / TRM client behind the same
  * interface via `setAddressRiskProvider`. Implementations MAY throw on a
- * transport/provider error — `screenTransfer` catches and FAILS OPEN.
+ * transport/provider error, `screenTransfer` catches and FAILS OPEN.
  */
 export interface AddressRiskProvider {
   assess(address: string): Promise<AddressRiskResult>;
@@ -284,10 +284,10 @@ export interface ScreenTransferResult {
  * with a `reason` on a block, else `{allow:true}`.
  *
  * Failure semantics:
- *   • NAME leg — FAIL CLOSED. An explicit sanctions-list name hit (sender
+ *   • NAME leg, FAIL CLOSED. An explicit sanctions-list name hit (sender
  *     OR recipient) blocks. The list lookup is in-process and pure, so
  *     there's no transport to fail; a hit is authoritative.
- *   • ADDRESS leg — FAIL OPEN. A provider/transport error is logged and the
+ *   • ADDRESS leg, FAIL OPEN. A provider/transport error is logged and the
  *     send is ALLOWED, so a vendor outage can't 500 every transfer. Only a
  *     successful response recommending a block (`block:true` or a severity
  *     in `RISK_BLOCK_SEVERITIES`) stops the transfer.
@@ -299,7 +299,7 @@ export interface ScreenTransferResult {
 export async function screenTransfer(
   input: ScreenTransferInput
 ): Promise<ScreenTransferResult> {
-  // 1) Name sanctions — fail-closed hard stop.
+  // 1) Name sanctions, fail-closed hard stop.
   const senderNameHit = screenName(input.senderName);
   if (senderNameHit) {
     return {
@@ -317,26 +317,34 @@ export async function screenTransfer(
     };
   }
 
-  // 2) Address risk — fail-open. Assess both counterparties; a single
-  //    block recommendation stops the transfer. Any thrown error logs and
-  //    allows (per the fail-open contract).
-  for (const [label, addr] of [
+  // 2) Address risk, fail-open. Assess both counterparties IN PARALLEL; a
+  //    single block recommendation stops the transfer. Any thrown error logs
+  //    and allows (per the fail-open contract). Sender is checked first for the
+  //    block reason, matching the previous serial order.
+  const counterparties = [
     ["sender", input.senderAddr],
     ["recipient", input.recipientAddr],
-  ] as const) {
-    if (!addr) continue;
-    let result: AddressRiskResult;
-    try {
-      result = await riskProvider.assess(addr);
-    } catch (err) {
-      // FAIL OPEN: a vendor outage must not 500 every send.
-      console.warn(
-        `[screening] address-risk provider error for ${label}=${addr}; failing open (allowing). detail=${
-          (err as Error)?.message ?? String(err)
-        }`
-      );
-      continue;
-    }
+  ] as const;
+  const verdicts = await Promise.all(
+    counterparties.map(async ([label, addr]): Promise<AddressRiskResult | null> => {
+      if (!addr) return null;
+      try {
+        return await riskProvider.assess(addr);
+      } catch (err) {
+        // FAIL OPEN: a vendor outage must not 500 every send.
+        console.warn(
+          `[screening] address-risk provider error for ${label}=${addr}; failing open (allowing). detail=${
+            (err as Error)?.message ?? String(err)
+          }`
+        );
+        return null;
+      }
+    })
+  );
+  for (let i = 0; i < counterparties.length; i++) {
+    const [label] = counterparties[i];
+    const result = verdicts[i];
+    if (!result) continue;
     if (result.block || RISK_BLOCK_SEVERITIES.has(result.severity)) {
       return {
         allow: false,

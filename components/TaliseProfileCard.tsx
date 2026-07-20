@@ -1,10 +1,10 @@
 /**
- * TaliseProfileCard — a premium, screenshot-worthy "membership card" for a
+ * TaliseProfileCard, a premium, screenshot-worthy "membership card" for a
  * waitlist member, centered on their Talise name (@handle). Deliberately DARK
  * (forest→black with a mint glow + the brand diamond) so it pops against the
  * light-mint waitlist page and reads like a metal card when posted to X/IG.
  *
- * Presentational + server-safe (no hooks) — reused by the post-claim dashboard
+ * Presentational + server-safe (no hooks), reused by the post-claim dashboard
  * and the public /u/[handle] page. The matching social-preview image is
  * rendered separately by app/u/[handle]/opengraph-image.tsx.
  */
@@ -18,7 +18,7 @@ export function TaliseProfileCard({
   position?: number | null;
   referralCount?: number | null;
   /** When true, fill the parent's height (h-full) instead of holding a fixed
-   *  card aspect — lets the dashboard stretch it to match the actions column.
+   *  card aspect, lets the dashboard stretch it to match the actions column.
    *  The card's internal justify-between spreads the content over the taller
    *  height cleanly (no image to distort). Defaults to the fixed-aspect card
    *  used standalone on /u/[handle]. */
@@ -45,7 +45,7 @@ export function TaliseProfileCard({
       />
 
       <div className="relative flex h-full flex-col justify-between gap-4 p-5 sm:p-7">
-        {/* top row — brand mark + waitlist tag */}
+        {/* top row, brand mark + waitlist tag */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <svg width="22" height="20" viewBox="0 0 583 533" aria-hidden>
@@ -63,7 +63,7 @@ export function TaliseProfileCard({
           </span>
         </div>
 
-        {/* the name — the hero of the card */}
+        {/* the name, the hero of the card */}
         <div className="min-w-0">
           <div className="truncate text-[26px] font-semibold leading-none tracking-tight text-white sm:text-[34px]">
             @{handle}
@@ -73,7 +73,7 @@ export function TaliseProfileCard({
           </div>
         </div>
 
-        {/* bottom row — position + referrals. Labels shrink + tighten on
+        {/* bottom row, position + referrals. Labels shrink + tighten on
             small screens so the two columns always fit a narrow card. */}
         <div className="flex items-end justify-between gap-2">
           <div className="min-w-0">
@@ -81,7 +81,7 @@ export function TaliseProfileCard({
               Position
             </div>
             <div className="mt-0.5 text-[17px] font-semibold leading-none tracking-tight text-white sm:text-[20px]">
-              {typeof position === "number" && position > 0 ? `#${position.toLocaleString()}` : "—"}
+              {typeof position === "number" && position > 0 ? `#${position.toLocaleString()}` : "-"}
             </div>
           </div>
           <div className="text-right">

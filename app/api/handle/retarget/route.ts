@@ -23,21 +23,21 @@ export const runtime = "nodejs";
  *
  * Why this exists: subname NFTs minted before the wallet-consolidation
  * (or any time the user's primary address changes) keep their old
- * `targetAddress` field — so `name@talise.sui` routes to the OLD
+ * `targetAddress` field, so `name@talise.sui` routes to the OLD
  * address rather than the wallet the user is signed in to today. The
  * NFT owner can update the target via
  * `SuinsTransaction.setTargetAddress({nft, address, isSubname:true})`.
  *
  * Modes:
- *   probe=1 — no PTB build. Returns the diff (names + current targets)
+ *   probe=1, no PTB build. Returns the diff (names + current targets)
  *     so the iOS sheet can render "name → 0x… ✗" vs "name → 0x… ✓"
  *     before the user taps the CTA.
- *   default — full Onara-sponsored build. Returns the bytes for iOS
+ *   default, full Onara-sponsored build. Returns the bytes for iOS
  *     to sign and forward to `/api/zk/sponsor-execute` with
  *     `meta.kind = "retarget"`.
  *
  * Sponsorship rail: Onara, mirroring `/api/send/sponsor-prepare`'s
- * sponsored branch. The PTB is wallet maintenance — no value moves —
+ * sponsored branch. The PTB is wallet maintenance, no value moves -
  * so the user pays nothing.
  *
  * Cap: 10s outer (mirrors the `/api/earn/withdraw/prepare` pattern).
@@ -61,7 +61,7 @@ type NameDiff = {
  * read shouldn't block the rest).
  *
  * Mirrors the `withTimeout` pattern in `lib/activity.ts` and
- * `/api/earn/withdraw/prepare` — local copy keeps a wedged retarget
+ * `/api/earn/withdraw/prepare`, local copy keeps a wedged retarget
  * read from sharing a stack frame with the activity feed.
  */
 function withTimeout<T>(
@@ -91,7 +91,7 @@ function withTimeout<T>(
 }
 
 export async function POST(req: Request) {
-  // App Attest required on the build path (money-adjacent — Onara
+  // App Attest required on the build path (money-adjacent, Onara
   // sponsors gas). Probe path is also gated for consistency.
   const attestBlock = requireAppAttestStructural(req);
   if (attestBlock) return attestBlock;
@@ -131,25 +131,25 @@ export async function POST(req: Request) {
 
     // 1. Enumerate owned `*.talise.sui` subname NFTs. The helper
     //    already pages owned objects and resolves each name's current
-    //    target — we'd repeat that work if we didn't use it. The
+    //    target, we'd repeat that work if we didn't use it. The
     //    helper itself catches per-name errors so this never throws.
     const owned = await findAllTaliseSubnamesForOwner(user.sui_address);
 
     if (owned.length === 0) {
       console.log(
-        `[handle/retarget] user=${userId} owns 0 *.talise.sui subnames — alreadyAligned`
+        `[handle/retarget] user=${userId} owns 0 *.talise.sui subnames, alreadyAligned`
       );
       return NextResponse.json({ alreadyAligned: true, names: [] });
     }
 
     // 2. Compute the diff. `findAllTaliseSubnamesForOwner` already
     //    populated `targetAddress` per name via SuinsClient.getNameRecord
-    //    — but it doesn't apply a timeout. We re-read here under a 3s
+    //  , but it doesn't apply a timeout. We re-read here under a 3s
     //    per-name cap so a sluggish gRPC node can't extend the route
     //    past our 10s outer cap.
     //
     //    For names where the targetAddress already matches the user's
-    //    sui_address, we skip — no point appending a no-op MoveCall.
+    //    sui_address, we skip, no point appending a no-op MoveCall.
     const suinsClient = suins();
     const allNames: NameDiff[] = [];
     const needUpdate: NameDiff[] = [];
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
         `getNameRecord:${o.fullName}`
       );
       if (!readRes.ok && readRes.timeout) {
-        // Critical read timed out — surface a clean 504 rather than
+        // Critical read timed out, surface a clean 504 rather than
         // returning a half-baked diff that could lead the user into
         // signing a PTB that re-targets names whose current target
         // we don't actually know.
@@ -188,7 +188,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Probe-only path — never build a PTB, just describe the diff.
+    // 3. Probe-only path, never build a PTB, just describe the diff.
     //    Sheet uses this on appear to render the per-name state with
     //    red/green badges before the user taps the CTA.
     if (isProbe) {
@@ -206,18 +206,18 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4. Build path — if every name is already aligned, no work to do.
+    // 4. Build path, if every name is already aligned, no work to do.
     //    Return the same `alreadyAligned: true` shape so the sheet can
     //    render the green ✓ state without a second round-trip.
     if (needUpdate.length === 0) {
       console.log(
-        `[handle/retarget] user=${userId} every *.talise.sui already aligned — nothing to build`
+        `[handle/retarget] user=${userId} every *.talise.sui already aligned, nothing to build`
       );
       return NextResponse.json({ alreadyAligned: true, names: allNames });
     }
 
     // 5. Build the Onara-sponsored PTB. One `setTargetAddress` MoveCall
-    //    per name needing update — see `scripts/fix-suins-targets.mjs`
+    //    per name needing update, see `scripts/fix-suins-targets.mjs`
     //    for the canonical shape (the script broadcasts; this route
     //    just prepares the bytes for iOS to sign).
     const onaraClient = onara();
@@ -278,7 +278,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json(
       {
-        error: "Retarget is taking longer than usual — try again in a few seconds.",
+        error: "Retarget is taking longer than usual, try again in a few seconds.",
         code: "RETARGET_TIMEOUT",
       },
       { status: 504 }

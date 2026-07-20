@@ -10,11 +10,11 @@ import {
 export const runtime = "nodejs";
 
 /**
- * POST /api/admin/seed-tester — ADMIN-ONLY closed-alpha money-in.
+ * POST /api/admin/seed-tester, ADMIN-ONLY closed-alpha money-in.
  *
  * Credits an invited tester a small USDsui balance to transact with, sent from
  * the off-ramp treasury (`OFFRAMP_TREASURY_SK`). This is the fast "treasury
- * seed" path to fund the alpha without a live card on-ramp — the real Bridge/
+ * seed" path to fund the alpha without a live card on-ramp, the real Bridge/
  * Transak on-ramp slots in later. Capped + admin-gated.
  *
  * Body: { handle?: "@alice" | "alice", address?: "0x…", amountUsd: number }.

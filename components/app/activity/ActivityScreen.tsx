@@ -21,7 +21,7 @@ import {
  * sheet.
  *
  * `useActivity` auto-refreshes on the `talise:tx` window event and serves the
- * immutable snapshot floor first — so this screen never flashes empty after a
+ * immutable snapshot floor first, so this screen never flashes empty after a
  * send and history never shrinks.
  */
 export function ActivityScreen() {
@@ -53,14 +53,14 @@ export function ActivityScreen() {
       <header className="space-y-1">
         <Eyebrow>Activity</Eyebrow>
         <h1
-          className="text-[26px] font-[800] uppercase tracking-[-0.02em] text-[#15300c] lg:text-[28px]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[26px] font-[500] tracking-[-0.05em] text-[#15300c] lg:text-[28px]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           All activity
         </h1>
       </header>
 
-      {/* Filter chips — soft pills, horizontal scroll on narrow viewports */}
+      {/* Filter chips, soft pills, horizontal scroll on narrow viewports */}
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FILTERS.map((f) => {
           const active = f.key === filter;
@@ -82,7 +82,7 @@ export function ActivityScreen() {
         })}
       </div>
 
-      {/* List — skeleton / error / empty / rows */}
+      {/* List, skeleton / error / empty / rows */}
       {showSkeleton ? (
         <div>
           {Array.from({ length: 7 }).map((_, i) => (
@@ -116,7 +116,7 @@ export function ActivityScreen() {
             subtitle={
               filter === "all"
                 ? "Your sends, receipts, earnings and swaps will appear here."
-                : "Nothing here yet — try a different filter."
+                : "Nothing here yet, try a different filter."
             }
             action={
               filter === "all" ? (
@@ -126,7 +126,7 @@ export function ActivityScreen() {
           />
         </div>
       ) : (
-        /* Flat list — borderless rows need no card wrapper or inter-row gap;
+        /* Flat list, borderless rows need no card wrapper or inter-row gap;
            the hover fill on each row gives visual separation on interaction. */
         <div>
           {filtered.map((row) => (
@@ -144,7 +144,7 @@ export function ActivityScreen() {
   );
 }
 
-/** Stable list key — digest when present, else a synthetic composite. */
+/** Stable list key, digest when present, else a synthetic composite. */
 function rowKey(row: ActivityRow): string {
   if (row.digest && row.digest.length > 0) return row.digest;
   return `${row.direction}:${row.timestampMs}:${row.amountUsdsui ?? ""}:${row.amountSui ?? ""}`;

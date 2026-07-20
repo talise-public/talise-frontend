@@ -1,5 +1,5 @@
 /**
- * Circle Mint interface — USD wire/ACH → USDC on Sui, 1:1, at par.
+ * Circle Mint interface, USD wire/ACH → USDC on Sui, 1:1, at par.
  *
  * Master plan §4/§6: Talise uses Circle Mint *directly* (USD wire → USDC on
  * Sui, 1:1, ~0bps) to capture mint/redeem at par rather than buying USDC
@@ -9,7 +9,7 @@
  *
  * This module is a typed INTERFACE + a deterministic MOCK implementation.
  * When the real Circle Mint relationship is live, swap the mock for an HTTP
- * client behind the same `CircleMint` interface — callers don't change.
+ * client behind the same `CircleMint` interface, callers don't change.
  *
  * Scope: this is additive plumbing. It does NOT touch the existing Stripe
  * onramp routes; it is the bank-funded settlement primitive those routes do
@@ -36,7 +36,7 @@ export type MintRequest = {
   readonly amountUsd: number;
   /** Sui address that receives the freshly minted USDC. */
   readonly destinationSuiAddress: string;
-  /** Wire vs ACH — informational; mint is par either way. */
+  /** Wire vs ACH, informational; mint is par either way. */
   readonly rail: CircleFundingRail;
   /** Idempotency key so a retried wire never double-mints. */
   readonly idempotencyKey?: string;

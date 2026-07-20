@@ -3,7 +3,7 @@
 /**
  * Shared "hide amounts" toggle. When on, sensitive figures across the app
  * (the Home balance, activity amounts, the full Activity page) render as a
- * masked placeholder instead of the real number. DISPLAY-ONLY — this never
+ * masked placeholder instead of the real number. DISPLAY-ONLY, this never
  * touches form inputs, send amounts, or any money/limit path.
  *
  * State lives in localStorage ("talise:amounts-hidden") so the choice sticks
@@ -50,7 +50,7 @@ function write(next: boolean): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
   } catch {
-    /* storage blocked — the in-memory event still drives this tab */
+    /* storage blocked, the in-memory event still drives this tab */
   }
   window.dispatchEvent(new Event(EVENT));
 }

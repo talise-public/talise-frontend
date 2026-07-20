@@ -1,5 +1,5 @@
 /**
- * Talise shielded-pool SDK — transact PTB builder.
+ * Talise shielded-pool SDK, transact PTB builder.
  *
  * Assembles the `transact` PTB that the relayer (`/api/shield/relay`) will
  * validate + sponsor. The shape MUST match `validate-commands.ts` exactly:
@@ -209,7 +209,7 @@ export function buildTransact(params: BuildTransactParams): Transaction {
     arguments: transactArgs,
   });
 
-  // `transact` returns a Coin<CoinType> by value — it MUST be consumed. On a
+  // `transact` returns a Coin<CoinType> by value, it MUST be consumed. On a
   // withdraw it holds the unshielded funds (→ recipient); on deposit / internal
   // it is a zero coin (→ relayer, harmless). Either way, transfer it out.
   tx.transferObjects([out], tx.pure.address(params.outputRecipient ?? params.ext.relayer));

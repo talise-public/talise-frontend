@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Renders a parsed Talise Agent intent beneath the assistant's message — the
+ * Renders a parsed Talise Agent intent beneath the assistant's message, the
  * web twin of the iOS `AgentIntentCard`.
  *
  *   • Read-only intents (balance / yield / activity) auto-run inline on mount
- *     and show their result lines — no slide, no signing.
+ *     and show their result lines, no slide, no signing.
  *   • Write intents POST `/api/agent/plan` to validate + price, render a
  *     per-step preview, and gate execution behind simple Accept / Decline
- *     buttons — the server only marks a plan `confirmable` when it's safe.
+ *     buttons, the server only marks a plan `confirmable` when it's safe.
  *
  * "Agent proposes → server validates → human confirms." Execution NEVER trusts
  * the model's proposed amount/recipient: send legs use the SERVER-resolved
@@ -46,7 +46,7 @@ type PlannedStepDTO = {
   label: string;
   status: "ok" | "read_only" | "blocked" | "needs_info";
   detail?: string;
-  /** Resolved recipient (send steps only) — what the executor sends to. */
+  /** Resolved recipient (send steps only), what the executor sends to. */
   resolved?: { address: string; displayName: string };
   /** USD this step moves out of the wallet (send/save/withdraw); 0 read-only. */
   amountUsd?: number;
@@ -128,7 +128,7 @@ export function AgentIntentCard({ intent }: { intent: ChatIntent }) {
         switch (p.kind) {
           case "send": {
             // Defense-in-depth: send ONLY to the server-resolved, screened
-            // recipient + the server-validated amount — never the model's raw
+            // recipient + the server-validated amount, never the model's raw
             // proposal. Skip an "ok" step the server didn't fully resolve.
             const to = p.resolved?.address;
             const amount = p.amountUsd;
@@ -175,7 +175,7 @@ export function AgentIntentCard({ intent }: { intent: ChatIntent }) {
           case "request": {
             const amount = p.amountUsd;
             if (!amount || amount <= 0) continue;
-            // No signing — just mint a shareable payment link via the existing
+            // No signing, just mint a shareable payment link via the existing
             // request rail. Copy it to the clipboard for an easy share.
             const note = step && step.kind === "request" ? step.note : undefined;
             const res = await api<{ payUrl?: string }>(
@@ -188,7 +188,7 @@ export function AgentIntentCard({ intent }: { intent: ChatIntent }) {
             break;
           }
           default:
-            // swap (and any future kind) isn't executable from chat yet — skip
+            // swap (and any future kind) isn't executable from chat yet, skip
             // rather than fail the whole plan.
             break;
         }
@@ -203,7 +203,7 @@ export function AgentIntentCard({ intent }: { intent: ChatIntent }) {
     }
   }
 
-  // Decline — dismiss the proposed plan without touching money.
+  // Decline, dismiss the proposed plan without touching money.
   function decline() {
     if (stage === "running") return;
     setError(null);

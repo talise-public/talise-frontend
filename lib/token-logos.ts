@@ -7,7 +7,7 @@
  * sourced from Cetus / Noodles (the Walrus-backed datasprite CDN) and use it as
  * a fallback when metadata has no icon.
  *
- * Keyed by UPPERCASE ticker symbol — the symbol is already resolved (from
+ * Keyed by UPPERCASE ticker symbol, the symbol is already resolved (from
  * on-chain metadata or the Cetus pool universe) before this lookup, so it works
  * regardless of the coin's package id.
  */

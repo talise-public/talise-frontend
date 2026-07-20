@@ -32,7 +32,7 @@ async function send(opts: {
 }): Promise<SendResult> {
   const r = client();
   if (!r) {
-    // Dev mode without Resend key — log and pretend success.
+    // Dev mode without Resend key, log and pretend success.
     console.log(
       `[email/dev] would send to=${opts.to} subject="${opts.subject}" (${opts.html.length} bytes)`
     );
@@ -124,7 +124,7 @@ export type PreparedWaitlistConfirmation = {
 
 /**
  * Render a waitlist confirmation to HTML + subject WITHOUT sending it.
- * Pure (no network, no side effects) — safe to kick off and `await`
+ * Pure (no network, no side effects), safe to kick off and `await`
  * later, or to race against other in-flight work. Pulls `appUrl` and the
  * handle-aware subject exactly as the combined send path did.
  */
@@ -181,7 +181,7 @@ export async function sendPrerenderedWaitlistConfirmation(
 
   const r = client();
   if (!r) {
-    // In production, NOT having a Resend key is a hard misconfig — the
+    // In production, NOT having a Resend key is a hard misconfig, the
     // user signed up expecting a confirmation. Refusing here surfaces it
     // (route logs "send failed: RESEND_API_KEY missing") instead of
     // silently marking `confirmation_sent=true` on a no-op.
@@ -205,23 +205,23 @@ export async function sendPrerenderedWaitlistConfirmation(
     const res = await r.emails.send(payload);
     if (res.error) {
       console.warn(
-        `[email/waitlist-send] FAILED to=${to} from="${fromAddr}" bcc=${bcc ?? "—"} error=${res.error.message}`
+        `[email/waitlist-send] FAILED to=${to} from="${fromAddr}" bcc=${bcc ?? "-"} error=${res.error.message}`
       );
       return { ok: false, reason: res.error.message };
     }
     if (!res.data?.id) {
       console.warn(
-        `[email/waitlist-send] no id returned to=${to} from="${fromAddr}" bcc=${bcc ?? "—"}`
+        `[email/waitlist-send] no id returned to=${to} from="${fromAddr}" bcc=${bcc ?? "-"}`
       );
       return { ok: false, reason: "no email id returned" };
     }
     console.log(
-      `[email/waitlist-send] OK to=${to} from="${fromAddr}" bcc=${bcc ?? "—"} resendId=${res.data.id}`
+      `[email/waitlist-send] OK to=${to} from="${fromAddr}" bcc=${bcc ?? "-"} resendId=${res.data.id}`
     );
     return { ok: true, id: res.data.id };
   } catch (err) {
     console.warn(
-      `[email/waitlist-send] EXCEPTION to=${to} from="${fromAddr}" bcc=${bcc ?? "—"} err=${(err as Error).message}`
+      `[email/waitlist-send] EXCEPTION to=${to} from="${fromAddr}" bcc=${bcc ?? "-"} err=${(err as Error).message}`
     );
     return { ok: false, reason: (err as Error).message };
   }

@@ -22,7 +22,7 @@ import { readActivitySnapshot, writeActivitySnapshot } from "@/lib/snapshots";
 /**
  * Cache the (heavy) chain scan per (address, limit). The scan issues
  * two `queryTransactionBlocks` calls + a counterparty-name resolution
- * fan-out — 1-3 seconds cold. The TTL is kept short on purpose: the
+ * fan-out, 1-3 seconds cold. The TTL is kept short on purpose: the
  * iOS optimistic-tx flow (`HomeView.applyOptimisticTx`) schedules a
  * "reconcile" reload 1.5s after a send, then `loadActivity` overwrites
  * `activity` with the server response. A longer TTL here would serve
@@ -47,7 +47,7 @@ const ACTIVITY_CACHE_TTL_MS = 5_000;
  * production load occasionally pushed the iOS receive window past 15s
  * and surfaced as NSURLErrorTimedOut (-1001) on `/api/activity?limit=20`
  * (see iOS console log forwarded 2026-05-29). 8s preserves 7s of
- * end-to-end headroom — enough for cold start + handshake — while
+ * end-to-end headroom, enough for cold start + handshake, while
  * still letting the chain scan run to a useful depth (leg 1 takes
  * 1-3s warm, ~4s cold).
  */
@@ -58,7 +58,7 @@ function outerCap<T>(p: Promise<T>, fallback: T): Promise<T> {
   return new Promise<T>((resolve) => {
     const timer = setTimeout(() => {
       console.warn(
-        `[activity-snapshot] outer cap hit at ${Date.now() - start}ms — serving fallback`
+        `[activity-snapshot] outer cap hit at ${Date.now() - start}ms, serving fallback`
       );
       resolve(fallback);
     }, OUTER_CAP_MS);
@@ -127,9 +127,9 @@ function serializeEntries(entries: ActivityEntry[]): SerializedEntry[] {
     counterparty: e.counterparty,
     counterpartyName: e.counterpartyName,
     venue: e.venue,
-    // Compound spend+save flag — iOS renders "Sent + saved" with both amounts.
+    // Compound spend+save flag, iOS renders "Sent + saved" with both amounts.
     roundupUsdsui: e.roundupUsdsui,
-    // Non-USDsui/SUI coin movement (WAL, USDC, …) — iOS renders "+ 10 WAL".
+    // Non-USDsui/SUI coin movement (WAL, USDC, …), iOS renders "+ 10 WAL".
     otherCoin: e.otherCoin,
     // Cash-out detail when this send is a Linq off-ramp (set by enrichOfframps).
     offramp: e.offramp ?? null,
@@ -140,7 +140,7 @@ function serializeEntries(entries: ActivityEntry[]): SerializedEntry[] {
 
 /**
  * Relabel "sent" rows whose recipient is one of the user's Linq off-ramp
- * deposit wallets into CASH-OUTS — attaching the NGN figure, bank, payout
+ * deposit wallets into CASH-OUTS, attaching the NGN figure, bank, payout
  * status, and rate from `linq_offramps`. Lets History render "Cash out →
  * {bank}" and a proper receipt instead of an anonymous send to a 0x address.
  * Best-effort: any failure leaves the rows untouched (history must not break).
@@ -199,7 +199,7 @@ async function enrichOfframps(
  * paid in ONE PTB with many legs, so the chain scan collapses it to a single
  * "Sent to <one recipient>" row; here we look the digest up in `payout_batches`
  * and, when it carries a `team_name`, attach `{ name, recipientCount }` so
- * History can render "Paid {team}" with a team icon. Best-effort — any failure
+ * History can render "Paid {team}" with a team icon. Best-effort, any failure
  * leaves the rows untouched.
  */
 async function enrichTeamPayouts(
@@ -270,7 +270,7 @@ function entryKey(e: SerializedEntry): string {
 }
 
 /**
- * MONOTONIC merge. On-chain history is IMMUTABLE — a row that existed last time
+ * MONOTONIC merge. On-chain history is IMMUTABLE, a row that existed last time
  * must never disappear because this refresh's chain scan was partial, timed
  * out, or transiently empty. So we union the prior snapshot with the fresh scan
  * by `digest`: existing rows are the floor, the fresh scan may UPGRADE a

@@ -1,5 +1,5 @@
 /**
- * Payment Intents — Sui's canonical pattern for bundling many heterogeneous
+ * Payment Intents, Sui's canonical pattern for bundling many heterogeneous
  * payment operations into one atomic, single-signed PTB. Resolve → Plan →
  * Execute.
  *
@@ -9,7 +9,7 @@
  *
  * Each PTB builder in `lib/zkclient.ts` is wrapped here with a human
  * description (legs) so the UI can show the user EXACTLY what they're
- * signing — the bytes are the source of truth, and the legs make those
+ * signing, the bytes are the source of truth, and the legs make those
  * bytes legible.
  *
  * Reference: https://docs.sui.io/onchain-finance/payment-intents
@@ -30,7 +30,7 @@ import {
 } from "./zkclient";
 // Platform-wide Payment Kit receipts attach a defined transaction kind
 // (visible to suivision/suiscan) to every Talise send. Gated behind
-// NEXT_PUBLIC_PK_RECEIPTS_ENABLED — flip the flag on after running
+// NEXT_PUBLIC_PK_RECEIPTS_ENABLED, flip the flag on after running
 // `pnpm pk:bootstrap` to mint the registry on chain.
 import {
   buildUsdsuiTransferWithReceipt,
@@ -50,7 +50,7 @@ export type Asset = "USDsui" | "SUI";
 /**
  * Signer surface required by intents that execute via the @t2000/sdk
  * agentic layer. Mirrors `@t2000/sdk`'s `TransactionSigner` (we duplicate
- * the shape locally so this module — imported by client components —
+ * the shape locally so this module, imported by client components -
  * doesn't pull the server-only SDK into the browser bundle).
  */
 export type IntentSigner = {
@@ -62,9 +62,9 @@ export type IntentSigner = {
 export type IntentLeg = {
   /** Maps to the dominant Move call type for an icon hint. */
   kind: "transfer" | "swap" | "split" | "deposit" | "mint" | "share" | "settle";
-  /** Short imperative — "Pay £100 to Mama Adaeze". */
+  /** Short imperative, "Pay £100 to Mama Adaeze". */
   title: string;
-  /** Optional detail — "via Yellow Card · Lagos · seconds". */
+  /** Optional detail, "via Yellow Card · Lagos · seconds". */
   detail?: string;
 };
 
@@ -73,11 +73,11 @@ export type IntentLeg = {
  *
  * Intents come in two flavours:
  *
- *  - **PTB-builder** intents (`build`) — we own the PTB construction and
+ *  - **PTB-builder** intents (`build`), we own the PTB construction and
  *    sign locally via `signAndSubmit(intent.build)`. Used for transfers,
  *    payroll, bills, and other hand-rolled flows.
  *
- *  - **Agent-execute** intents (`execute`) — we delegate to `@t2000/sdk`
+ *  - **Agent-execute** intents (`execute`), we delegate to `@t2000/sdk`
  *    which routes through NAVI (save/borrow) and the Cetus aggregator
  *    (swap), executing the transaction itself with the caller's signer.
  *    `SendForm` and friends prefer `execute` when present.
@@ -92,7 +92,7 @@ export type PaymentIntent = {
   summary: string;
   /** Atomic operations, in execution order. */
   legs: IntentLeg[];
-  /** The PTB builder — what gets signed. Mutually exclusive with `execute`. */
+  /** The PTB builder, what gets signed. Mutually exclusive with `execute`. */
   build?: (tx: Transaction) => void | Promise<void>;
   /**
    * Agent-execute path: delegate the whole flow (build + sign + submit) to
@@ -191,7 +191,7 @@ export function transferIntent(opts: {
 // the Cetus aggregator for best execution. The agent owns the build + sign
 // + submit lifecycle, so we expose this intent via the `execute` path
 // instead of the local PTB-builder path. `recipient` defaults back to the
-// sender's wallet — the aggregator settles the output coin to the caller.
+// sender's wallet, the aggregator settles the output coin to the caller.
 // ---------------------------------------------------------------------------
 
 export function crossAssetIntent(opts: {
@@ -245,7 +245,7 @@ export function payAndInvestIntent(opts: {
     title: "Pay and invest",
     summary: `Send $${opts.payAmount} to ${shortRecipient(
       opts.recipient
-    )} and deploy $${opts.investAmount} into a yield vault — one signature.`,
+    )} and deploy $${opts.investAmount} into a yield vault, one signature.`,
     legs: [
       { kind: "split", title: `Pull $${opts.payAmount + opts.investAmount} from your balance` },
       { kind: "transfer", title: `Pay ${shortRecipient(opts.recipient)} $${opts.payAmount}` },
@@ -263,7 +263,7 @@ export function payAndInvestIntent(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// Intent: remittance — the headline intent for Talise's repositioning.
+// Intent: remittance, the headline intent for Talise's repositioning.
 //
 // Bundles: pull USDsui + take platform fee + transfer to settlement address
 // (off-ramp partner or recipient). Recipient sees their local currency in
@@ -274,7 +274,7 @@ export function remittanceIntent(opts: {
   senderAddress: string;
   /** Gross amount the sender is sending, in USDsui dollars (e.g. 100). */
   amountUsdsui: number;
-  /** Recipient's local currency for display only — settlement is USDsui. */
+  /** Recipient's local currency for display only, settlement is USDsui. */
   recipientCurrency: Currency;
   /** Off-ramp partner or recipient Sui address that takes settlement USDsui. */
   settlementAddress: string;
@@ -398,7 +398,7 @@ export function payrollIntent(opts: {
 //
 // Backed by `@t2000/sdk`'s `save()` which routes USDC into NAVI's lending
 // markets at the best-available APY (currently ~3–8% on testnet/mainnet).
-// Supersedes the previous DeepBook BalanceManager-mint flow — NAVI is a
+// Supersedes the previous DeepBook BalanceManager-mint flow, NAVI is a
 // pooled lending market, not a per-user vault, so there's no object to
 // create + share.
 // ---------------------------------------------------------------------------
@@ -425,10 +425,10 @@ export function spotLpIntent(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// Intent: margin supply (alias of save — NAVI unifies all USDsui supply)
+// Intent: margin supply (alias of save, NAVI unifies all USDsui supply)
 //
 // T2000 unifies "earn yield" and "supply liquidity for borrowing" under a
-// single NAVI `save()` primitive — the supply position itself is the
+// single NAVI `save()` primitive, the supply position itself is the
 // borrowing collateral. We keep the separate intent ID so existing UI
 // surfaces stay routable, but the underlying call is identical.
 // ---------------------------------------------------------------------------
@@ -440,7 +440,7 @@ export function marginSupplyIntent(opts: {
   return {
     id: "earn.margin-supply",
     title: "Supply liquidity",
-    summary: `Supply $${opts.amountUsdsui} USDsui to NAVI — earns APY and unlocks borrowing power.`,
+    summary: `Supply $${opts.amountUsdsui} USDsui to NAVI, earns APY and unlocks borrowing power.`,
     legs: [
       {
         kind: "deposit",
@@ -462,7 +462,7 @@ export function marginSupplyIntent(opts: {
 //
 // This is the brief's #2 example ("salary that streams and earns yield") as
 // a one-shot intent. The recurring trigger (run on every inbound) is a Move
-// rule-registry layer we'll add later — this is the underlying atomic.
+// rule-registry layer we'll add later, this is the underlying atomic.
 // ---------------------------------------------------------------------------
 
 export function depositAutosplitIntent(opts: {
@@ -543,7 +543,7 @@ export function depositAutosplitIntent(opts: {
 //
 // For the African-corridor product this is rent + DSTV + NEPA token + GLO
 // airtime in one signature. If any leg is invalid the whole batch reverts
-// — the user can fix the bad bill and retry without partial state.
+//, the user can fix the bad bill and retry without partial state.
 // ---------------------------------------------------------------------------
 
 export function billBatchIntent(opts: {
@@ -601,7 +601,7 @@ export function billBatchIntent(opts: {
 // The caller passes pre-resolved current balances + price (the "Resolve"
 // phase). We compute the swap amount client-side and emit it as a single
 // DeepBook swap leg. A future on-chain version reads balances at execution
-// time — that needs a Move helper.
+// time, that needs a Move helper.
 // ---------------------------------------------------------------------------
 
 export function rebalanceIntent(opts: {
@@ -679,10 +679,10 @@ export function conditionalSendIntent(opts: {
   amountUsdsui: number;
   /** Where the swept amount lands (e.g. your savings address). */
   recipient: string;
-  /** Friendly label for the destination — "Savings". */
+  /** Friendly label for the destination, "Savings". */
   destinationLabel?: string;
 }): PaymentIntent | null {
-  // Client-side gate — return null when the condition fails. The UI can
+  // Client-side gate, return null when the condition fails. The UI can
   // surface "condition not met yet" instead of a broken intent.
   if (opts.currentUsdsui < opts.thresholdUsdsui) return null;
 
@@ -692,7 +692,7 @@ export function conditionalSendIntent(opts: {
     title: "Conditional send",
     summary: `Balance $${opts.currentUsdsui.toFixed(
       2
-    )} ≥ $${opts.thresholdUsdsui.toFixed(2)} — sweep $${opts.amountUsdsui.toFixed(
+    )} ≥ $${opts.thresholdUsdsui.toFixed(2)}, sweep $${opts.amountUsdsui.toFixed(
       2
     )} to ${label}.`,
     legs: [

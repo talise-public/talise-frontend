@@ -21,14 +21,14 @@ export const runtime = "nodejs";
  * POST /api/payouts/batch/prepare
  *
  * "Pay your whole team in one signature." Builds ONE Onara-sponsored PTB that
- * pays every recipient USDsui — atomically (everyone or no one). The two
+ * pays every recipient USDsui, atomically (everyone or no one). The two
  * multi-recipient builders already exist; this route wires them to auth,
  * screening, the rolling send-limit gate, resolution, and the sponsored build
  * tail exactly like /api/send/sponsor-prepare.
  *
  * Body: `{ recipients: [{ to, amount, label? }], asset?: "USDsui" }`.
  * Returns `{ batchId, bytes, recipientCount, totalUsd }`. Batch is
- * SPONSORED-ONLY — the gasless rail (single `balance::send_funds`) can't
+ * SPONSORED-ONLY, the gasless rail (single `balance::send_funds`) can't
  * carry a multi-leg PTB, so we skip it entirely.
  */
 
@@ -179,7 +179,7 @@ export async function POST(req: Request) {
     if (addr === selfAddr) {
       return NextResponse.json(
         {
-          error: `Recipient #${i + 1} (${input}) is your own wallet — you can't pay yourself.`,
+          error: `Recipient #${i + 1} (${input}) is your own wallet, you can't pay yourself.`,
           code: "SELF_SEND",
           index: i,
           input,
@@ -208,15 +208,15 @@ export async function POST(req: Request) {
     });
   }
 
-  // Sum to the batch total (rounded to cents — USDsui is 1:1 USD).
+  // Sum to the batch total (rounded to cents, USDsui is 1:1 USD).
   const totalUsd =
     Math.round(resolvedLegs.reduce((acc, r) => acc + r.amount, 0) * 100) / 100;
   if (totalUsd <= 0) {
     return NextResponse.json({ error: "batch total must be positive" }, { status: 400 });
   }
 
-  // ── Compliance screening — HARD STOP, per recipient ─────────────
-  // Mirrors sponsor-prepare. Any single hit blocks the WHOLE batch — we never
+  // ── Compliance screening, HARD STOP, per recipient ─────────────
+  // Mirrors sponsor-prepare. Any single hit blocks the WHOLE batch, we never
   // hand back signable bytes for a batch that contains a flagged recipient.
   // Screen every leg in PARALLEL (same fan-out reasoning as resolution), then
   // fail closed if any leg was blocked.
@@ -248,7 +248,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── Hard transaction-limit gate — ONCE for the whole batch total ────
+  // ── Hard transaction-limit gate, ONCE for the whole batch total ────
   // The batch is one atomic transfer of `totalUsd` USDsui; gate it as a single
   // send against the rolling daily/monthly cap. `checkSendAllowed` fail-opens.
   const decision = await checkSendAllowed(userId, totalUsd);
@@ -272,7 +272,7 @@ export async function POST(req: Request) {
   // ── Build ONE sponsored PTB ─────────────────────────────────────────
   // Default to the PLAIN payroll builder: a clean `transferObjects` of USDsui
   // to each recipient, all in one atomic Onara-sponsored (gasless) PTB. This is
-  // the fast path — no per-recipient registry Move call to build or execute.
+  // the fast path, no per-recipient registry Move call to build or execute.
   // The Payment Kit receipts builder (a receipt per recipient under the talise
   // registry) is heavier and now OPT-IN via NEXT_PUBLIC_PK_RECEIPTS_ENABLED=true.
   const useReceipts = process.env.NEXT_PUBLIC_PK_RECEIPTS_ENABLED === "true";
@@ -319,7 +319,7 @@ export async function POST(req: Request) {
       await build(tx);
     }
 
-    // Sponsored tail — exactly like sponsor-prepare's sponsored branch.
+    // Sponsored tail, exactly like sponsor-prepare's sponsored branch.
     const [{ address: sponsor }, gasPrice] = await Promise.all([
       sponsorPromise,
       gasPricePromise,

@@ -14,19 +14,19 @@ export const runtime = "nodejs";
  * POST /api/chat
  *
  * Streaming chat endpoint. Same wire format as the Vercel AI SDK's
- * `useChat` hook — the client posts `{ messages: UIMessage[] }` and we
+ * `useChat` hook, the client posts `{ messages: UIMessage[] }` and we
  * stream back UI message parts as they arrive.
  *
  * Per request:
  *   1. Hydrate live user context (balance, yield venues, username).
  *   2. Build the system prompt + recent turns via `buildMessages`.
- *   3. Wrap the DeepSeek-via-OpenAI provider with `withMemWal` — per-wallet
+ *   3. Wrap the DeepSeek-via-OpenAI provider with `withMemWal`, per-wallet
  *      namespace, so the agent recalls the user's prior facts on every
  *      message and auto-saves new ones after the reply.
  *   4. Stream the result back.
  *
  * Memwal degrades cleanly: if MEMWAL_DELEGATE_KEY or MEMWAL_ACCOUNT_ID
- * are missing, we fall through to the raw provider — chat still works,
+ * are missing, we fall through to the raw provider, chat still works,
  * just without persistent memory.
  */
 
@@ -39,7 +39,7 @@ const MEMWAL_SERVER_URL =
 
 const memwalConfigured = Boolean(MEMWAL_KEY && MEMWAL_ACCOUNT_ID);
 
-/** Strip a trailing `/chat/completions` if env mistakenly includes it —
+/** Strip a trailing `/chat/completions` if env mistakenly includes it -
  *  createOpenAI appends that path itself. */
 function baseURL(): string {
   return PROVIDER_URL.replace(/\/chat\/completions\/?$/, "").replace(
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
 
   // Flatten UI messages to a plain {role, content} array for our system
   // prompt builder. Vercel UIMessages have `parts: [{type, text, ...}]`
-  // — we just want the text. We skip Vercel's convertToModelMessages
+  //, we just want the text. We skip Vercel's convertToModelMessages
   // helper (async/heavier than we need for our simple flow).
   const conversation = uiMessages
     .filter((m) => m.role === "user" || m.role === "assistant")
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: convoOnly,
       temperature: 0.4,
-      // DeepSeek V4 Pro is a reasoning model — reasoning tokens count
+      // DeepSeek V4 Pro is a reasoning model, reasoning tokens count
       // against this budget. Headroom for multi-step intent blocks.
       maxOutputTokens: 4096,
       abortSignal: req.signal,

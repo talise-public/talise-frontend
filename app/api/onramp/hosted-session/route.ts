@@ -6,14 +6,14 @@ import { requireAppAttestStructural } from "@/lib/app-attest";
 export const runtime = "nodejs";
 
 /**
- * Stripe Crypto Onramp — server-side session creator (STANDALONE / hosted
+ * Stripe Crypto Onramp, server-side session creator (STANDALONE / hosted
  * URL flow). Sibling to `/api/onramp/session` (which returns
  * `client_secret` for the embedded JS SDK and is intentionally untouched).
  *
  * Why a separate route: Stripe's `/v1/crypto/onramp_sessions` endpoint
  * always returns BOTH `client_secret` (embedded mount) and `redirect_url`
  * (standalone hosted onramp at `crypto.link.com`). There is no
- * request-side flag to select between them — the integrator just picks
+ * request-side flag to select between them, the integrator just picks
  * one. iOS has no first-party Stripe Crypto SDK, so we open the
  * `redirect_url` in `SFSafariViewController` and skip the embedded SDK
  * entirely. Keeping this in its own route means the existing embedded
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Optional `{ amount }` override. Default to $20 — Stripe's sweet spot
+  // Optional `{ amount }` override. Default to $20, Stripe's sweet spot
   // for first-time onramp. Mirrors the embedded session route.
   let body: { amount?: number } = {};
   try {
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   const amount = Math.min(2_000, Math.max(1, Math.round(rawAmount * 100) / 100));
 
   // Form-encoded body with bracketed keys for nested fields (Stripe REST).
-  // Identical shape to the embedded route — we just consume `redirect_url`
+  // Identical shape to the embedded route, we just consume `redirect_url`
   // instead of `client_secret` on the response.
   const form = new URLSearchParams();
   form.set("destination_currency", "usdc");

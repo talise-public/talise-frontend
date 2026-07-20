@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     // turns sum-of-latencies into max-of-latencies (this route used to run
     // them back-to-back and clock 4-6s for suppliers). For non-suppliers the
     // unused scan is typically one GraphQL page and resolves quietly.
-    // Capped at 4s so a slow chain scan can't stall the Earn response — the
+    // Capped at 4s so a slow chain scan can't stall the Earn response, the
     // breakdown is a nice-to-have, the APY/venue is not.
     const activityPromise = Promise.race([
       getRecentActivity(user.sui_address, 200, { includeNonTalise: false }),
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
         setTimeout(() => r([]), 4_000)
       ),
     ]).catch(
-      // Never reject — an unawaited rejection (non-supplier path) would
+      // Never reject, an unawaited rejection (non-supplier path) would
       // surface as an unhandled-rejection warning.
       () => [] as Awaited<ReturnType<typeof getRecentActivity>>
     );
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
     // and `earningPerDay` from a recent on-chain activity replay. We
     // scan a generous window (~200 txs) so historical supplies aren't
     // missed for long-tenured users. Activity is the source of truth
-    // here — neither Navi's open API nor `@t2000/sdk`'s
+    // here, neither Navi's open API nor `@t2000/sdk`'s
     // `EarningsResult` exposes real accrued interest per user (the
     // SDK's `totalYieldEarned` is dailyEarning × 30, a projection,
     // not actual yield). See `naviPositionFromActivity` for the full
@@ -64,7 +64,7 @@ export async function GET(req: Request) {
       try {
         let activity = await activityPromise;
         // The live walk times out at 4s (and the underlying tx-history
-        // read flakes under RPC pressure) — when it comes back empty,
+        // read flakes under RPC pressure), when it comes back empty,
         // fall back to the persisted activity snapshot Home maintains.
         // Without this, `earned` silently vanished from the Earn screen
         // whenever the walk was slow, which read as "Talise lost my
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
           naviActivity: naviRows,
         });
       } catch (e) {
-        // Activity feed failures are non-fatal — we'll just omit the
+        // Activity feed failures are non-fatal, we'll just omit the
         // breakdown and let iOS render the legacy single "Earning / day"
         // row.
         console.warn(
@@ -117,7 +117,7 @@ export async function GET(req: Request) {
           earned: naviDetail.earned,
           earningPerDay: naviDetail.dailyEarning,
           principalSupplied: naviDetail.principalSupplied,
-          // Epoch-ms the current earning streak began — the client ticks
+          // Epoch-ms the current earning streak began, the client ticks
           // `earned` live (currentValue × apy × elapsed/year) + projects
           // year-end (currentValue × apy) from this.
           earningSinceMs: naviDetail.earningSinceMs,
@@ -136,7 +136,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       { venues, best },
       {
-        // APYs move slowly — 60s edge cache + 5min SWR cuts the load
+        // APYs move slowly, 60s edge cache + 5min SWR cuts the load
         // on Navi's open API and the on-chain reserve reads when many
         // mobile clients refresh at once. memoTtl in navi-supply gives
         // us a second per-process layer.
@@ -146,7 +146,7 @@ export async function GET(req: Request) {
       }
     );
   } catch (err) {
-    // Earn shouldn't 500 the UI just because a venue's RPC is flaky —
+    // Earn shouldn't 500 the UI just because a venue's RPC is flaky -
     // surface an empty comparison and let the client render "Unavailable".
     console.warn(`[yield/comparison] failed: ${(err as Error).message}`);
     return NextResponse.json({ venues: [], best: null });

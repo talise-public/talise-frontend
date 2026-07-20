@@ -8,7 +8,7 @@ const GOOGLE_JWKS = createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs")
 );
 
-// Apple's published signing keys — same fetch+cache+rotate idiom as Google's.
+// Apple's published signing keys, same fetch+cache+rotate idiom as Google's.
 const APPLE_JWKS = createRemoteJWKSet(
   new URL("https://appleid.apple.com/auth/keys")
 );
@@ -29,7 +29,7 @@ type GoogleClaims = {
  * `iss` / `aud` / `exp`. Use this for ANY client-submitted token (e.g. the iOS
  * PKCE flow posts its own id_token to /api/auth/mobile/exchange).
  *
- * `decodeJwt` only base64-decodes the payload — trusting it for a
+ * `decodeJwt` only base64-decodes the payload, trusting it for a
  * client-submitted token is an account-takeover hole (an attacker can forge
  * any `sub`). This throws on a bad signature, wrong issuer/audience, or expiry.
  */
@@ -54,7 +54,7 @@ type AppleClaims = {
   email_verified?: boolean | string;
   /** Only present when iOS requested .fullName AND it's the first sign-in. */
   name?: string;
-  /** The OAuth nonce iOS passed to ASAuthorization — for zkLogin this MUST be
+  /** The OAuth nonce iOS passed to ASAuthorization, for zkLogin this MUST be
    *  the Poseidon nonce derived from (ephemeralPubKey, maxEpoch, randomness). */
   nonce?: string;
   aud: string;
@@ -66,7 +66,7 @@ type AppleClaims = {
  * Verify a native Sign in with Apple identity token: RS256 signature against
  * Apple's JWKS, `iss` === https://appleid.apple.com, `aud` === our bundle id,
  * `exp` still valid (jose enforces it). Same trust posture as
- * `verifyGoogleIdToken` — the token is CLIENT-SUBMITTED, so the signature
+ * `verifyGoogleIdToken`, the token is CLIENT-SUBMITTED, so the signature
  * check is what stops a forged `sub` from taking over a victim's wallet.
  *
  * NOTE: Apple identity tokens expire ~10 minutes after issuance. Callers must
@@ -110,7 +110,7 @@ export function deriveSuiAddress(jwt: string, salt: string): string {
 /**
  * Decode a JWT payload without verifying the signature.
  * Safe in our context because we only accept JWTs we just exchanged with
- * Google's token endpoint over TLS — not user-submitted JWTs.
+ * Google's token endpoint over TLS, not user-submitted JWTs.
  */
 export function decodeJwt(jwt: string): {
   sub: string;

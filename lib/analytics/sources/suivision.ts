@@ -1,5 +1,5 @@
 /**
- * Analytics source — SuiVision / BlockVision (SECONDARY, ENV-GATED).
+ * Analytics source, SuiVision / BlockVision (SECONDARY, ENV-GATED).
  *
  * This is a fallback / cross-check source for on-chain transaction indexing.
  * It is DORMANT unless the BlockVision API key is provided.
@@ -7,7 +7,7 @@
  *   ENV VAR:  BLOCKVISION_API_KEY   (set on Vercel to enable this source)
  *
  * When the key is unset, suiVisionEnabled() returns false and
- * indexAddressViaSuiVision() returns null — the indexer then relies on the
+ * indexAddressViaSuiVision() returns null, the indexer then relies on the
  * primary gRPC source alone and the build is never affected.
  *
  * Endpoint (BlockVision Sui Mainnet "Retrieve Account Activity"):
@@ -31,7 +31,7 @@
  * to an IndexedTx (source:'suivision'). amountUsd is populated only when the
  * activity moved a stablecoin (USDC / USDsui / USDT); otherwise null.
  *
- * NEVER throws — any error (missing key, network, non-200, bad JSON) -> null.
+ * NEVER throws, any error (missing key, network, non-200, bad JSON) -> null.
  */
 
 import type { IndexedTx } from "@/lib/analytics/types";
@@ -200,7 +200,7 @@ function stableAmountUsd(changes: BvCoinChange[] | null | undefined): number | n
   return found ? total : null;
 }
 
-/** Stablecoin decimals — default 6 (USDC/USDsui), clamp to a sane range. */
+/** Stablecoin decimals, default 6 (USDC/USDsui), clamp to a sane range. */
 function decimalsOf(d: string | number | null | undefined): number {
   const n = typeof d === "number" ? d : Number(d);
   if (!Number.isFinite(n) || n < 0 || n > 18) return 6;

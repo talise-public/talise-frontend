@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  * Developers → Webhooks → Add endpoint, then subscribe to the
  * `crypto.onramp_session.updated` event).
  *
- * For now this only logs — the embedded SDK already signals success to
+ * For now this only logs, the embedded SDK already signals success to
  * the client. Wire it to a DB action when we need durable receipts.
  *
  * Docs: https://docs.stripe.com/webhooks/signatures
@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
-    // No secret configured — refuse to process. Failing closed is the
+    // No secret configured, refuse to process. Failing closed is the
     // safest default; an attacker could otherwise POST anything to this
     // route and we'd "accept" it.
     return NextResponse.json(
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // We need the raw body bytes to verify the signature — Next gives us the
+  // We need the raw body bytes to verify the signature, Next gives us the
   // already-decoded text via `req.text()` which is safe because we sign
   // the same string Stripe sent us.
   const rawBody = await req.text();
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // For now: just log. Don't touch the DB — the embedded SDK already gives
+  // For now: just log. Don't touch the DB, the embedded SDK already gives
   // us the success signal client-side. We can wire DB persistence here
   // later (e.g. mark an `onramp_receipts` row as fulfilled).
   console.log("[onramp/webhook]", {

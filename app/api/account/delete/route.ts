@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/account/delete — in-app account deletion.
+ * POST /api/account/delete, in-app account deletion.
  *
  * Required by App Store Guideline 5.1.1(v): any app that supports account
  * creation must let the user initiate full account deletion from inside
@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
  *     travel-rule artifacts) for bookkeeping and AML record-keeping.
  *   • Revokes every mobile bearer and clears the caller's web cookies.
  *
- * The wallet itself is self-custodial — deleting the Talise account does
+ * The wallet itself is self-custodial, deleting the Talise account does
  * NOT move funds. The iOS confirmation copy tells the user to withdraw
  * first; the same Google identity re-derives the same zkLogin address, so
  * on-chain funds remain reachable even after deletion.
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   }
   const user = await userById(userId);
   if (!user) {
-    // Unknown OR already deleted — both are a success from the client's
+    // Unknown OR already deleted, both are a success from the client's
     // point of view (the account is gone). Keep it idempotent.
     return NextResponse.json({ ok: true, alreadyDeleted: true });
   }
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 
   // Kill sessions: every mobile bearer for this user, plus the calling
   // browser's cookies on the web path. (Other browsers' cookies die at
-  // the userById chokepoint — deleted rows resolve to null.)
+  // the userById chokepoint, deleted rows resolve to null.)
   await revokeAllMobileSessions(userId);
   if (!isMobileRequest(req)) {
     await clearSession();

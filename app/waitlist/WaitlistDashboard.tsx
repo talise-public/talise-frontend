@@ -12,7 +12,7 @@ import { TaliseProfileCard } from "@/components/TaliseProfileCard";
 
 /**
  * Post-claim waitlist dashboard (DeepBook-style). Shown to a signed-in member
- * who owns a handle — both on a fresh claim and on return. Leads with the live
+ * who owns a handle, both on a fresh claim and on return. Leads with the live
  * waitlist position, then the shareable Talise profile card, then the invite
  * link (Copy + Share on X) and the referral tally. Each verified friend who
  * joins through the link moves the user up the list.
@@ -71,7 +71,7 @@ export function WaitlistDashboard({
   // Invite link → the public /waitlist?ref=CODE surface. ReferralCapture in the
   // root layout reads ?ref and credits this user when their friend signs up.
   // (The richer /u/<handle> profile page + OG card is local-only for now, so
-  // we don't route public invites through it — that link would 404.)
+  // we don't route public invites through it, that link would 404.)
   const referralCode = status?.referralCode ?? "";
   const inviteLink = referralCode
     ? `${origin}/waitlist?ref=${referralCode}`
@@ -82,7 +82,7 @@ export function WaitlistDashboard({
   // Handle reads as plain text (`eromonsele@talise`), NOT a blue @mention of a
   // nonexistent account; only @taliseio (the real X handle) is mentioned. The
   // invite link lives INSIDE the text on its own line, so we omit the `url`
-  // param — otherwise X would append a duplicate link below the tweet.
+  // param, otherwise X would append a duplicate link below the tweet.
   const shareText = `I just claimed ${handle}@talise on @taliseio, the gasless dollar wallet on Sui.
 
 Join the waitlist and claim your name:
@@ -96,13 +96,13 @@ ${inviteLink}`;
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      /* clipboard blocked — no-op */
+      /* clipboard blocked, no-op */
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-[480px] lg:max-w-[1040px]">
-      {/* Position headline — spans the full width on top so the two columns
+      {/* Position headline, spans the full width on top so the two columns
           below start level and stay balanced (no tall-left / short-right gap). */}
       <div className="text-center">
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-dim)]">
@@ -121,7 +121,7 @@ ${inviteLink}`;
 
       {/* Two balanced columns: the card stretches to match the actions stack. */}
       <div className="mt-7 grid items-stretch gap-4 sm:gap-5 lg:grid-cols-2">
-        {/* LEFT — the shareable profile card (fills the column height) */}
+        {/* LEFT, the shareable profile card (fills the column height) */}
         <TaliseProfileCard
           handle={handle}
           position={position}
@@ -129,11 +129,11 @@ ${inviteLink}`;
           fill
         />
 
-        {/* RIGHT — actions: invite link + referral tally. min-w-0 lets this
+        {/* RIGHT, actions: invite link + referral tally. min-w-0 lets this
             grid column shrink below its content so the long invite URL
             truncates instead of forcing the whole grid (and page) wider. */}
         <div className="flex min-w-0 flex-col gap-4">
-      {/* Invite link — Copy + Share on X */}
+      {/* Invite link, Copy + Share on X */}
       <div className="min-w-0 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-5">
         <div className="text-[14px] font-medium text-[var(--color-fg)]">
           Your invite link

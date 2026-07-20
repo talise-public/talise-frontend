@@ -18,12 +18,7 @@ const sans = DM_Sans({
 export default function WaitlistLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`${display.variable} ${sans.variable} relative min-h-screen overflow-x-hidden`}
-      style={{
-        fontFamily: "var(--font-sans-v2), system-ui, sans-serif",
-        color: "#15300c",
-        background: "radial-gradient(120% 90% at 12% -5%, #e6f9d6 0%, #f7fcf2 46%, #ffeede 100%)",
-      }}
+      className={`bp-page ${display.variable} ${sans.variable} relative min-h-screen overflow-x-hidden`}
     >
       {children}
     </div>

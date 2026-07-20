@@ -9,16 +9,16 @@ import { isAdminIdentity } from "@/lib/admin";
  * Admin dashboard auth gate.
  *
  * Three ways in, checked in order:
- *   1. dev-open   — non-production AND no ADMIN_TOKEN configured. Local
+ *   1. dev-open , non-production AND no ADMIN_TOKEN configured. Local
  *                   convenience so `pnpm dev` → /admin "just works". A
  *                   visible banner marks the session as unauthenticated.
- *   2. token      — the `talise_admin` cookie (set via /admin/login) OR
+ *   2. token    , the `talise_admin` cookie (set via /admin/login) OR
  *                   an `x-admin-token` request header matches ADMIN_TOKEN.
  *                   This is the production / shared-link path.
- *   3. session    — a logged-in Google account whose email/@handle is in
+ *   3. session  , a logged-in Google account whose email/@handle is in
  *                   the allowlist (web/lib/admin.ts isAdminIdentity).
  *
- * In production with ADMIN_TOKEN set, only (2) and (3) pass — there is no
+ * In production with ADMIN_TOKEN set, only (2) and (3) pass, there is no
  * open access.
  */
 
@@ -35,7 +35,7 @@ export function adminToken(): string | null {
  *
  * Hard requirement: NOT on any Vercel deployment. Vercel sets `VERCEL=1` on
  * production AND preview/staging, so this guarantees the admin board + raw-DB
- * browser can never be reachable without auth on a deployed environment — even
+ * browser can never be reachable without auth on a deployed environment, even
  * a preview build that forgot to set ADMIN_TOKEN. Locally (`pnpm dev`, no
  * VERCEL) it stays open, still flagged by the unauthenticated banner.
  */
@@ -98,7 +98,7 @@ export async function resolveAdminFromRequest(req: Request): Promise<AdminCtx | 
 
 /**
  * Guard for API route handlers. Returns a 401 Response when the caller
- * is not an admin, or `null` when access is granted — so a route reads:
+ * is not an admin, or `null` when access is granted, so a route reads:
  *
  *   const denied = await requireAdminApi(req);
  *   if (denied) return denied;

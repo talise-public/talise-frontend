@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
  *   body: { targetTier: 1|2|3, fullName?, country?, documentRefs?: string[] }
  *   → { ok, intentId, requestedTier, ekyc: { status, ref, provider } }
  *   Records a tier-upgrade INTENT and kicks off the (mock) eKYC check.
- *   This NEVER mutates users.kyc_tier — promotion is a separate reviewed
+ *   This NEVER mutates users.kyc_tier, promotion is a separate reviewed
  *   write (lib/kyc.ts setUserTier), typically driven by the provider's
  *   approval webhook. So a self-service POST can't grant itself a higher
  *   limit.

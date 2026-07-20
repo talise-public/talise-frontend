@@ -8,12 +8,12 @@ import { createRequest, listRequestsFor, normalizeCurrency } from "@/lib/request
 export const runtime = "nodejs";
 
 /**
- * POST /api/requests — create a payment request ("I need $X from you").
+ * POST /api/requests, create a payment request ("I need $X from you").
  *   Body: { amountUsd, currency?, requesterNote?, note?, ttlMs? }
  *   Any signed-in (app-approved) user can issue one. Returns
  *   `{ ok, request, payUrl }` where payUrl is the public /req/<id> link.
  *
- * GET /api/requests — list the caller's requests, newest first.
+ * GET /api/requests, list the caller's requests, newest first.
  *
  * Auth + app-access + rate-limit mirror /api/invoices.
  */

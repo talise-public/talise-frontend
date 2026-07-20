@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * EARN — the money-management hub.
+ * EARN, the money-management hub.
  *
- *   • Invest idle cash (NAVI) — live venue cards, supply, withdraw.
- *   • Spend & Save — round-up, savings goals, month-to-date insights.
+ *   • Invest idle cash (NAVI), live venue cards, supply, withdraw.
+ *   • Spend & Save, round-up, savings goals, month-to-date insights.
  *   • A clear entry into Rewards & Referrals (/app/rewards).
  *
  * Desktop is a two-column layout (Invest on the left, Spend & Save on the
@@ -25,7 +25,7 @@ import { GoalsSection } from "@/components/app/earn/GoalsSection";
 import { InsightsSection } from "@/components/app/earn/InsightsSection";
 
 export default function EarnPage() {
-  // Mobile keeps the lead clear — Earn (Supply) + Rewards + Round-up. Goals and
+  // Mobile keeps the lead clear, Earn (Supply) + Rewards + Round-up. Goals and
   // Insights are real but secondary, so on phones they sit behind a single
   // "More" disclosure rather than extending the scroll. Desktop shows the full
   // two-column layout unchanged.
@@ -36,7 +36,7 @@ export default function EarnPage() {
       {/* min-w-0 on the grid columns: grid items default to min-width:auto and
           refuse to shrink below their widest child, which pushed every card
           past the phone viewport (clipped right edges on mobile). min-w-0 lets
-          the columns — and therefore the cards — actually fit the screen. */}
+          the columns, and therefore the cards, actually fit the screen. */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
         {/* Invest */}
         <div className="min-w-0 space-y-5">
@@ -48,7 +48,7 @@ export default function EarnPage() {
           <RewardsLink />
           <RoundupCard />
 
-          {/* Goals + Insights — always visible on lg; collapsed behind a
+          {/* Goals + Insights, always visible on lg; collapsed behind a
               "More" toggle on mobile to keep the first screen calm. */}
           <div className={moreOpen ? "space-y-5" : "hidden space-y-5 lg:block"}>
             <GoalsSection />
@@ -77,13 +77,13 @@ function RewardsLink() {
     <Link
       href="/app/rewards"
       className="group flex items-center gap-3.5 rounded-[28px] bg-[#f7fcf2] px-5 py-4 transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
-      style={{ boxShadow: "10px 10px 0 #15300c" }}
+      style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
     >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#CAFFB8] text-[#15300c]">
         <HugeiconsIcon icon={GiftCardIcon} size={18} strokeWidth={1.8} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold tracking-[-0.01em] text-[#15300c]">
+        <span className="block text-[15px] font-semibold tracking-[-0.05em] text-[#15300c]">
           Rewards &amp; Referrals
         </span>
         <span className="block truncate text-[13px] text-[#3a5230]">

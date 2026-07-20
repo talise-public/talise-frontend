@@ -17,11 +17,11 @@ import { refreshMerkleCache } from "@/lib/shield/merkle";
 import { USDSUI_TYPE } from "@/lib/usdsui";
 
 /**
- * Talise shielded-pool — event indexer (Workstream C).
+ * Talise shielded-pool, event indexer (Workstream C).
  *
  * A `suix_queryEvents` CURSOR POLLER (NOT a Rust checkpoint streamer),
  * designed to run from a Vercel cron. It mirrors the JSON-RPC fetch pattern of
- * `app/api/yield/position/route.ts` — a direct `fetch` to the fullnode, no new
+ * `app/api/yield/position/route.ts`, a direct `fetch` to the fullnode, no new
  * SDK surface.
  *
  * Three independent pipelines, each with its own Postgres cursor:
@@ -30,10 +30,10 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
  *   pools        → NewPool<CoinType>         → shield_pools (per-coin registry)
  *
  * Guarantees:
- *   • Idempotent — every write uses ON CONFLICT keyed on the natural id, and
+ *   • Idempotent, every write uses ON CONFLICT keyed on the natural id, and
  *     the cursor advance happens in the SAME db().batch() transaction as the
  *     writes, so a crash mid-page never skips or double-counts events.
- *   • Consistency check — after the commitments pipeline catches up, asserts
+ *   • Consistency check, after the commitments pipeline catches up, asserts
  *     the on-chain `next_index` equals `MAX(leaf_index)+1` in Postgres.
  *
  * Dormant unless `shieldConfigured()`.
@@ -74,7 +74,7 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
 /**
  * One page of `suix_queryEvents` filtered to the shield events MODULE, ascending.
  *
- * CRITICAL: the pool's events are GENERIC — `events::NewCommitment<CoinType>` etc.
+ * CRITICAL: the pool's events are GENERIC, `events::NewCommitment<CoinType>` etc.
  * A `MoveEventType` filter on the bare `…::events::NewCommitment` matches NOTHING
  * (Sui requires the exact instantiated type), so the indexer was silently
  * ingesting ZERO commitments while 20 sat on-chain → every withdraw's merkle-path
@@ -87,19 +87,19 @@ async function queryEventsPage(cursor: SuiEventId | null): Promise<QueryEventsRe
     { MoveEventModule: { package: SHIELD.packageId, module: SHIELD.module } },
     cursor,
     PAGE_SIZE,
-    false, // ascending — we index oldest→newest so leaf order is monotonic
+    false, // ascending, we index oldest→newest so leaf order is monotonic
   ]);
 }
 
 /**
  * Fetch the on-chain pool's `next_index` from the MerkleTree, if readable.
  *
- * The `MerkleTree` is NOT an inline field of the pool — `shielded_pool.move`
+ * The `MerkleTree` is NOT an inline field of the pool, `shielded_pool.move`
  * stores it as a DYNAMIC OBJECT FIELD keyed by the empty struct
  * `MerkleTreeKey()` (see `MerkleTreeKey` + the `dof` idiom in the Move source).
  * So we resolve that dynamic field on the pool object and read `next_index`
  * from the MerkleTree's own content fields. Best-effort: any read failure
- * returns null and the consistency check is simply skipped (report-only — it
+ * returns null and the consistency check is simply skipped (report-only, it
  * never throws and never blocks ingestion).
  */
 async function onchainNextIndex(): Promise<number | null> {
@@ -110,7 +110,7 @@ async function onchainNextIndex(): Promise<number | null> {
     }>("suix_getDynamicFieldObject", [
       SHIELD.poolUsdsui,
       {
-        // `MerkleTreeKey()` is an empty positional struct — on the wire it is
+        // `MerkleTreeKey()` is an empty positional struct, on the wire it is
         // represented as `{ dummy_field: bool }` (Sui's synthetic field for
         // fieldless structs). Verified live on the mainnet fullnode: with this
         // key the dynamic OBJECT field resolves to the MerkleTree object whose
@@ -190,7 +190,7 @@ async function drainPipeline(
     }
 
     // Advance the cursor in the SAME transaction as the writes (over ALL module
-    // events — each pipeline keeps its own cursor + filters its own struct).
+    // events, each pipeline keeps its own cursor + filters its own struct).
     const nextCursor = res.nextCursor ?? res.data[res.data.length - 1].id;
     stmts.push(nowCursorRow(pipeline, nextCursor));
 
@@ -225,7 +225,7 @@ async function ingestCommitments(): Promise<number> {
     const commitment = String(pj.commitment ?? "0");
     // encrypted_output is a vector<u8>. JSON-RPC renders it as EITHER a number[]
     // OR (on many fullnode versions) a base64 STRING. Normalize BOTH to 0x-hex
-    // so the scanner can always decode it — storing the base64 string verbatim
+    // so the scanner can always decode it, storing the base64 string verbatim
     // (the old behavior) made trial-decrypt parse it as hex → fail → scan found
     // NOTHING → notes stranded. A `0x`-hex string is passed through unchanged.
     let enc: string | null = null;

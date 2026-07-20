@@ -8,14 +8,14 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
 import { getNormalizedTransaction } from "@/lib/sui-shapes";
 
 /**
- * On-chain automations — PTB builders for the `talise_automations::standing_order`
+ * On-chain automations, PTB builders for the `talise_automations::standing_order`
  * package (the audited, NON-CUSTODIAL "rule"). A rule's pot lives in a user-owned
  * `StandingOrder<USDSUI>` shared object. The owner funds it (sponsored, user-signed),
  * tops up / cancels (user-signed), and triggers due releases via `execute_due`.
  *
  * `execute_due` is PERMISSIONLESS on-chain: the contract itself guarantees it can
  * only release the pre-set `amount_per` to the pre-set `recipient` once the Clock
- * passes `next_due_ms`. There is NO scheduler key and NO cron — the smart contract
+ * passes `next_due_ms`. There is NO scheduler key and NO cron, the smart contract
  * is the guarantee, and the trigger is just an Onara-sponsored tx the owner's app
  * signs when it's open (anyone could trigger it; they gain nothing).
  *
@@ -24,7 +24,7 @@ import { getNormalizedTransaction } from "@/lib/sui-shapes";
  */
 
 const SUI_CLOCK_ID = "0x6";
-const GAS_BUDGET = 60_000_000n; // 0.06 SUI — same fixed budget streams/goal use.
+const GAS_BUDGET = 60_000_000n; // 0.06 SUI, same fixed budget streams/goal use.
 
 export function automationsPackageId(): string | null {
   return process.env.AUTOMATIONS_PACKAGE_ID?.trim() || null;
@@ -76,7 +76,7 @@ async function sponsorTail(tx: Transaction): Promise<{ bytes: string; sponsor: s
 }
 
 /**
- * Onara-SPONSORED `standing_order::create` — the user signs (becomes `owner`),
+ * Onara-SPONSORED `standing_order::create`, the user signs (becomes `owner`),
  * funding the pot with `prefundMicros` (>= amountPerMicros). Returns sponsor-ready
  * bytes the client signs → /api/zk/sponsor-execute.
  */
@@ -126,7 +126,7 @@ export async function buildTopUpSponsored(input: {
 }
 
 /**
- * Onara-SPONSORED `standing_order::cancel` (owner-signed) — stops the rule and
+ * Onara-SPONSORED `standing_order::cancel` (owner-signed), stops the rule and
  * refunds the entire remaining pot to the owner (the Move call returns a Coin we
  * transfer back to the sender in the same PTB).
  */
@@ -147,11 +147,11 @@ export async function buildCancelOrderSponsored(input: {
 }
 
 /**
- * Onara-SPONSORED, PERMISSIONLESS `standing_order::execute_due` — the trigger for
+ * Onara-SPONSORED, PERMISSIONLESS `standing_order::execute_due`, the trigger for
  * a due release. The owner's app signs the sender slot when it's open (anyone
  * could, since the contract gates the release on the Clock + schedule, not on the
  * caller). Returns sponsor-ready bytes the client signs → /api/zk/sponsor-execute.
- * The on-chain call aborts ENotDue if it isn't due yet (harmless — the client just
+ * The on-chain call aborts ENotDue if it isn't due yet (harmless, the client just
  * skips it) and EInsufficientPot if the pot is empty.
  */
 export async function buildExecuteDueSponsored(input: {

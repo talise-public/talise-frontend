@@ -18,13 +18,13 @@ import {
 export const runtime = "nodejs";
 
 /**
- * POST /api/invoices — create an invoice.
+ * POST /api/invoices, create an invoice.
  *
  * TWO request shapes are accepted on this one route:
  *
  *   • LEGACY (business B2C checkout): `{ amount, reference?, customerEmail? }`.
  *     Requires a business account. Backward-compatible with the original
- *     route — writes the legacy `invoices` table and returns `{ ok, invoice }`.
+ *     route, writes the legacy `invoices` table and returns `{ ok, invoice }`.
  *     Selected when the body has `amount` (string/number) and no rich fields.
  *
  *   • RICH (Work hub): `{ amountUsd?, currency?, customerName?, customerEmail?,
@@ -34,7 +34,7 @@ export const runtime = "nodejs";
  *     derived from them (a client-supplied `amountUsd` is only used when there
  *     are no line items). Selected when the body has any rich field.
  *
- * GET /api/invoices — list the caller's invoices.
+ * GET /api/invoices, list the caller's invoices.
  *   • Business accounts get their legacy `invoices` rows merged with their
  *     `work_invoices`. Personal accounts get just their `work_invoices`.
  */
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
 
-  // ── RICH invoice (Work hub) — any signed-in user. ──────────────────────
+  // ── RICH invoice (Work hub), any signed-in user. ──────────────────────
   if (isRichBody(body)) {
     let items;
     try {
@@ -154,7 +154,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // ── LEGACY business B2C checkout — UNCHANGED behavior. ─────────────────
+  // ── LEGACY business B2C checkout, UNCHANGED behavior. ─────────────────
   if (user.account_type !== "business") {
     return NextResponse.json(
       { error: "business account required" },
@@ -192,7 +192,7 @@ export async function GET(req: Request) {
 
   // Auto-settle: detect direct payments against open invoices (matching
   // incoming credits, verified on-chain by the settle core) so paid status
-  // reflects automatically — there's no manual "Mark paid". Bounded to a few
+  // reflects automatically, there's no manual "Mark paid". Bounded to a few
   // RPC verifications per load; re-fetch only when something closed.
   try {
     const settled = await autoSettleOpenInvoices(userId, invoices);
@@ -201,7 +201,7 @@ export async function GET(req: Request) {
     console.warn(`[invoices] auto-settle sweep failed user=${userId}: ${(err as Error).message}`);
   }
 
-  // Business accounts keep visibility into their legacy checkout invoices —
+  // Business accounts keep visibility into their legacy checkout invoices -
   // surfaced under a separate key so the Work UI can render the rich list and
   // a legacy section can still read `legacy` if it wants. Personal accounts
   // never have legacy rows.

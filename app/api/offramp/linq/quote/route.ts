@@ -15,12 +15,12 @@ export const runtime = "nodejs";
  * Display quote for a USDSUI → NGN Linq off-ramp. Verifies the bank account
  * (name-enquiry) and prices the NGN the user will receive at the live rate.
  * No order is created yet (the rate is only LOCKED at /create time) and no
- * money moves — this just powers the review screen.
+ * money moves, this just powers the review screen.
  *
  * Body: { amountUsdsui: number, bankCode: string, accountNumber: string }
  */
 export async function POST(req: Request) {
-  // Product gate (FEATURE_CASHOUT) — closed for launch.
+  // Product gate (FEATURE_CASHOUT), closed for launch.
   if (!cashoutFeatureOpen()) {
     return NextResponse.json({ error: CASHOUT_CLOSED_MESSAGE, code: "CASHOUT_CLOSED" }, { status: 503 });
   }
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `unsupported bankCode "${bankCode}"` }, { status: 400 });
   }
 
-  // Name-enquiry — surfaced inline next to the account field on a 422.
+  // Name-enquiry, surfaced inline next to the account field on a 422.
   let accountName: string;
   let bankName: string;
   try {
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     rate,
     amountUsdsui,
     amountNgn,
-    // Display only — the order locks its own rate at /create time.
+    // Display only, the order locks its own rate at /create time.
     note: "Rate shown for display; locked when you confirm.",
   });
 }

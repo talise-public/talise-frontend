@@ -4,7 +4,7 @@
  * Primary money actions, Wise-style: a single row of soft rounded pills directly
  * under the balance. Send is the forest-filled primary; Receive / Add money /
  * Request are soft-mint secondaries. Receive opens the QR/handle sheet inline;
- * the rest are links. This is the ONE action row on Home — no redundant tiles.
+ * the rest are links. This is the ONE action row on Home, no redundant tiles.
  */
 
 import { useState } from "react";
@@ -45,7 +45,7 @@ export function ActionPills({ me }: { me: Me | null }) {
 
   return (
     <>
-      {/* MOBILE — app-style 4-up icon tiles (icon disc + small label). The
+      {/* MOBILE, app-style 4-up icon tiles (icon disc + small label). The
           wrapping pill row read as 3 + 1 orphan on narrow screens. */}
       <div className="grid grid-cols-4 gap-2 sm:hidden">
         {actions.map((a) => {
@@ -76,7 +76,7 @@ export function ActionPills({ me }: { me: Me | null }) {
         })}
       </div>
 
-      {/* DESKTOP/TABLET — the Wise-style pill row. */}
+      {/* DESKTOP/TABLET, the Wise-style pill row. */}
       <div className="hidden flex-wrap items-center gap-2.5 sm:flex">
         {actions.map((a) => {
           const cls = `${BASE} ${a.primary ? PRIMARY : SECONDARY}`;

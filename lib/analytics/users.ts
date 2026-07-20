@@ -15,7 +15,7 @@ export type PagedUser = {
  * deleted rows (markUserDeleted() redacts `sui_address` to a `deleted:%`
  * sentinel) so the analytics total reflects genuine, indexable accounts.
  *
- * Resilient: any DB failure returns 0 rather than throwing — analytics is a
+ * Resilient: any DB failure returns 0 rather than throwing, analytics is a
  * read-only dashboard surface and must never break the page.
  */
 export async function countUsers(): Promise<number> {
@@ -44,7 +44,7 @@ export async function listUsersPage(
   offset: number,
   limit: number
 ): Promise<PagedUser[]> {
-  // Clamp to sane, non-negative integers — guards against a corrupted cursor
+  // Clamp to sane, non-negative integers, guards against a corrupted cursor
   // or a caller passing a float/negative.
   const safeOffset = Math.max(0, Math.floor(Number.isFinite(offset) ? offset : 0));
   const safeLimit = Math.max(0, Math.floor(Number.isFinite(limit) ? limit : 0));

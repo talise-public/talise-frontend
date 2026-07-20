@@ -15,7 +15,7 @@ import { gql } from "@/lib/sui-graphql";
  *
  * Why this exists: `coinWithBalance` ONLY sees owned coin objects. Most Talise
  * users' USDsui sits in the accumulator (gasless `send_funds` credits it there,
- * not as coins), so a coins-only builder reverts on execution — which silently
+ * not as coins), so a coins-only builder reverts on execution, which silently
  * broke goal deposits + earn supply + spend-and-save. This mirrors the fix
  * already in lib/streams.ts `buildStreamCreateSponsored`, generalized.
  */
@@ -33,7 +33,7 @@ export async function sourceUsdsuiCoin(
     }).listCoins({ owner: sender, coinType: USDSUI_TYPE });
     for (const o of res.objects ?? []) coinTotal += BigInt(o.balance ?? "0");
   } catch {
-    // listCoins read failed — fall through to the accumulator path.
+    // listCoins read failed, fall through to the accumulator path.
   }
 
   if (coinTotal >= micros) {
@@ -57,7 +57,7 @@ const GOAL_VAULT_PRINCIPAL_QUERY = /* GraphQL */ `
 
 /**
  * Read a GoalVault's idle `principal` balance (in USDsui micro-units), best-effort.
- * Returns null when the object can't be read or the field can't be parsed — the
+ * Returns null when the object can't be read or the field can't be parsed, the
  * caller should then fall back rather than trust a stale number.
  *
  * The on-chain `withdraw` asserts `principal >= amount`; the DB "tracking"
@@ -70,7 +70,7 @@ export async function readGoalVaultPrincipalMicros(vaultId: string): Promise<big
     const data = await gql<{ object?: { asMoveObject?: { contents?: { json?: Record<string, unknown> } } } }>(
       GOAL_VAULT_PRINCIPAL_QUERY,
       { id: vaultId },
-      { noCache: true } // live principal — must not serve a stale cached value
+      { noCache: true } // live principal, must not serve a stale cached value
     );
     const json = data?.object?.asMoveObject?.contents?.json;
     if (!json) return null;

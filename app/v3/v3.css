@@ -1,0 +1,224 @@
+/*
+ * ── Talise landing v3 — engineering-blueprint editorial ────────────────────
+ * A neutral light canvas framed by a hairline construction grid (rails + `+`
+ * corner ticks), diagonal-hatch spacer bands, bracket-cornered mono buttons,
+ * clean grotesque title-case headings, and a single forest-green accent.
+ * Everything is scoped under `.landing-v3` so it never touches the app
+ * (.app-clean), the live landing (.landing-mint), or the shared @theme tokens.
+ */
+
+/*
+ * Display face — TWK Everett (Weltkern, licensed). One Light weight declared
+ * across the whole 100–900 range so every heading renders in the same thin
+ * weight. (Defined here and in globals.css; both point at the one Light file.)
+ */
+@font-face {
+  font-family: "TWK Everett";
+  src: url("/fonts/TWKEverett-Light.otf") format("opentype");
+  font-weight: 100 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "TWK Everett";
+  src: url("/fonts/TWKEverett-Regular.otf") format("opentype");
+  font-weight: 500 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+.landing-v3 {
+  /* neutral, faintly-green "chosen" grey — not a flat pure grey */
+  --v3-canvas: #ecefe8;
+  --v3-panel: #f5f7f2;
+  --v3-white: #ffffff;
+  --v3-ink: #121a0f;
+  --v3-muted: #55634e;
+  --v3-dim: #8b9784;
+  --v3-line: rgba(18, 26, 15, 0.12);
+  --v3-line-soft: rgba(18, 26, 15, 0.06);
+  --v3-accent: #2f6a1f;      /* forest — the "electric" solid accent */
+  --v3-accent-2: #CAFFB8;    /* mint — soft fills / highlights */
+
+  color: var(--v3-ink);
+  background: var(--v3-canvas);
+  /* Secondary/body copy is set in the mono face (nav, subheads, descriptions,
+     card body) — the blueprint "subfont" look. Headings opt back into TWK
+     Everett explicitly via var(--font-display-v3); mono labels already match. */
+  font-family: var(--font-mono), ui-monospace, "SF Mono", monospace;
+  /* TWK Everett first, then the Hanken fallback loaded by next/font. */
+  --font-display-v3: "TWK Everett", var(--font-hanken-v3), "Hanken Grotesk", system-ui, sans-serif;
+}
+/* Mono runs a touch wider — nudge the secondary copy down slightly so lines
+   still breathe and don't wrap awkwardly. */
+.landing-v3 p {
+  letter-spacing: -0.01em;
+}
+
+/* Display headings take the requested −2 (−0.02em) tracking centrally, and the
+   Sui-style *Regular* weight (TWK Everett reads light, never bold) — so the
+   look stays consistent regardless of per-heading utility classes. */
+.landing-v3 h1,
+.landing-v3 h2,
+.landing-v3 h3 {
+  letter-spacing: -0.02em;
+}
+/* Big display → Regular (500 maps to the Regular cut); small → Light. */
+.landing-v3 h1,
+.landing-v3 h2 {
+  font-weight: 500;
+}
+.landing-v3 h3 {
+  font-weight: 400;
+}
+
+/* ── Construction frame ──────────────────────────────────────────────────── */
+/* Centered content column with vertical hairline rails. */
+.landing-v3 .v3-frame {
+  position: relative;
+  margin: 0 auto;
+  max-width: 1280px;
+  border-left: 1px solid var(--v3-line);
+  border-right: 1px solid var(--v3-line);
+}
+/* Horizontal rule between stacked blocks. */
+.landing-v3 .v3-rule {
+  border-top: 1px solid var(--v3-line);
+}
+
+/* `+` corner tick — a tiny crosshair centered on a grid corner. Position the
+   parent `relative` and drop <Tick/> with an edge class. */
+.landing-v3 .v3-tick {
+  position: absolute;
+  z-index: 3;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+}
+.landing-v3 .v3-tick::before,
+.landing-v3 .v3-tick::after {
+  content: "";
+  position: absolute;
+  background: var(--v3-accent);
+}
+.landing-v3 .v3-tick::before { left: 5px; top: 0; width: 1px; height: 11px; }
+.landing-v3 .v3-tick::after { top: 5px; left: 0; height: 1px; width: 11px; }
+.landing-v3 .v3-tick-mint::before,
+.landing-v3 .v3-tick-mint::after { background: var(--v3-accent-2); }
+.landing-v3 .v3-tick-tl { left: 0; top: 0; transform: translate(-50%, -50%); }
+.landing-v3 .v3-tick-tr { right: 0; top: 0; transform: translate(50%, -50%); }
+.landing-v3 .v3-tick-bl { left: 0; bottom: 0; transform: translate(-50%, 50%); }
+.landing-v3 .v3-tick-br { right: 0; bottom: 0; transform: translate(50%, 50%); }
+
+/* ── Diagonal-hatch spacer band ──────────────────────────────────────────── */
+.landing-v3 .v3-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 7px,
+    var(--v3-line-soft) 7px,
+    var(--v3-line-soft) 8px
+  );
+}
+
+/* ── Bracket-cornered button ─────────────────────────────────────────────── */
+.landing-v3 .v3-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 200ms ease, background 200ms ease, color 200ms ease;
+}
+.landing-v3 .v3-btn:hover { transform: translateY(-2px); }
+.landing-v3 .v3-btn-solid { background: var(--v3-accent); color: #f4fbef; }
+.landing-v3 .v3-btn-solid:hover { background: #256016; }
+.landing-v3 .v3-btn-ghost { background: #e2e6dd; color: var(--v3-ink); }
+.landing-v3 .v3-btn-ghost:hover { background: #d6dccf; }
+/* Trim the buttons down on phones so the hero pair sits comfortably. */
+@media (max-width: 640px) {
+  .landing-v3 .v3-btn { height: 42px; padding: 0 16px; font-size: 12px; gap: 6px; }
+}
+/* the four crop brackets that sit just outside the button */
+/* Brackets are decoration only — take them out of flex flow so the label
+   stays perfectly centered in the button. */
+.landing-v3 .v3-bracket,
+.landing-v3 .v3-bracket-2 {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.landing-v3 .v3-bracket::before,
+.landing-v3 .v3-bracket::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--v3-accent);
+  border-style: solid;
+  border-width: 0;
+}
+.landing-v3 .v3-bracket::before {
+  left: -4px; top: -4px;
+  border-left-width: 1.5px; border-top-width: 1.5px;
+}
+.landing-v3 .v3-bracket::after {
+  right: -4px; bottom: -4px;
+  border-right-width: 1.5px; border-bottom-width: 1.5px;
+}
+/* second span for the other diagonal pair */
+.landing-v3 .v3-bracket-2::before,
+.landing-v3 .v3-bracket-2::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--v3-accent);
+  border-style: solid;
+  border-width: 0;
+}
+.landing-v3 .v3-bracket-2::before {
+  right: -4px; top: -4px;
+  border-right-width: 1.5px; border-top-width: 1.5px;
+}
+.landing-v3 .v3-bracket-2::after {
+  left: -4px; bottom: -4px;
+  border-left-width: 1.5px; border-bottom-width: 1.5px;
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────────────────── */
+/* Hidden by default; the GSAP <Motion /> controller reveals these as they
+   enter the viewport. The reduced-motion / no-JS fallback below keeps content
+   visible if motion never runs. */
+.landing-v3 .v3-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  will-change: opacity, transform;
+}
+.landing-v3 .v3-reveal.is-in { opacity: 1; transform: none; }
+
+/* ── FAQ accordion body ──────────────────────────────────────────────────── */
+.landing-v3 .v3-faq-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.landing-v3 .v3-faq-body.is-open { grid-template-rows: 1fr; }
+.landing-v3 .v3-faq-body > div { overflow: hidden; }
+
+.landing-v3 ::selection { background: var(--v3-accent-2); color: var(--v3-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-v3 .v3-reveal {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .landing-v3 .v3-btn { transition: none !important; }
+}

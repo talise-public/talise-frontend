@@ -10,7 +10,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Wire shape used by iOS — see APIModels.swift `SavingsGoal`. */
+/** Wire shape used by iOS, see APIModels.swift `SavingsGoal`. */
 function toWire(g: SavingsGoal) {
   return {
     id: String(g.id),
@@ -28,7 +28,7 @@ function toWire(g: SavingsGoal) {
 }
 
 /**
- * GET /api/rewards/goals — list the authenticated user's active savings
+ * GET /api/rewards/goals, list the authenticated user's active savings
  * goals (archived excluded). Returns { goals: [...] }.
  */
 export async function GET(req: Request) {
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 }
 
 /**
- * POST /api/rewards/goals — create a new goal.
+ * POST /api/rewards/goals, create a new goal.
  * Body: { name: string, targetUsd: number, deadlineMs?: number|null, color?: string }
  */
 export async function POST(req: Request) {

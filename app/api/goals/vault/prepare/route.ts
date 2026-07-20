@@ -21,7 +21,7 @@ import {
 } from "@/lib/goal-vault-ptb";
 import { readGoalVaultPrincipalMicros } from "@/lib/usdsui-coin";
 
-/** Yield (NAVI) goal ops are gated behind their own flag — the on-chain
+/** Yield (NAVI) goal ops are gated behind their own flag, the on-chain
  *  AccountCap-in-vault custody must be validated on a TestFlight build with a
  *  small real deposit before activation. Off → only plain vault ops. */
 const GOAL_VAULT_YIELD_ENABLED =
@@ -30,15 +30,15 @@ const GOAL_VAULT_YIELD_ENABLED =
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Generous fixed gas budget (0.06 SUI) — same rationale as sponsor-prepare:
+// Generous fixed gas budget (0.06 SUI), same rationale as sponsor-prepare:
 // the sponsor's gas-coin selection must cover the budget; only actual gas is
 // charged.
 const SPONSOR_GAS_BUDGET_MIST = 60_000_000n;
 
 /**
- * POST /api/goals/vault/prepare — build a sponsor-ready PTB that moves REAL
+ * POST /api/goals/vault/prepare, build a sponsor-ready PTB that moves REAL
  * USDsui into / out of a goal's on-chain GoalVault (funds segregated from the
- * user's spendable balance — not the DB "tracking envelope").
+ * user's spendable balance, not the DB "tracking envelope").
  *
  * Body: { op: "create" | "deposit" | "withdraw", goalId, amountUsd?, name?, targetUsd? }
  * Returns base64 `bytes` the iOS app signs and forwards to /api/zk/sponsor-execute,
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
         appendCreateVault(tx, { name, targetUsdsui: targetUsd });
       }
     } else {
-      // deposit / withdraw — resolve the vault id from the goal row server-side
+      // deposit / withdraw, resolve the vault id from the goal row server-side
       // (never trust a client-supplied object id), and require a positive amount.
       if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
         return NextResponse.json({ error: "amountUsd must be positive" }, { status: 400 });
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
           // MoveAbort 301 the clamp prevents, so ask the client to retry rather
           // than build a tx that may revert on-chain.
           return NextResponse.json(
-            { error: "couldn't read the goal's on-chain balance — try again in a moment", code: "PRINCIPAL_READ_FAILED" },
+            { error: "couldn't read the goal's on-chain balance, try again in a moment", code: "PRINCIPAL_READ_FAILED" },
             { status: 503 }
           );
         }
@@ -170,7 +170,7 @@ export async function POST(req: Request) {
         // First time earning: mint cap, supply NEW funds to NAVI, park in vault.
         appendVaultYieldStart(tx, { vaultId: goal.vaultObjectId, amountUsdsui: amountUsd });
       } else if (op === "yield-add") {
-        // Already earning: add more — basis becomes the goal's total + this add.
+        // Already earning: add more, basis becomes the goal's total + this add.
         appendVaultYieldAdd(tx, {
           vaultId: goal.vaultObjectId,
           amountUsdsui: amountUsd,

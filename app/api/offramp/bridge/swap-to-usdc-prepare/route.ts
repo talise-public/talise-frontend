@@ -21,7 +21,7 @@ export const runtime = "nodejs";
  * Step 1 of the decoupled cash-out: swap `amountUsdsui` USDsui → USDC and
  * deliver the USDC to the USER'S OWN wallet (their "USDC pocket"), taking the
  * 1% Talise fee to the treasury during the swap (Cetus overlay). This is a
- * plain swap — NOT a swap-and-send — so the off-ramp send is a separate, simple
+ * plain swap, NOT a swap-and-send, so the off-ramp send is a separate, simple
  * USDC transfer (see send-usdc-prepare). iOS signs the returned bytes with
  * signAndExecuteRaw.
  *
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
       slippage: SLIPPAGE_BPS / 10_000,
       txb: tx,
     });
-    // Keep the swapped USDC in the user's own wallet — the "USDC pocket".
+    // Keep the swapped USDC in the user's own wallet, the "USDC pocket".
     tx.transferObjects([outCoin], user.sui_address);
 
     const [{ address: sponsor }, gasPrice] = await Promise.all([sponsorPromise, gasPricePromise]);

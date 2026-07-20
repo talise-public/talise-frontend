@@ -1,55 +1,49 @@
 # Talise — Deployment
 
-The web tier is a single Next.js 15 app (`web/`). It runs anywhere Node 20 + a
-durable filesystem (for libSQL) are available — Railway, Fly, Render, K8s, or
-plain Docker.
+> **Production runs on Vercel with Postgres.** Railway/Docker below are
+> legacy/alternative and may be out of date.
 
-## Quick start: Railway
+The web tier is a single Next.js 15 app (`web/`). In production it is deployed
+to **Vercel** with a managed **Postgres** database (`DATABASE_URL` is a standard
+`postgres://USER:PASS@HOST:PORT/DB` URL). The app enforces Postgres at runtime —
+`lib/db.ts` connects with the `postgres` driver and there is no SQLite/libSQL
+code path. `DATABASE_AUTH_TOKEN` is ignored for Postgres deployments.
 
-1. `railway init` from `web/`.
-2. Add the libSQL plugin (or point `DATABASE_URL` at a Turso DB).
-3. Paste **every** value from `.env.example` into the Railway *Variables*
-   panel.
-4. `railway up`. The build will use `nixpacks` + `railway.toml`, and the
-   service will start serving on the platform-assigned `$PORT`.
-5. Set the public domain to your apex (e.g. `talise.io`) — Railway terminates
-   TLS for you.
+## Quick start: Vercel (production)
 
-Railway's health probe hits `/api/health` every 30 s. If DB / Sui RPC / Onara
-are all reachable the route returns `200 { ok: true }`; otherwise `503` and
-traffic gets paused until recovery.
+1. Import the repo into Vercel and set the project root to `web/`.
+2. Provision a Postgres database (Vercel Postgres, Supabase, Neon, or any
+   `postgres://` host) and set `DATABASE_URL` to its connection string.
+   - Behind a transaction pooler (e.g. Supabase pooled `:6543` / PgBouncer),
+     append `?pgbouncer=true` so prepared statements are auto-disabled.
+3. Paste **every** value from `.env.example` into the Vercel *Environment
+   Variables* panel (Production, and Preview if you want previews to work).
+4. Deploy. Vercel builds `next build` and serves the app on serverless
+   functions; the schema auto-migrates on first DB hit (see below).
+5. Point your apex (e.g. `talise.io`) at the Vercel project — Vercel
+   terminates TLS for you.
 
-## Quick start: Docker
+The health route `/api/health` returns `200 { ok: true }` when DB / Sui RPC /
+Onara are reachable, otherwise `503`.
 
-```bash
-cd web
-docker build -t talise-web .
-docker run -p 3000:3000 \
-  --env-file .env.local \
-  -v talise-data:/app/.data \
-  talise-web
+## Database
+
+The one supported production database is **Postgres**. Set:
+
+```
+DATABASE_URL=postgres://user:pass@host:5432/db
 ```
 
-The image uses the multi-stage `Dockerfile` and pulls Next.js standalone
-output, so the final image is ~180 MB. The SQLite DB lives in the
-`/app/.data` volume — mount it persistently or you'll lose user data on
-restart.
-
-## Database options
-
-| Option | When to use | Set |
-|---|---|---|
-| Local file (`file:./.data/talise.db`) | Single replica, persistent volume, low write volume | `DATABASE_URL=file:./.data/talise.db` |
-| **Turso** (recommended for prod) | Multi-region replicas, low-latency reads, free tier covers ~9k DAU | `DATABASE_URL=libsql://<your-db>.turso.io` + `DATABASE_AUTH_TOKEN=…` |
-| Railway libSQL service | Single-region, zero ops, scales with the rest of your stack | Inject from the service env |
-
-The schema auto-migrates on first DB hit — see `lib/db.ts:ensureSchema`. No
-manual migration step needed. `CREATE TABLE IF NOT EXISTS` + idempotent
+TLS is negotiated automatically (`sslmode=disable|require` in the URL is
+honoured; otherwise TLS is preferred with a plain-text fallback). The schema
+auto-migrates on first DB hit — see `lib/db.ts:ensureSchema`. No manual
+migration step is needed: `CREATE TABLE IF NOT EXISTS` + idempotent
 `ALTER TABLE` make redeploys safe.
 
 ## One-time bootstraps
 
-After the first deploy, run these once:
+After the first deploy, run these once (locally, with the prod `DATABASE_URL` /
+operator key in your `.env.local`):
 
 ```bash
 # Mint the global PaymentRegistry on chain (~0.005 SUI gas, paid by operator).
@@ -73,6 +67,41 @@ curl https://<your-domain>/api/health
 | `SHINAMI_API_KEY` | zkLogin proof minting on mainnet. |
 | `ONARA_URL` | Gas sponsorship. Sends fail without it. |
 | `TALISE_SUINS_OPERATOR_KEY` | Mints `<name>.talise.sui` subnames + the Payment Kit registry. |
-| `DATABASE_URL` | Where state lives. |
+| `DATABASE_URL` | Postgres connection string. Where all state lives. |
 
 Everything else has a sensible default or is optional.
+
+---
+
+## Legacy / alternative: Railway + Docker
+
+> The steps below are **legacy** and may be out of date. Vercel + Postgres
+> (above) is the canonical production deploy target. The app requires a
+> `postgres://` `DATABASE_URL` regardless of host — there is no SQLite/libSQL
+> path in the current code, so any container host must still point
+> `DATABASE_URL` at a Postgres instance.
+
+### Railway
+
+1. `railway init` from `web/`.
+2. Add a **Postgres** plugin and point `DATABASE_URL` at it (a `postgres://`
+   URL — not libSQL/Turso).
+3. Paste **every** value from `.env.example` into the Railway *Variables*
+   panel.
+4. `railway up`. The build uses `nixpacks` + `railway.toml`, and the service
+   serves on the platform-assigned `$PORT`.
+5. Set the public domain to your apex — Railway terminates TLS for you.
+
+### Docker
+
+```bash
+cd web
+docker build -t talise-web .
+docker run -p 3000:3000 \
+  --env-file .env.local \
+  talise-web
+```
+
+The image uses the multi-stage `Dockerfile` and pulls Next.js standalone
+output. State lives in the external Postgres pointed to by `DATABASE_URL`; the
+container itself is stateless (no local DB file to persist).

@@ -10,7 +10,7 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
 import { getChainIdentifier, getCurrentEpoch } from "@/lib/sui-epoch";
 
 /**
- * Team streaming payments — fund a pot once, then a gasless scheduler releases an
+ * Team streaming payments, fund a pot once, then a gasless scheduler releases an
  * EQUAL share of each tranche to every member of a saved payroll team, on an
  * interval, until the pot is exhausted.
  *
@@ -21,7 +21,7 @@ import { getChainIdentifier, getCurrentEpoch } from "@/lib/sui-epoch";
  *   • A Vercel cron (`/api/cron/process-team-streams`) releases each due tranche
  *     by signing escrow→member `send_funds` transfers with the server escrow key
  *     (`PAYROLL_STREAM_ESCROW_SK`). Gasless: zero gas price/budget, no gas payment,
- *     epoch-bounded expiration — identical to the cheque escrow release recipe.
+ *     epoch-bounded expiration, identical to the cheque escrow release recipe.
  *
  * The escrow holds money commingled across streams; the DB is the ledger that
  * bounds each stream to exactly what it funded. Gated by PAYROLL_STREAM_ESCROW_SK
@@ -38,7 +38,7 @@ export function teamStreamsEnabled(): boolean {
 function escrowKeypair(): Ed25519Keypair {
   if (_escrow) return _escrow;
   const k = process.env.PAYROLL_STREAM_ESCROW_SK;
-  if (!k) throw new Error("PAYROLL_STREAM_ESCROW_SK missing — the team-stream escrow key");
+  if (!k) throw new Error("PAYROLL_STREAM_ESCROW_SK missing, the team-stream escrow key");
   _escrow = Ed25519Keypair.fromSecretKey(k);
   return _escrow;
 }
@@ -48,7 +48,7 @@ export function teamStreamEscrowAddress(): string {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-export const MIN_PER_MEMBER_MICROS = 10_000n; // 0.01 USDsui — the gasless minimum per leg
+export const MIN_PER_MEMBER_MICROS = 10_000n; // 0.01 USDsui, the gasless minimum per leg
 const MAX_MEMBERS = 50;
 const MAX_TRANCHES = 365;
 
@@ -388,7 +388,7 @@ async function releaseOneTranche(stream: TeamStream): Promise<boolean> {
 /**
  * Sign + submit one gasless escrow `send_funds` per leg with the server escrow key.
  * Mirrors lib/cheques.ts::escrowTransfer exactly (zero gas, epoch-bounded expiration,
- * empty gas payment). One tx per leg — the gasless rail permits a single send_funds.
+ * empty gas payment). One tx per leg, the gasless rail permits a single send_funds.
  */
 async function escrowSendFunds(
   streamId: string,

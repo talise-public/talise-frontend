@@ -6,12 +6,12 @@ import { PrimaryButton } from "@/components/app/ui/PrimaryButton";
 import type { SessionResult } from "@/lib/onramp/types";
 
 /**
- * "Add money" (on-ramp) sheet — Transak hosted checkout.
+ * "Add money" (on-ramp) sheet, Transak hosted checkout.
  *
  * Flow: enter a USD amount → POST /api/onramp/v2/session → open the provider's
  * hosted widget in a new tab. Transak runs the KYC + card/bank payment itself
  * and delivers USDC on the user's Sui address; a follow-up swap converts that
- * USDC → USDsui. We collect NO identity fields here — the widget owns KYC.
+ * USDC → USDsui. We collect NO identity fields here, the widget owns KYC.
  *
  * DORMANT by default: renders nothing unless NEXT_PUBLIC_ONRAMP_ENABLED is
  * "true". It only calls the additive /api/onramp/v2/* routes and never touches
@@ -91,7 +91,7 @@ export function AddMoneyModal({ open, onClose }: AddMoneyModalProps) {
                 Amount (USD)
               </label>
               <div className="flex items-center gap-2 rounded-xl border border-[#15300c]/15 bg-white/60 px-4 py-3 backdrop-blur-sm">
-                <span className="text-[18px] text-[#3a5230]" style={{ fontFamily: "var(--font-display-v2)" }}>$</span>
+                <span className="text-[18px] text-[#3a5230]" style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}>$</span>
                 <input
                   inputMode="decimal"
                   value={amount}
@@ -120,7 +120,7 @@ export function AddMoneyModal({ open, onClose }: AddMoneyModalProps) {
             </PrimaryButton>
           </>
         ) : (
-          /* Session started — widget opened in a new tab. */
+          /* Session started, widget opened in a new tab. */
           <div className="space-y-4 text-center">
             <p className="text-[15px] leading-relaxed text-[#15300c]">
               Complete your purchase in the checkout tab. Once it clears, your

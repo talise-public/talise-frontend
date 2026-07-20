@@ -7,10 +7,10 @@ import { moneyRulesEnabled, prepareCancelRule } from "@/lib/money-rules";
 export const runtime = "nodejs";
 
 /**
- * POST /api/rules/[id]/cancel — return the owner-signed `standing_order::cancel`
+ * POST /api/rules/[id]/cancel, return the owner-signed `standing_order::cancel`
  * bytes (stops the rule + refunds the entire remaining pot to the owner). The
  * client signs these, then DELETEs /api/rules/[id] to clear the row. Returns 409
- * if the rule has no on-chain order (nothing to refund — just DELETE it).
+ * if the rule has no on-chain order (nothing to refund, just DELETE it).
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

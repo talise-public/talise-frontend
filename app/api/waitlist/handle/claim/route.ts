@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  *
  * Auth-required: the caller MUST be signed in via the web session
  * cookie (the user clicked "Sign in with Google" on /waitlist BEFORE
- * picking a handle — the email used by the row is derived from the
+ * picking a handle, the email used by the row is derived from the
  * authenticated session, not from the request body). On claim we:
  *   1. Resolve the user from the session cookie. No session → 401.
  *   2. ONE-NAME-PER-USER gate: if EITHER `users.talise_username` (by
@@ -64,7 +64,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  // Claim writes — tighter than availability. 6/min is well above any
+  // Claim writes, tighter than availability. 6/min is well above any
   // human retry cadence.
   const rl = await rateLimitAsync({
     key: `waitlist-claim:${ip}`,
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
   // Auth gate. Google-first flow: the user signed in with Google
   // BEFORE picking a handle, so we always have a session here. The
   // email used for the waitlist row is derived from the session, not
-  // accepted from the client — no spoofing surface.
+  // accepted from the client, no spoofing surface.
   const userId = await readSessionEntryId();
   if (!userId) {
     return NextResponse.json(
@@ -128,10 +128,10 @@ export async function POST(req: Request) {
     // BEFORE any availability check or reservation, block if THIS user
     // already has a name from EITHER source of truth:
     //
-    //   • `users.talise_username` keyed by user.id — set by a prior
+    //   • `users.talise_username` keyed by user.id, set by a prior
     //     claim, the sign-in bind hook, or a pre-existing SuiNS name
     //     reconciled onto the row out of band.
-    //   • `waitlist_signups.claimed_handle` keyed by email — the legacy
+    //   • `waitlist_signups.claimed_handle` keyed by email, the legacy
     //     reservation column.
     //
     // Either being non-NULL means the user already owns a handle, so a
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Composite availability — DB + on-chain. Re-checked atomically
+    // Composite availability, DB + on-chain. Re-checked atomically
     // inside the UPDATE below, but failing fast here gives the user a
     // precise error instead of a generic "race lost" 409.
     const verdict = await isWaitlistHandleAvailable(norm.handle);
@@ -186,9 +186,9 @@ export async function POST(req: Request) {
 
     // The DB reservation. Three guards make this safe:
     //  1. The UPSERT's WHERE in the conflict branch: only flip
-    //     `claimed_handle` when the existing row's value is NULL —
+    //     `claimed_handle` when the existing row's value is NULL -
     //     same email can't double-claim if two requests race.
-    //  2. The partial-unique index on `claimed_handle` — two different
+    //  2. The partial-unique index on `claimed_handle`, two different
     //     emails racing for the same handle: one write wins, the
     //     other raises a unique-violation we catch as 409.
     //  3. In the Google-first flow the row may not exist yet, so we
@@ -233,7 +233,7 @@ export async function POST(req: Request) {
     }
 
     if (!claimed) {
-      // The conflict branch's WHERE blocked the flip — `claimed_handle`
+      // The conflict branch's WHERE blocked the flip, `claimed_handle`
       // was already non-NULL when we tried to write. A same-email
       // double-claim race.
       return NextResponse.json(
@@ -288,7 +288,7 @@ export async function POST(req: Request) {
           { status: 409 }
         );
       }
-      // Unexpected DB error — roll back the handle reservation and bail.
+      // Unexpected DB error, roll back the handle reservation and bail.
       await c
         .execute({
           sql: "UPDATE waitlist_signups SET claimed_handle = NULL, handle_claimed_at = NULL WHERE email = ?",
@@ -299,7 +299,7 @@ export async function POST(req: Request) {
     }
 
     if (!userReserved) {
-      // The NULL guard blocked the write — this user already has a name.
+      // The NULL guard blocked the write, this user already has a name.
       // Roll back the handle reservation we just took and surface the
       // already-claimed contract.
       await c
@@ -327,7 +327,7 @@ export async function POST(req: Request) {
     }
 
     // Both reservations now held. Helper to undo BOTH atomically-enough
-    // for the single-writer flows we have — used on every failure path
+    // for the single-writer flows we have, used on every failure path
     // below so a mid-flight error never leaves the user half-claimed or
     // permanently locked out.
     const rollbackBoth = async () => {
@@ -345,12 +345,12 @@ export async function POST(req: Request) {
         .catch(() => null);
     };
 
-    // On-chain mint. Onara-sponsored — the user pays no gas, the
+    // On-chain mint. Onara-sponsored, the user pays no gas, the
     // operator wallet covers it. We do this SYNCHRONOUSLY (within the
     // request lifecycle) so the response only resolves once the
     // subname truly exists on chain.
     if (!suinsOperatorEnabled()) {
-      // Roll back BOTH reservations — we cannot honor the claim.
+      // Roll back BOTH reservations, we cannot honor the claim.
       await rollbackBoth();
       return NextResponse.json(
         {
@@ -362,8 +362,8 @@ export async function POST(req: Request) {
     }
 
     // Kick off the confirmation-email RENDER concurrently with the mint.
-    // `render()` (React-Email → HTML) is pure — no network, no side
-    // effects — so it is always safe to start here and lets the
+    // `render()` (React-Email → HTML) is pure, no network, no side
+    // effects, so it is always safe to start here and lets the
     // (occasionally tens-of-ms) render overlap the slow on-chain mint
     // instead of running serially after it. Only the Resend API call is
     // left for the post-mint critical path, fired in `after()` below.
@@ -371,7 +371,7 @@ export async function POST(req: Request) {
     // We attach a no-op `.catch` so a render failure can never produce an
     // unhandled rejection while the mint is in flight; if the render did
     // fail we simply skip the email (logged in `after()`). This promise
-    // is ONLY consumed on the success path after the mint resolves — it is
+    // is ONLY consumed on the success path after the mint resolves, it is
     // never sent on any error/rollback branch.
     const preparedEmailPromise = prerenderWaitlistConfirmation({
       to: email,
@@ -395,7 +395,7 @@ export async function POST(req: Request) {
       mintNftId = out.subnameNftId;
     } catch (mintErr) {
       // Low operator gas: do NOT roll back. Keep both reservations so the user
-      // KEEPS their name — it's reserved in the DB and the on-chain mint is
+      // KEEPS their name, it's reserved in the DB and the on-chain mint is
       // finalized later (the sign-in hook `bindWaitlistHandleIfAny` re-mints
       // reserved-but-unminted handles once gas is topped up). Return a calm
       // 503, not a scary failure.
@@ -412,20 +412,20 @@ export async function POST(req: Request) {
           })
           .catch(() => null);
         console.error(
-          `[waitlist/handle/claim] RESERVED (gas low) email=${email} handle=${norm.handle} — name held, mint queued for next sign-in`
+          `[waitlist/handle/claim] RESERVED (gas low) email=${email} handle=${norm.handle}, name held, mint queued for next sign-in`
         );
         return NextResponse.json(
           {
             ok: true,
             reserved: true,
             handle: norm.handle,
-            message: `@${norm.handle} is reserved for you — we're finalizing it on-chain and it'll be live in a few minutes.`,
+            message: `@${norm.handle} is reserved for you, we're finalizing it on-chain and it'll be live in a few minutes.`,
           },
           { status: 503 }
         );
       }
       // Any other mint failure: roll back BOTH reservations so the user (or
-      // someone else) can retry. Surface a generic 502 — the caller can't do
+      // someone else) can retry. Surface a generic 502, the caller can't do
       // anything useful with the on-chain failure detail.
       const msg = (mintErr as Error).message.slice(0, 200);
       console.warn(
@@ -440,7 +440,7 @@ export async function POST(req: Request) {
 
     // Mint succeeded. Persist the bind on the waitlist row so the
     // sign-in hook (`bindWaitlistHandleIfAny`) treats it as already
-    // bound on future logins — same hook is still wired for legacy
+    // bound on future logins, same hook is still wired for legacy
     // rows that pre-date this commit.
     await c.execute({
       sql: `UPDATE waitlist_signups
@@ -453,15 +453,15 @@ export async function POST(req: Request) {
 
     // NOTE: `users.talise_username` was already reserved (conditional on
     // NULL, RETURNING-confirmed) BEFORE the mint above. There is nothing
-    // left to write here — the mint can only have happened because that
+    // left to write here, the mint can only have happened because that
     // reservation succeeded, so the user row is already authoritative.
 
-    // Confirmation email — runs AFTER the response is returned, via
+    // Confirmation email, runs AFTER the response is returned, via
     // Next.js 15's `after()` hook. The old fire-and-forget pattern
     // (`withTimeout(...).catch(() => null)` without await) was racy
     // on Vercel: the serverless function instance can shut down
     // immediately after the response, killing any in-flight promise.
-    // `after()` is the Vercel-aware equivalent — guarantees the work
+    // `after()` is the Vercel-aware equivalent, guarantees the work
     // finishes before the instance is reclaimed. No timeout cap, so
     // Resend cold-starts (occasionally 3–5s) still complete instead
     // of dropping the email silently. Errors are logged but never
@@ -470,7 +470,7 @@ export async function POST(req: Request) {
     //
     // The HTML was already rendered concurrently with the mint above, so
     // by the time we get here `preparedEmailPromise` has almost always
-    // resolved — `after()` does only the Resend API call, nothing else.
+    // resolved, `after()` does only the Resend API call, nothing else.
     after(async () => {
       try {
         const prepared = await preparedEmailPromise;

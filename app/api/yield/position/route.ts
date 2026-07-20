@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  * Returns the caller's `talise_yield::YieldPosition` object id (or null if they
  * haven't minted one yet), by scanning `PositionMinted` events for one whose
  * `owner` matches the user's address. The position is a SHARED object, so it
- * can't be found via getOwnedObjects — the mint event is the index.
+ * can't be found via getOwnedObjects, the mint event is the index.
  *
  * Used by the Earn "test deposit" flow to decide mint-vs-deposit.
  */

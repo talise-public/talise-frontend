@@ -21,18 +21,18 @@ import { sui } from "./sui";
  * Talise's transport is gRPC-only (`sui()` → SuiGrpcClient). This module maps
  * each of those onto the gRPC primitives and reshapes the results back into
  * the JSON-RPC shapes the SDK reads, so the adapter runs unmodified over gRPC
- * — no JSON-RPC fullnode, no Shinami Node Service.
+ *, no JSON-RPC fullnode, no Shinami Node Service.
  *
  * WHICH METHODS ARE ON THE MONEY PATH
  * -----------------------------------
  * Talise calls exactly three adapter entry points:
- *   - `addSaveToTx`   (supply)   — builds MoveCalls from NAVI's open-API
+ *   - `addSaveToTx`   (supply) , builds MoveCalls from NAVI's open-API
  *                                  config/pools over HTTP; touches NO client
  *                                  method. Pure PTB assembly.
- *   - `getPositions`  (withdraw) — issues `devInspectTransactionBlock` for
+ *   - `getPositions`  (withdraw), issues `devInspectTransactionBlock` for
  *                                  emode account caps + `get_user_state`.
  *                                  Decodes `vector<UserStateInfo>` from BCS.
- *   - `addWithdrawToTx` (withdraw) — `getPositions` (devInspect) + a
+ *   - `addWithdrawToTx` (withdraw), `getPositions` (devInspect) + a
  *                                  best-effort oracle refresh. The refresh
  *                                  reads Pyth objects (`getObject` /
  *                                  `getDynamicFieldObject` / `multiGetObjects`)
@@ -59,7 +59,7 @@ import { sui } from "./sui";
  * for completeness + robustness, but are not on Talise's deposit/withdraw
  * critical path.
  *
- * VALIDATION: see `scripts/navi-grpc-validate.mjs` — read-only mainnet probes
+ * VALIDATION: see `scripts/navi-grpc-validate.mjs`, read-only mainnet probes
  * proving the position read matches the JSON-RPC path bit-for-bit and the
  * supply/withdraw PTBs build with the expected MoveCalls.
  */
@@ -94,7 +94,7 @@ type JsonRpcGetObjectResponse = { data: JsonRpcObjectData | null; error?: unknow
  * i.e. the SDK expects each nested struct wrapped under a `fields` key. We
  * reproduce that by recursively wrapping every plain object (not arrays, not
  * scalars) as `{ fields: <recursively-wrapped> }`. Scalars, strings, and
- * arrays pass through unchanged. This is a STRUCTURAL transform — it does not
+ * arrays pass through unchanged. This is a STRUCTURAL transform, it does not
  * know struct names, so it works for any Move type the SDK navigates, as long
  * as every level it descends is a nested object in the gRPC json (verified
  * true for the Pyth State + PriceInfoObject reads on the withdraw path).
@@ -185,7 +185,7 @@ function serializeDynamicFieldName(name: {
     });
     return PriceIdentifier.serialize({ bytes: inner }).toBytes();
   }
-  // Fallback: best-effort — treat an object with `bytes` as a byte vector.
+  // Fallback: best-effort, treat an object with `bytes` as a byte vector.
   const maybeBytes = (name.value as { bytes?: number[] })?.bytes;
   if (Array.isArray(maybeBytes)) {
     return bcs.vector(bcs.u8()).serialize(maybeBytes).toBytes();
@@ -295,7 +295,7 @@ export function naviGrpcCompatClient(): unknown {
         if (!dfld) return { data: null };
 
         // For a dynamic OBJECT field ($kind DynamicObject), childId is the
-        // wrapped object's id — fetch it directly so json/content is populated.
+        // wrapped object's id, fetch it directly so json/content is populated.
         // For a plain dynamic field, the field wrapper object itself (fieldId)
         // carries `{ name, value }`; fetch it and expose value under fields.
         const targetId = dfld.childId ?? dfld.fieldId;

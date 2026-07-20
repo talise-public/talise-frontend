@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const DIGEST_RE = /^[1-9A-HJ-NP-Za-km-z]{40,60}$/;
 
 /**
- * POST /api/rules/[id]/executed — record a confirmed on-chain `execute_due`
+ * POST /api/rules/[id]/executed, record a confirmed on-chain `execute_due`
  * release for a rule the caller owns. Body: { digest }. Advances the rule's
  * `next_due_at` mirror by one interval and appends to the execution ledger.
  * Idempotent: the on-chain Clock already prevents a double PAY, and the ledger

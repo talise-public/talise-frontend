@@ -6,7 +6,7 @@
  * Wraps the Earn-area GET endpoints (yield comparison, round-up config,
  * goals, insights) with fetch-on-mount + manual refresh, mirroring the
  * pattern in `components/app/data/hooks.ts`. All of these are DISPLAY reads
- * — money movement always flows through `useEarnAction`.
+ *, money movement always flows through `useEarnAction`.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -76,7 +76,7 @@ export function useYieldComparison() {
         try {
           sessionStorage.setItem(YIELD_CACHE_KEY, JSON.stringify(res));
         } catch {
-          /* storage blocked — non-fatal */
+          /* storage blocked, non-fatal */
         }
       }
     } catch (e) {
@@ -90,7 +90,7 @@ export function useYieldComparison() {
   useEffect(() => {
     mounted.current = true;
     // Stale-while-revalidate: paint the last-known comparison instantly on
-    // revisit (display-only — supply/withdraw flows revalidate server-side),
+    // revisit (display-only, supply/withdraw flows revalidate server-side),
     // then refresh quietly underneath.
     try {
       const raw = sessionStorage.getItem(YIELD_CACHE_KEY);
@@ -99,7 +99,7 @@ export function useYieldComparison() {
         setLoading(false);
       }
     } catch {
-      /* corrupt cache — foreground load below covers it */
+      /* corrupt cache, foreground load below covers it */
     }
     void load();
     // A tx fires an instant reload PLUS two settle-in re-polls: right after a
@@ -220,8 +220,8 @@ export type MonthInsights = {
   topCounterparties: TopCounterparty[];
   /**
    * True when the server's tx-history read timed out and it had no
-   * last-known snapshot to serve — the zeros in this payload are NOT
-   * truth. Keep the previous value / render "—", never a confident ₦0.00.
+   * last-known snapshot to serve, the zeros in this payload are NOT
+   * truth. Keep the previous value / render "-", never a confident ₦0.00.
    */
   partial?: boolean;
 };
@@ -235,7 +235,7 @@ export function useInsights() {
     try {
       const res = await api<MonthInsights>("/api/rewards/insights");
       // A partial response carries fabricated zeros (server activity read
-      // timed out, no snapshot) — never overwrite a real value with it.
+      // timed out, no snapshot), never overwrite a real value with it.
       if (mounted.current) {
         setData((cur) => (res.partial && cur && !cur.partial ? cur : res));
       }
@@ -262,9 +262,9 @@ export function useInsights() {
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
-/** Format an APY fraction (0.0512) as a percent string, or "—" below 1bp. */
+/** Format an APY fraction (0.0512) as a percent string, or "-" below 1bp. */
 export function formatApy(apy: number): string {
-  return apy >= 0.0001 ? `${(apy * 100).toFixed(2)}%` : "—";
+  return apy >= 0.0001 ? `${(apy * 100).toFixed(2)}%` : "-";
 }
 
 /**

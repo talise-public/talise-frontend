@@ -17,12 +17,12 @@ export const runtime = "nodejs";
  * Two views of one invoice, decided by who's asking:
  *   • OWNER (the signed-in issuer): the FULL invoice row (status, payer, etc).
  *   • EVERYONE ELSE (the payer hitting the public /i/<id> page): a
- *     public-safe subset — the amount, currency, line items, memo, status, and
+ *     public-safe subset, the amount, currency, line items, memo, status, and
  *     the issuer's PUBLIC pay coordinates (display handle + Sui address) so the
  *     pay page can route into /app/pay. The customer email is NEVER exposed
  *     publicly; the customer name is (it's printed on the invoice itself).
  *
- * POST /api/invoices/[id] — owner-only mutations.
+ * POST /api/invoices/[id], owner-only mutations.
  *   • { action: 'void' }              → mark an open invoice void.
  *   • { action: 'mark-paid', digest } → mark an open invoice paid. The digest is
  *                                        VERIFIED on-chain via the shared settle
@@ -77,7 +77,7 @@ export async function GET(
   }
 
   // Public-safe view. We still need the issuer's pay coordinates so the
-  // payer can settle the invoice — load the issuer and project the safe subset.
+  // payer can settle the invoice, load the issuer and project the safe subset.
   const issuer = await userById(invoice.userId);
   if (!issuer) {
     return NextResponse.json({ error: "invoice issuer not found" }, { status: 404 });

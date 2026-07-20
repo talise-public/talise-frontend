@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
  * Every number here is read live from production Postgres and is intentionally
  * NON-personal: counts, sums, and currency-pair tallies only. No address,
  * handle, email, digest, or counterparty ever leaves this function. The page
- * is meant to be honest — small, real, on-mainnet numbers beat inflated ones,
+ * is meant to be honest, small, real, on-mainnet numbers beat inflated ones,
  * so we report what actually settled rather than rounding up.
  *
  * Resilient by construction: each sub-query is time-bounded and falls back to
@@ -60,7 +60,7 @@ const toNum = (v: unknown): number => {
 
 export async function getPublicAnalytics(): Promise<PublicAnalytics> {
   // Four independent round-trips, not twelve. Firing a dozen concurrent
-  // COUNT(*)s starves the small Postgres pool — the tail queries queue past
+  // COUNT(*)s starves the small Postgres pool, the tail queries queue past
   // the timeout and silently fall back to 0. Collapsing every simple count
   // into ONE multi-subquery SELECT keeps us comfortably under the pool size.
   const [counts, tx, byDirectionRows, corridorRows] = await Promise.all([
@@ -94,7 +94,7 @@ export async function getPublicAnalytics(): Promise<PublicAnalytics> {
         });
         return r.rows.map((rw) => {
           const v = Object.values(rw);
-          return { direction: String(v[0] ?? "—"), count: toNum(v[1]), volumeUsd: toNum(v[2]) };
+          return { direction: String(v[0] ?? "-"), count: toNum(v[1]), volumeUsd: toNum(v[2]) };
         });
       })(),
       [] as DirectionStat[]

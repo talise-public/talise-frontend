@@ -6,13 +6,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/corridors — the cross-border corridor registry for the client.
+ * GET /api/corridors, the cross-border corridor registry for the client.
  *
  * Exposes the live + planned corridors so the app can render which fiat
  * routes are available now ("live"), in flight behind a partner
  * ("partner"), or on the roadmap ("planned"). The chain stays invisible:
  * the client only ever sees `fromCcy`/`toCcy` fiat and the lifecycle
- * status — never USDsui/USDC settlement.
+ * status, never USDsui/USDC settlement.
  *
  * The registry is static metadata (no I/O), so the only thing this route
  * does is shape it for the wire. We split out `live` for convenience
@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
  *     planned: Corridor[]               // status === "planned"
  *   }
  *
- * Note: `licenseNote` is intentionally included — it is non-secret ops
+ * Note: `licenseNote` is intentionally included, it is non-secret ops
  * metadata and lets the client surface the right compliance copy
  * (e.g. the ¥1M JPY cap) without a second round-trip.
  */

@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * RETIRED — streaming is now on-chain and Clock-based.
+ * RETIRED, streaming is now on-chain and Clock-based.
  *
  * There is no scheduler anymore. A stream is a real `Stream<USDSUI>` Move
  * object; the recipient pulls every tranche the on-chain `Clock` says is due

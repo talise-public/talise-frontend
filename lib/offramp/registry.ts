@@ -2,11 +2,11 @@
  * Corridor registry: destination currency → payout adapter.
  *
  * This is the single resolution point the off-ramp routes use to pick a
- * provider for a corridor — a `toCcy → PayoutAdapter` lookup (master plan
+ * provider for a corridor, a `toCcy → PayoutAdapter` lookup (master plan
  * §4 provider-agnostic contract).
  *
  * The live NGN off-ramp is the Linq engine behind its existing
- * `web/app/api/offramp/linq/*` routes — it is intentionally NOT registered
+ * `web/app/api/offramp/linq/*` routes, it is intentionally NOT registered
  * here so this additive scaffolding cannot alter the live NGN path. NGN is
  * therefore listed as a "reserved, served by Linq" corridor: a caller that
  * asks the registry for NGN is told to use the Linq routes rather than

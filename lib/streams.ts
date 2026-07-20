@@ -10,7 +10,7 @@ import { onara } from "@/lib/onara";
 import { getNormalizedTransaction } from "@/lib/sui-shapes";
 
 /**
- * Streaming USDsui payments — backend data layer + escrow release engine.
+ * Streaming USDsui payments, backend data layer + escrow release engine.
  *
  * This is the ESCROW + SCHEDULER variant of the design
  * (docs/features/streaming-payments.md §2 option (c), made runnable today
@@ -18,7 +18,7 @@ import { getNormalizedTransaction } from "@/lib/sui-shapes";
  *
  *   • The sender funds the FULL stream amount ONCE into a Talise-controlled
  *     ESCROW address via the existing transfer pipeline (a plain USDsui
- *     `0x2::balance::send_funds` send — the same builder /api/send/
+ *     `0x2::balance::send_funds` send, the same builder /api/send/
  *     sponsor-prepare uses). That escrow address is derived from the server
  *     ESCROW keypair (`STREAM_ESCROW_SK`), mirroring the operator-keypair
  *     pattern in web/lib/suins-operator.ts.
@@ -50,7 +50,7 @@ export function streamEscrowEnabled(): boolean {
 
 /**
  * The published `talise::stream` package id, when configured. The escrow +
- * scheduler variant does NOT need it — it is the seam for the future
+ * scheduler variant does NOT need it, it is the seam for the future
  * on-chain `Stream` object path. Returns null (feature gated off) when unset
  * so an absent id never breaks anything.
  */
@@ -67,7 +67,7 @@ export function streamRegistryId(): string | null {
 }
 
 /**
- * True when the on-chain `talise::stream` path is configured — just the
+ * True when the on-chain `talise::stream` path is configured, just the
  * package + registry ids. It does NOT require a worker/escrow key: streaming
  * is cron-less now, the recipient pulls accrued tranches via the permissionless
  * `stream::claim_accrued` (Onara-sponsored), `create` is sponsored, and
@@ -96,14 +96,14 @@ function escrowKeypair(): Ed25519Keypair {
   const k = process.env.STREAM_ESCROW_SK;
   if (!k) {
     throw new Error(
-      "STREAM_ESCROW_SK missing — the Talise-controlled escrow keypair that holds streamed funds"
+      "STREAM_ESCROW_SK missing, the Talise-controlled escrow keypair that holds streamed funds"
     );
   }
   _escrow = Ed25519Keypair.fromSecretKey(k);
   return _escrow;
 }
 
-/** The escrow's Sui address — the funding destination for every stream. */
+/** The escrow's Sui address, the funding destination for every stream. */
 export function streamEscrowAddress(): string {
   return escrowKeypair().getPublicKey().toSuiAddress();
 }
@@ -115,7 +115,7 @@ export function streamEscrowAddress(): string {
 // ON CONFLICT). Schema per the design (§5).
 let _schemaReadyP: Promise<void> | null = null;
 
-// Bump whenever ANY DDL below changes — the one-SELECT version gate skips the
+// Bump whenever ANY DDL below changes, the one-SELECT version gate skips the
 // replay (~8 round-trips) on every cold start while the marker matches.
 const STREAMS_SCHEMA_VERSION = "2026-06-10.1";
 
@@ -128,7 +128,7 @@ export function ensureStreamsSchema(): Promise<void> {
     const gate = await schemaVersionGate("streams_schema_version", STREAMS_SCHEMA_VERSION);
     if (gate.upToDate) return;
     // One row per stream. The escrow holds the undistributed funds; this
-    // row is the scheduler index + UI cache. `id` is the stream id — the
+    // row is the scheduler index + UI cache. `id` is the stream id, the
     // on-chain Stream object id when STREAM_PACKAGE_ID is live, otherwise a
     // server-generated "str_<hex>" id for the escrow variant.
     await c.execute(
@@ -349,16 +349,16 @@ export async function setStreamState(id: string, state: StreamState): Promise<vo
 //   cancel_and_withdraw<T>(stream, ctx): Coin<T>             // sender-signed
 //
 // FUNDING PATTERN (the crux):
-//   • create is a SPONSORED tx — a custom Move call is NOT gasless-eligible
+//   • create is a SPONSORED tx, a custom Move call is NOT gasless-eligible
 //     (only 0x2::balance::send_funds is). So Onara sponsors gas, the user
 //     signs. Mirrors the SPONSORED branch of /api/send/sponsor-prepare:
 //     onara().status() for the sponsor address + reference gas price,
 //     setSender(user), setGasOwner(sponsor), setGasPrice, build → sponsor-
 //     ready bytes the iOS client signs and POSTs to /api/zk/sponsor-execute.
 //   • The Balance<USDSUI> `funds` argument comes from the user's Address
-//     Balance accumulator via tx.balance({ type, balance }) — the SAME
+//     Balance accumulator via tx.balance({ type, balance }), the SAME
 //     accumulator-withdrawal primitive the gasless branch passes to
-//     0x2::balance::send_funds — handed straight as the create() arg.
+//     0x2::balance::send_funds, handed straight as the create() arg.
 //   • release is a WORKER-signed Move call that pays its OWN SUI gas (the
 //     worker = the STREAM_ESCROW_SK key, funded for gas). Build → worker
 //     signTransaction → executeTransaction, mirroring suins-operator.ts.
@@ -389,7 +389,7 @@ export async function buildStreamCreateSponsored(input: {
   const registry = streamRegistryId();
   if (!pkg || !registry) {
     throw new Error(
-      "STREAM_PACKAGE_ID / STREAM_REGISTRY_ID unset — on-chain stream create disabled"
+      "STREAM_PACKAGE_ID / STREAM_REGISTRY_ID unset, on-chain stream create disabled"
     );
   }
 
@@ -407,13 +407,13 @@ export async function buildStreamCreateSponsored(input: {
 
   // stream::create wants a Balance<USDSUI>. Source it from WHEREVER the user's
   // USDsui actually lives:
-  //   • Coin<USDSUI> objects (the common case — received funds, on-ramp, swaps)
+  //   • Coin<USDSUI> objects (the common case, received funds, on-ramp, swaps)
   //     → coinWithBalance({useGasCoin:false}) auto-merges/splits owned coins,
   //       then coin::into_balance converts Coin → Balance. Same primitive every
   //       other Talise contract-funding flow uses (goal vault, sponsored send).
   //   • Address-Balance accumulator → tx.balance (the gasless-send rail).
   // Using ONLY the accumulator (the old behaviour) aborted on execution for any
-  // user whose funds were in coins — which is most of them — hence "couldn't
+  // user whose funds were in coins, which is most of them, hence "couldn't
   // start the stream". Pick by summing the user's coin objects.
   let coinTotal = 0n;
   try {
@@ -424,7 +424,7 @@ export async function buildStreamCreateSponsored(input: {
     }).listCoins({ owner: input.senderAddress, coinType: USDSUI_TYPE });
     for (const o of res.objects ?? []) coinTotal += BigInt(o.balance ?? "0");
   } catch {
-    // listCoins read failed — fall through to the accumulator path.
+    // listCoins read failed, fall through to the accumulator path.
   }
 
   const funds =
@@ -462,7 +462,7 @@ export async function buildStreamCreateSponsored(input: {
   // SPONSORED: Onara owns the gas. The user signs the sender slot.
   tx.setGasOwner(sponsor);
   tx.setGasPrice(BigInt(gasPrice));
-  // Explicit budget (0.06 SUI) — without it the built bytes carry no gas
+  // Explicit budget (0.06 SUI), without it the built bytes carry no gas
   // budget and execution fails with InsufficientGas. Same fixed budget the
   // goal-vault + send sponsored builders use; only the gas actually consumed
   // is charged to the sponsor.
@@ -477,7 +477,7 @@ export async function buildStreamCreateSponsored(input: {
  *
  * THIS is the cron-less release path. `claim_accrued` is permissionless on
  * chain: it walks the schedule, releases EVERY tranche whose Clock due-time has
- * passed, and transfers it to the stream's hardwired `recipient` — so there is
+ * passed, and transfers it to the stream's hardwired `recipient`, so there is
  * no extraction surface (a caller can only push DUE funds to the recipient,
  * never to themselves, never more than the schedule allows). The recipient
  * signs (zkLogin) and Onara sponsors the gas, so claiming is free and needs no
@@ -495,7 +495,7 @@ export async function buildClaimAccruedSponsored(input: {
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = streamPackageId();
   if (!pkg) {
-    throw new Error("STREAM_PACKAGE_ID unset — on-chain stream claim disabled");
+    throw new Error("STREAM_PACKAGE_ID unset, on-chain stream claim disabled");
   }
 
   const onaraClient = onara();
@@ -531,7 +531,7 @@ export async function buildClaimAccruedSponsored(input: {
  * doesn't on the gRPC build).
  *
  * The record call lands milliseconds after execution returns the digest, and
- * fullnode reads often lag indexing by 1–3s — so a single read here used to
+ * fullnode reads often lag indexing by 1–3s, so a single read here used to
  * 409 every freshly-funded stream ("Couldn't confirm the on-chain stream
  * yet") even though the money had already moved. We now retry the read with
  * short backoff (~7s budget) before giving up. Returns null only if the tx
@@ -555,13 +555,13 @@ export async function parseCreatedStreamObjectId(
     try {
       tx = await getNormalizedTransaction(digest);
     } catch (err) {
-      // Most likely "not found" — the node hasn't indexed the digest yet.
+      // Most likely "not found", the node hasn't indexed the digest yet.
       console.warn(
         `[streams] parseCreatedStreamObjectId getTransaction failed (attempt ${attempt + 1}/${DELAYS_MS.length}) digest=${digest}: ${(err as Error).message}`
       );
       continue;
     }
-    // A readable failed tx will never produce the object — stop retrying.
+    // A readable failed tx will never produce the object, stop retrying.
     if (tx.status !== "success") return null;
 
     for (const oc of tx.objectChanges) {
@@ -571,7 +571,7 @@ export async function parseCreatedStreamObjectId(
         return oc.objectId;
       }
     }
-    // Readable + successful but no Stream object — retrying won't change it.
+    // Readable + successful but no Stream object, retrying won't change it.
     return null;
   }
   return null;
@@ -592,7 +592,7 @@ export async function buildStreamCancelSponsored(input: {
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = streamPackageId();
   if (!pkg) {
-    throw new Error("STREAM_PACKAGE_ID unset — on-chain stream cancel disabled");
+    throw new Error("STREAM_PACKAGE_ID unset, on-chain stream cancel disabled");
   }
 
   const onaraClient = onara();
@@ -631,7 +631,7 @@ const MICROS = 1_000_000;
  * way the `stream::claim_accrued` contract does: the first tranche is due at
  * `start_ms` and one more every `interval_ms`, capped at `num_tranches`. We
  * compute this instead of trusting `released_micros` because the stream is
- * CRON-LESS — nothing writes `released_micros` back, so it would sit at 0
+ * CRON-LESS, nothing writes `released_micros` back, so it would sit at 0
  * forever and the bar would never move. The full amount is locked on-chain at
  * create, so accrued tranches are guaranteed to the recipient (a claim just
  * realizes them). Frozen for terminal states (cancelled/completed) so a stopped

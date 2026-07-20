@@ -1,6 +1,6 @@
 import { poseidonHash } from "@mysten/sui/zklogin";
 /**
- * Talise shielded-pool SDK — deterministic key derivation.
+ * Talise shielded-pool SDK, deterministic key derivation.
  *
  * Importable from both server and client (no `server-only`, no Node-only deps).
  * NO new npm deps: uses Web Crypto (`globalThis.crypto.subtle`) + bigint only.
@@ -17,9 +17,9 @@ import { poseidonHash } from "@mysten/sui/zklogin";
  *
  * CRYPTO STATUS:
  *   • spendingKey derivation (sign → SHA-256 → mod r): REAL.
- *   • viewingKey = Poseidon1(spendingKey): STUBBED — see `poseidon1` below.
+ *   • viewingKey = Poseidon1(spendingKey): STUBBED, see `poseidon1` below.
  *     Needs a BN254 Poseidon impl byte-identical to `sui::poseidon_bn254`.
- *   • publicKey: STUBBED — placeholder pending the circuit's pubkey definition.
+ *   • publicKey: STUBBED, placeholder pending the circuit's pubkey definition.
  */
 
 /** BN254 scalar field order r. Reductions for the note field live here. */
@@ -28,15 +28,15 @@ export const BN254_SCALAR_FIELD =
 
 /**
  * The fixed message the user signs to derive their note master. MUST be stable
- * forever — changing it orphans every existing note. Domain-separated.
+ * forever, changing it orphans every existing note. Domain-separated.
  */
 export const SHIELD_KEY_DERIVATION_MESSAGE =
   "talise.shield.note-master.v1";
 
 export type ShieldKeypair = {
-  /** Note spending key — a BN254 scalar. Keep secret; never leaves the device. */
+  /** Note spending key, a BN254 scalar. Keep secret; never leaves the device. */
   spendingKey: bigint;
-  /** Viewing key — lets a holder trial-decrypt notes without spend authority. */
+  /** Viewing key, lets a holder trial-decrypt notes without spend authority. */
   viewingKey: bigint;
   /** Public key field element bound into note commitments. */
   publicKey: bigint;
@@ -64,7 +64,7 @@ async function sha256(data: Uint8Array): Promise<Uint8Array> {
 }
 
 /**
- * Derive the shield keypair from a 32-byte NOTE MASTER seed — the recoverable,
+ * Derive the shield keypair from a 32-byte NOTE MASTER seed, the recoverable,
  * user-controlled secret. For seedless zkLogin users the note master is
  * generated ONCE (CSPRNG) and persisted to two recovery rails (device keychain
  * + OAuth-bound server escrow); recovery = restore the master → re-derive →
@@ -90,7 +90,7 @@ export async function deriveShieldKeypairFromSeed(
 }
 
 /**
- * Derive the shield keypair from a personal-message signer. Legacy path — the
+ * Derive the shield keypair from a personal-message signer. Legacy path, the
  * signature is treated as the note-master seed. Prefer
  * {@link deriveShieldKeypairFromSeed} with a persisted, recoverable note master
  * (a raw signature isn't stable across zkLogin sessions, so it can't be the
@@ -107,7 +107,7 @@ export async function deriveShieldKeypair(
 /**
  * NIST P-256 (secp256r1) group order n. The ECIES enc scalar lives in [1, n-1].
  * Duplicated from encrypt.ts's curve params on purpose: keys.ts must not import
- * from encrypt.ts (encrypt.ts imports from keys.ts — avoid a cycle).
+ * from encrypt.ts (encrypt.ts imports from keys.ts, avoid a cycle).
  */
 const P256_ORDER =
   0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
@@ -115,20 +115,20 @@ const P256_ORDER =
 /**
  * Domain-separation tag mixed into the ECIES encryption scalar so it is a
  * distinct secret from the spending/viewing keys (a leaked enc scalar must not
- * reveal spend authority). Stable forever — changing it orphans published
+ * reveal spend authority). Stable forever, changing it orphans published
  * encryption public keys.
  */
 const SHIELD_ENC_KEY_TAG = "talise.shield.enc-scalar.v1";
 
 /**
  * Derive the recipient's ECIES encryption PRIVATE scalar `d` deterministically
- * from the shield spending key — so it is recoverable on any device (re-sign-in
+ * from the shield spending key, so it is recoverable on any device (re-sign-in
  * → re-derive → re-scan), exactly like the viewing key. `d = SHA-256(tag ‖
  * spendingKey_32BE) mod n` with `n` = P-256 group order, rejection-resampling
  * the (astronomically unlikely) `0` case via a counter.
  *
  * The matching PUBLIC key (what the recipient publishes for senders to encrypt
- * to) is `d·G` — see encrypt.ts `encPublicKeyFromScalar`.
+ * to) is `d·G`, see encrypt.ts `encPublicKeyFromScalar`.
  *
  * REAL: deterministic, recoverable, domain-separated from the spend key.
  */
@@ -153,7 +153,7 @@ export async function deriveShieldEncScalar(spendingKey: bigint): Promise<bigint
 }
 
 /**
- * Poseidon1 of a single BN254 field element — REAL. Delegates to `poseidonStub`
+ * Poseidon1 of a single BN254 field element, REAL. Delegates to `poseidonStub`
  * (`@mysten/sui/zklogin` poseidonHash), verified byte-identical to the circuit's
  * `poseidon_opt` hash1 (parity gate, 2026-06-17). Used for the note pubkey and
  * the viewing key.
@@ -163,13 +163,13 @@ export function poseidon1(x: bigint): bigint {
 }
 
 /**
- * REAL Poseidon over BN254 — `@mysten/sui/zklogin`'s `poseidonHash`, the
+ * REAL Poseidon over BN254, `@mysten/sui/zklogin`'s `poseidonHash`, the
  * circomlib parameterization that is byte-identical to `sui::poseidon_bn254`
  * (verified for arity-2 against all 27 on-chain `empty_subtree_hashes`, the
  * Phase-0 gate). Used for note commitments (Poseidon4), nullifiers (Poseidon3),
  * and the viewing key (Poseidon1). PARITY VERIFIED 2026-06-17: arity-1/3/4 are
  * byte-identical to the circuit's `poseidon_opt` (known-answer gate in
- * circuit/tests/poseidon_parity.rs — poseidonHash([1]) / ([1,2,3]) / ([1,2,3,4])
+ * circuit/tests/poseidon_parity.rs, poseidonHash([1]) / ([1,2,3]) / ([1,2,3,4])
  * equal hash1/hash3/hash4). So SDK-assembled witnesses satisfy the circuit and
  * verify on-chain.
  */

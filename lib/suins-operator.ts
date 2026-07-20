@@ -7,7 +7,7 @@ import { SuinsClient, SuinsTransaction } from "@mysten/suins";
 import { sui } from "./sui";
 
 /**
- * SuiNS operator — server-side helper that owns the `talise.sui` parent name
+ * SuiNS operator, server-side helper that owns the `talise.sui` parent name
  * and mints `name.talise.sui` subname NFTs for users on claim.
  *
  * Flow per claim:
@@ -36,7 +36,7 @@ function operator(): Ed25519Keypair {
   const k = process.env.TALISE_SUINS_OPERATOR_KEY;
   if (!k) {
     throw new Error(
-      "TALISE_SUINS_OPERATOR_KEY missing — the operator wallet that holds talise.sui"
+      "TALISE_SUINS_OPERATOR_KEY missing, the operator wallet that holds talise.sui"
     );
   }
   _operator = Ed25519Keypair.fromSecretKey(k);
@@ -44,7 +44,7 @@ function operator(): Ed25519Keypair {
 }
 
 /**
- * A DIRECT-fullnode gRPC client for the subname mint — NOT the Hayabusa-proxied
+ * A DIRECT-fullnode gRPC client for the subname mint, NOT the Hayabusa-proxied
  * `sui()`. `tx.build()` resolves its inputs (the parent SuinsRegistration NFT,
  * the shared SuiNS registry objects) by reading them back from the client; the
  * Hayabusa read/cache proxy returns "Not Found" for those owned/shared object
@@ -64,7 +64,7 @@ function directChainClient(): SuiGrpcClient {
 export function suins(): SuinsClient {
   if (_suins) return _suins;
   // Build the SuinsTransaction against the DIRECT fullnode, not the
-  // Hayabusa-proxied `sui()` — object resolution during `tx.build()` 404s
+  // Hayabusa-proxied `sui()`, object resolution during `tx.build()` 404s
   // through the read proxy. See directChainClient() above.
   _suins = new SuinsClient({
     client: directChainClient() as never,
@@ -88,7 +88,7 @@ export function suinsOperatorAddress(): string {
 // ── Low-balance gas guard ────────────────────────────────────────────────────
 //
 // Each subname mint costs the operator ~0.0078 SUI in gas. When the operator
-// wallet runs dry, the mint tx fails on-chain — and the claim routes roll the
+// wallet runs dry, the mint tx fails on-chain, and the claim routes roll the
 // reservation back and surface a scary "mint failed" 502, exactly the incident
 // where a batch of users couldn't claim their names. This guard runs a cheap
 // balance read BEFORE we build/broadcast, so we can fail FAST and GRACEFULLY:
@@ -116,7 +116,7 @@ export class LowOperatorGasError extends Error {
 
 /**
  * Pre-mint gas check. Logs a loud alert in the WARN band (top up soon) and
- * throws `LowOperatorGasError` in the BLOCK band (can't safely mint). Cheap —
+ * throws `LowOperatorGasError` in the BLOCK band (can't safely mint). Cheap -
  * one `getBalance` read. Never throws on a balance-read failure (fails open so
  * a transient RPC blip doesn't block a mint the wallet could actually afford).
  */
@@ -124,7 +124,7 @@ export async function assertOperatorGas(): Promise<void> {
   const addr = suinsOperatorAddress();
   let suiBal: number;
   try {
-    // Read the balance DIRECTLY — not via getSuiBalance(), which swallows RPC
+    // Read the balance DIRECTLY, not via getSuiBalance(), which swallows RPC
     // errors and returns 0. A swallowed 0 would look like an empty wallet and
     // wrongly BLOCK a mint on a transient blip. A genuine RPC failure here
     // throws and we fail OPEN: never block a mint the wallet could afford.
@@ -135,13 +135,13 @@ export async function assertOperatorGas(): Promise<void> {
   }
   if (suiBal < OPERATOR_GAS_BLOCK_SUI) {
     console.error(
-      `[ALERT][operator-gas] BLOCKING mints — ${suiBal.toFixed(4)} SUI on ${addr} (< ${OPERATOR_GAS_BLOCK_SUI}). TOP UP NOW; claims are being reserved + queued.`
+      `[ALERT][operator-gas] BLOCKING mints, ${suiBal.toFixed(4)} SUI on ${addr} (< ${OPERATOR_GAS_BLOCK_SUI}). TOP UP NOW; claims are being reserved + queued.`
     );
     throw new LowOperatorGasError(suiBal);
   }
   if (suiBal < OPERATOR_GAS_WARN_SUI) {
     console.warn(
-      `[ALERT][operator-gas] LOW — ${suiBal.toFixed(4)} SUI on ${addr} (< ${OPERATOR_GAS_WARN_SUI}, ~${Math.floor(suiBal / 0.0078)} mints left). Top up soon.`
+      `[ALERT][operator-gas] LOW, ${suiBal.toFixed(4)} SUI on ${addr} (< ${OPERATOR_GAS_WARN_SUI}, ~${Math.floor(suiBal / 0.0078)} mints left). Top up soon.`
     );
   }
 }
@@ -150,7 +150,7 @@ export async function assertOperatorGas(): Promise<void> {
  * Mint `<username>.talise.sui` as a transferable NFT and send it to
  * `userAddress`. Returns the tx digest + the new subname NFT object id.
  *
- * Bare username (e.g. "sele"), no `.talise.sui` suffix — the SuiNS SDK
+ * Bare username (e.g. "sele"), no `.talise.sui` suffix, the SuiNS SDK
  * appends the parent's labels under the hood.
  */
 export async function mintSubname(opts: {
@@ -166,7 +166,7 @@ export async function mintSubname(opts: {
     );
   }
 
-  // Fail fast + graceful if the operator can't fund the mint — the routes
+  // Fail fast + graceful if the operator can't fund the mint, the routes
   // catch LowOperatorGasError, keep the reservation, and tell the user it's
   // "reserved, finalizing shortly" rather than rolling back with a 502.
   await assertOperatorGas();
@@ -184,7 +184,7 @@ export async function mintSubname(opts: {
 
   // Bind the subname to the user's address so `getNameRecord` resolves.
   // Without this, the SuiNS dynamic field exists but `targetAddress` is
-  // null — the name is "taken" but resolves to nothing. The operator can
+  // null, the name is "taken" but resolves to nothing. The operator can
   // sign for this call while it still holds the NFT (before the transfer
   // below in the same PTB).
   suinsTx.setTargetAddress({
@@ -198,12 +198,12 @@ export async function mintSubname(opts: {
   const kp = operator();
   tx.setSender(kp.getPublicKey().toSuiAddress());
 
-  // Build (resolve inputs) against the DIRECT fullnode — the Hayabusa read
+  // Build (resolve inputs) against the DIRECT fullnode, the Hayabusa read
   // proxy 404s the parent NFT / SuiNS object lookups ("…mint failed: Not Found").
   const bytes = await tx.build({ client: directChainClient() as never });
   const { signature } = await kp.signTransaction(bytes);
 
-  // Execute through `sui()` — its broadcast path bypasses Hayabusa and keeps
+  // Execute through `sui()`, its broadcast path bypasses Hayabusa and keeps
   // the multi-endpoint failover for the actual on-chain submit.
   const client = sui();
 

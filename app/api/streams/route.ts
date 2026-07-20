@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/streams
  *
- * List the caller's streams — as SENDER and as RECIPIENT — with computed
+ * List the caller's streams, as SENDER and as RECIPIENT, with computed
  * progress (releasedUsd / remainingUsd / tranchesDone / nextTrancheAt /
  * state). Reads the DB row (fast); the per-tranche ledger + escrow are the
  * source of truth, the row is the cache.

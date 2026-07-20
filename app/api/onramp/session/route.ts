@@ -6,7 +6,7 @@ import { requireAppAttestStructural } from "@/lib/app-attest";
 export const runtime = "nodejs";
 
 /**
- * Stripe Crypto Onramp — server-side session creator (embedded SDK flow).
+ * Stripe Crypto Onramp, server-side session creator (embedded SDK flow).
  *
  * Returns `{ clientSecret, id }` instead of `redirect_url` so the client can
  * mount the embedded Onramp UI via `@stripe/crypto` and keep the user on
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * AutoConvertBanner sweeps any inbound USDC to USDsui automatically.
  *
  * We use `fetch` directly against Stripe's REST API to avoid pulling in the
- * `stripe` npm package — keeps the dependency footprint small and the
+ * `stripe` npm package, keeps the dependency footprint small and the
  * surface area minimal (one call, one shape).
  *
  * Docs: https://docs.stripe.com/crypto/onramp
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Optional `{ amount }` override. Default to $20 — Stripe's sweet spot
+  // Optional `{ amount }` override. Default to $20, Stripe's sweet spot
   // for first-time onramp.
   let body: { amount?: number } = {};
   try {
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   form.set("lock_wallet_address", "true");
   form.set("source_currency", "usd");
   form.set("source_amount", String(amount));
-  // No success_url / cancel_url — the embedded SDK signals completion via
+  // No success_url / cancel_url, the embedded SDK signals completion via
   // event callbacks in the browser, not via redirect.
 
   let resp: Response;
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: form.toString(),
-      // Hard deadline — Stripe is normally <1s but we never want a hung
+      // Hard deadline, Stripe is normally <1s but we never want a hung
       // socket to hold a serverless function open.
       signal: AbortSignal.timeout(8000),
     });
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
   if (!resp.ok) {
     const rawMessage = json.error?.message ?? "";
-    // 401 — bad / missing key.
+    // 401, bad / missing key.
     if (resp.status === 401) {
       return NextResponse.json(
         {
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
         { status: 503 }
       );
     }
-    // Generic 5xx — bubble Stripe's own message, mapped to 502 upstream.
+    // Generic 5xx, bubble Stripe's own message, mapped to 502 upstream.
     if (resp.status >= 500) {
       return NextResponse.json(
         {
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
         { status: 502 }
       );
     }
-    // All other Stripe errors — forward status + message.
+    // All other Stripe errors, forward status + message.
     const message =
       rawMessage || `Stripe request failed (HTTP ${resp.status})`;
     return NextResponse.json({ error: message }, { status: resp.status });
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Stripe did not return a client_secret. This usually means the embedded Onramp SDK isn't enabled for this account — check your Stripe dashboard.",
+          "Stripe did not return a client_secret. This usually means the embedded Onramp SDK isn't enabled for this account, check your Stripe dashboard.",
       },
       { status: 502 }
     );

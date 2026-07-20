@@ -17,7 +17,7 @@ export type SegmentedProps<T extends string | number> = {
 };
 
 /**
- * A glass segmented control — the styled replacement for a native `<select>`
+ * A glass segmented control, the styled replacement for a native `<select>`
  * when the choice set is small. Selected segment fills with the accent green
  * (#CAFFB8); the rest are quiet. Matches OptionRow / Field aesthetics.
  */
@@ -32,7 +32,7 @@ export function Segmented<T extends string | number>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={`flex w-full gap-1 rounded-xl border border-[#15300c]/15 bg-white/50 p-1 backdrop-blur-sm ${
+      className={`flex w-full gap-1 rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-2)] p-1 ${
         stack ? "flex-col" : ""
       }`}
     >
@@ -45,10 +45,10 @@ export function Segmented<T extends string | number>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(opt.value)}
-            className={`flex-1 rounded-lg px-2 py-2 text-[13px] font-medium transition-[background-color,color,transform] duration-150 ${
+            className={`flex-1 rounded-[3px] px-2 py-2 text-[12px] font-mono transition-[background-color,color,transform] duration-150 ${
               active
-                ? "bg-[#CAFFB8] text-[#15300c] shadow-sm"
-                : "text-[#3d7a29] hover:bg-[#CAFFB8]/40 active:scale-[0.98]"
+                ? "bg-[#CAFFB8] text-[#15300c]"
+                : "text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] active:scale-[0.98]"
             }`}
           >
             {opt.label}

@@ -24,7 +24,7 @@ export const runtime = "nodejs";
  * Body: { amountUsdsui, bankCode, accountNumber, accountName, bankName? }
  */
 export async function POST(req: Request) {
-  // Product gate (FEATURE_CASHOUT) — closed for launch. Refuse BEFORE creating
+  // Product gate (FEATURE_CASHOUT), closed for launch. Refuse BEFORE creating
   // any order so no deposit address is issued and no user is debited.
   if (!cashoutFeatureOpen()) {
     return NextResponse.json({ error: CASHOUT_CLOSED_MESSAGE, code: "CASHOUT_CLOSED" }, { status: 503 });
@@ -37,11 +37,11 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
-  // Tighter cap on order creation than on quoting — each creates a real Linq
+  // Tighter cap on order creation than on quoting, each creates a real Linq
   // order. Defense-in-depth on top of Linq's own 10/min/key limit.
   const rl = await rateLimitAsync({ key: `offramp-linq-create:user:${userId}`, limit: 6, windowSec: 60 });
   if (!rl.ok) {
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   }
 
   let body: {
-    /** Cash-out denominated in NGN — the user is credited exactly this. */
+    /** Cash-out denominated in NGN, the user is credited exactly this. */
     amountNgn?: number;
     /** Or denominated in USDsui (the amount debited). One of the two. */
     amountUsdsui?: number;
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   const r6 = (n: number) => Math.round(n * 1e6) / 1e6; // USDsui = 6 dp
   const r2 = (n: number) => Math.round(n * 100) / 100; // NGN = 2 dp
 
-  // Initial amountStableCoin for the order (informational — Linq pays on what
+  // Initial amountStableCoin for the order (informational, Linq pays on what
   // actually ARRIVES at the locked rate). For an NGN-denominated cash-out we
   // estimate it from the display rate; we recompute the EXACT amount to send
   // from the order's LOCKED rate below.
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
       bankName,
       accountName,
       // The user sends the deposit from their own wallet, so refund there if
-      // the bank payout fails — no stuck funds, no manual support needed.
+      // the bank payout fails, no stuck funds, no manual support needed.
       refundAddress: user.sui_address,
       customerRef: String(userId),
       idempotencyKey: id,
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
   }
 
   // CRITICAL: send EXACTLY what Linq recorded on the order (order.amountStableCoin)
-  // — that's the amount its deposit watcher matches. Recomputing our own send
+  //, that's the amount its deposit watcher matches. Recomputing our own send
   // figure from the locked rate produced a value that drifted from what Linq
   // expected whenever the rate ticked between quote and create, so the deposit
   // was never recognized → "timeout: no deposit received" → failed payout.
@@ -193,14 +193,14 @@ export async function POST(req: Request) {
     // FAIL CLOSED: the Linq order was created but we could not record it. If we
     // still handed the deposit wallet back, the user would send funds to an
     // order we cannot reconcile, refund, or count against the daily cap. Refuse
-    // instead — no funds have moved yet, and the orphaned Linq order (logged
+    // instead, no funds have moved yet, and the orphaned Linq order (logged
     // here with its id) holds no user funds and can be cancelled ops-side.
     console.error(
-      `[offramp/linq/create] persist failed — refusing to return deposit wallet. Orphaned Linq order=${order.id} user=${userId}:`,
+      `[offramp/linq/create] persist failed, refusing to return deposit wallet. Orphaned Linq order=${order.id} user=${userId}:`,
       (e as Error).message
     );
     return NextResponse.json(
-      { error: "Could not record your cash-out. No funds were moved — please try again." },
+      { error: "Could not record your cash-out. No funds were moved, please try again." },
       { status: 500 }
     );
   }

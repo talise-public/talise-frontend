@@ -3,10 +3,10 @@
 /**
  * Display-currency picker for /app/settings.
  *
- * Renders a settings row (no outer border — meant to live inside a GlassCard
+ * Renders a settings row (no outer border, meant to live inside a GlassCard
  * with divide-y). Opens a Sheet listing all supported display currencies.
  * Selecting one calls useCurrency().setCurrency (persisted in localStorage).
- * This is DISPLAY-ONLY — the wallet always settles in USDsui.
+ * This is DISPLAY-ONLY, the wallet always settles in USDsui.
  */
 
 import { useState } from "react";
@@ -26,7 +26,7 @@ export function CurrencyPicker() {
         onClick={() => setOpen(true)}
         className="flex w-full items-center gap-3.5 px-5 py-3.5 text-left transition-colors hover:bg-[#CAFFB8]/40"
       >
-        {/* Circular flag chip — size-10 matches the other icon chips in this card */}
+        {/* Circular flag chip, size-10 matches the other icon chips in this card */}
         <span className="size-10 shrink-0 overflow-hidden rounded-full ring-1 ring-[#15300c]/15">
           <Flag code={currency} size={40} className="block" />
         </span>

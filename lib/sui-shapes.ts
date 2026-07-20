@@ -11,13 +11,13 @@
  * exclusively. They MUST NOT call `sui().getTransaction()` directly.
  *
  * Consumers and the fields each reads:
- *   • /api/tx/record (1.4) — `status`, `balanceChanges[].ownerAddress`,
+ *   • /api/tx/record (1.4), `status`, `balanceChanges[].ownerAddress`,
  *     `.coinType`, `.amount` (invoice settlement check).
- *   • /api/vault/record (1.5) — `status`, `sender`, `objectChanges[]`
+ *   • /api/vault/record (1.5), `status`, `sender`, `objectChanges[]`
  *     filtered by `kind === "created"` and `objectType` (TaliseVault create).
- *   • /api/vault/migrate-confirm (1.6) — same fields as record + repoint
+ *   • /api/vault/migrate-confirm (1.6), same fields as record + repoint
  *     stage; reads `status` + `sender`.
- *   • /api/vault/repoint-confirm (1.7) — `status`, `sender`.
+ *   • /api/vault/repoint-confirm (1.7), `status`, `sender`.
  *
  * Events are flattened with the OUTER digest injected into each event entry
  * (gRPC events don't carry their own `txDigest`, unlike JSON-RPC where each
@@ -97,13 +97,13 @@ export interface NormalizedEvent {
 }
 
 export interface NormalizedTransaction {
-  /** Lowercased? No — base58 digest is case-sensitive. Keep as returned. */
+  /** Lowercased? No, base58 digest is case-sensitive. Keep as returned. */
   digest: string;
   /** "success" | "failure". /api/tx/record + all three vault verifiers gate
    * on this being "success". */
   status: NormalizedExecutionStatus;
   /** Failure reason text, `null` on success. JSON-RPC's `effects.status.error`
-   * was a free-form string; gRPC's is a structured `ExecutionError` — we
+   * was a free-form string; gRPC's is a structured `ExecutionError`, we
    * flatten the message out so callers don't have to introspect it. */
   errorMessage: string | null;
   /** Lowercased 0x-prefixed sender. /api/vault/record + /api/vault/migrate-confirm
@@ -249,7 +249,7 @@ export function normalizeFromGrpc(grpcResult: unknown): NormalizedTransaction {
     throw new Error("normalizeFromGrpc: result is not an object");
   }
   const r = grpcResult as Record<string, unknown>;
-  // Discriminated union — Onara-style. Either `Transaction` or
+  // Discriminated union, Onara-style. Either `Transaction` or
   // `FailedTransaction` is populated; the other is undefined.
   const inner = (r.Transaction ?? r.FailedTransaction) as
     | Record<string, unknown>
@@ -281,7 +281,7 @@ export function normalizeFromGrpc(grpcResult: unknown): NormalizedTransaction {
   const gasBudget = asBigInt(gasData?.budget);
   const gasPrice = asBigInt(gasData?.price);
 
-  // Balance changes — gRPC uses flat `{ address, coinType, amount }`.
+  // Balance changes, gRPC uses flat `{ address, coinType, amount }`.
   const balanceChangesRaw = (inner.balanceChanges ?? []) as Array<
     Record<string, unknown>
   >;
@@ -295,7 +295,7 @@ export function normalizeFromGrpc(grpcResult: unknown): NormalizedTransaction {
     };
   });
 
-  // Object changes — gRPC build (as of @mysten/sui current) doesn't return
+  // Object changes, gRPC build (as of @mysten/sui current) doesn't return
   // a separate `objectChanges[]` array. Instead, the per-row data lives in
   // `effects.changedObjects[]` with `idOperation` indicating create/delete/
   // mutate. We also pull types out of the optional `objectTypes` map (set
@@ -319,7 +319,7 @@ export function normalizeFromGrpc(grpcResult: unknown): NormalizedTransaction {
     };
   });
 
-  // Events — flatten the array and inject the outer digest into each event
+  // Events, flatten the array and inject the outer digest into each event
   // (gRPC events don't carry their own `txDigest`; the patterns doc flags
   // this as a known shape gap).
   const eventsRaw = (inner.events ?? []) as Array<Record<string, unknown>>;
@@ -333,7 +333,7 @@ export function normalizeFromGrpc(grpcResult: unknown): NormalizedTransaction {
     json: (e.json ?? null) as Record<string, unknown> | null,
   }));
 
-  // Timestamp + checkpoint — both are optional on the current gRPC build;
+  // Timestamp + checkpoint, both are optional on the current gRPC build;
   // patterns.md warns the SDK occasionally omits them.
   let timestampMs: number | null = null;
   const ts = inner.timestamp;
@@ -379,11 +379,11 @@ export function normalizeFromGrpc(grpcResult: unknown): NormalizedTransaction {
 /**
  * Map a legacy JSON-RPC `getTransactionBlock` response to the canonical
  * shape. Exists ONLY for the Phase 1 migration window so verifier code can
- * be written once and consume either transport. Phase 5 deletes this — the
+ * be written once and consume either transport. Phase 5 deletes this, the
  * `@deprecated` tag makes it grep-able when the time comes.
  *
  * @deprecated Phase 5 removes the JSON-RPC client; this normalizer goes with
- *   it. Do not call from new code — use `getNormalizedTransaction()`.
+ *   it. Do not call from new code, use `getNormalizedTransaction()`.
  */
 export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransaction {
   if (!jsonRpcResult || typeof jsonRpcResult !== "object") {
@@ -392,7 +392,7 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
   const tx = jsonRpcResult as Record<string, unknown>;
   const digest = String(tx.digest ?? "");
 
-  // status — JSON-RPC: `effects.status.status === "success"` (string), with
+  // status, JSON-RPC: `effects.status.status === "success"` (string), with
   // `.error` carrying the failure reason as a plain string.
   const effectsRaw = (tx.effects ?? null) as Record<string, unknown> | null;
   const statusBlock = (effectsRaw?.status ?? null) as Record<string, unknown> | null;
@@ -402,7 +402,7 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
   const status: NormalizedExecutionStatus =
     statusStr === "success" ? "success" : "failure";
 
-  // sender — JSON-RPC nests `transaction.data.sender`. The verifier code
+  // sender, JSON-RPC nests `transaction.data.sender`. The verifier code
   // calls into `tx.transaction?.data?.sender` directly today, so this
   // mirror is exactly how the legacy code reads it.
   const txInner = (tx.transaction ?? null) as Record<string, unknown> | null;
@@ -414,7 +414,7 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
   const gasBudget = asBigInt(gasDataRaw?.budget);
   const gasPrice = asBigInt(gasDataRaw?.price);
 
-  // Balance changes — JSON-RPC: `{ owner: { AddressOwner: "0x.." } |
+  // Balance changes, JSON-RPC: `{ owner: { AddressOwner: "0x.." } |
   // { Shared } | "Immutable" | ..., coinType, amount }`.
   const balanceChangesRaw = (tx.balanceChanges ?? []) as Array<
     Record<string, unknown>
@@ -429,7 +429,7 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
     };
   });
 
-  // Object changes — JSON-RPC: top-level `objectChanges[]` with
+  // Object changes, JSON-RPC: top-level `objectChanges[]` with
   // `type: "created" | "mutated" | "deleted" | "wrapped" | "transferred" |
   // "published"`.
   const objectChangesRaw = (tx.objectChanges ?? []) as Array<Record<string, unknown>>;
@@ -455,7 +455,7 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
     };
   });
 
-  // Events — JSON-RPC: `{ id: { txDigest, eventSeq }, packageId,
+  // Events, JSON-RPC: `{ id: { txDigest, eventSeq }, packageId,
   // transactionModule, sender, type, parsedJson, bcs }`. We rename to the
   // canonical shape so callers see the same field set regardless of
   // transport.
@@ -500,7 +500,7 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
       status,
       errorMessage: errMsg,
       gasUsed: null, // JSON-RPC nests under `effects.gasUsed` with same keys
-      // — but no verifier reads it today. If a future caller needs it, lift
+      //, but no verifier reads it today. If a future caller needs it, lift
       // here and mirror the gRPC keys.
     },
     objectChanges,
@@ -519,12 +519,12 @@ export function normalizeFromJsonRpc(jsonRpcResult: unknown): NormalizedTransact
  * This is the only function verifier code should call. Internally it requests
  * the full include-set the four verifier sites need:
  *
- *   • `effects` — status + gas + changedObjects (object-change verification).
- *   • `events` — currently unused by verifiers, included anyway so future
+ *   • `effects`, status + gas + changedObjects (object-change verification).
+ *   • `events`, currently unused by verifiers, included anyway so future
  *     event-aware checks don't need a second round-trip.
- *   • `transaction` — sender + gasData. Without this `tx.sender` is empty.
- *   • `balanceChanges` — for /api/tx/record's merchant-received check.
- *   • `objectTypes` — gives us the type tag for each changed object, which
+ *   • `transaction`, sender + gasData. Without this `tx.sender` is empty.
+ *   • `balanceChanges`, for /api/tx/record's merchant-received check.
+ *   • `objectTypes`, gives us the type tag for each changed object, which
  *     the vault verifier needs to confirm the new object is a `TaliseVault`.
  */
 export async function getNormalizedTransaction(

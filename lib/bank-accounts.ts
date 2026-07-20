@@ -7,7 +7,7 @@ import { resolveLinqBank } from "./linq-banks";
 import { encryptAtRest, decryptAtRest } from "@/lib/crypto-at-rest";
 
 /**
- * Linked NGN bank accounts — off-ramp Phase 2.
+ * Linked NGN bank accounts, off-ramp Phase 2.
  *
  * A user links an NGN bank account to their Talise @handle. The account
  * name is resolved via Linq (verifyBank) and the user signs a
@@ -42,7 +42,7 @@ export interface LinkedBankAccount {
   /** Resolved registry name, or the raw code if unknown. */
   bankName: string;
   accountName: string | null;
-  /** Last 4 digits of the account number — we never return the full PAN. */
+  /** Last 4 digits of the account number, we never return the full PAN. */
   last4: string;
   /** True once a consent attestation signature has been stored. */
   attested: boolean;
@@ -103,7 +103,7 @@ export async function getLinkedBankAccounts(
  * The raw row for a user's PRIMARY bank account, or null if they have none.
  * Used by the recipient resolver + the "pay to bank" off-ramp to find the
  * single payout target a sender hits when paying a @handle. Returns the raw
- * row (account number included) — CALLERS must mask before exposing it; the
+ * row (account number included), CALLERS must mask before exposing it; the
  * sender must NEVER receive the recipient's full account number.
  */
 export async function getPrimaryBankAccount(
@@ -170,7 +170,7 @@ export async function setPrimaryBankAccount(
 }
 
 /**
- * Set `id` primary for `userId` WITHOUT unsetting the others — used inside
+ * Set `id` primary for `userId` WITHOUT unsetting the others, used inside
  * link/confirm when the user has no account yet, so the first linked account
  * becomes the default payout target automatically.
  */

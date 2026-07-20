@@ -1,5 +1,5 @@
 /**
- * Talise shielded-pool SDK — note encryption (REAL ECIES to recipient enc key).
+ * Talise shielded-pool SDK, note encryption (REAL ECIES to recipient enc key).
  *
  * Each `transact` carries two encrypted note outputs in `ExtData`
  * (`encrypted_output0/1`). The recipient trial-decrypts them (see scan.ts) with
@@ -8,8 +8,8 @@
  *
  * ── Scheme: ECIES over NIST P-256 (secp256r1) ───────────────────────────────
  *
- *   ephemeral keypair (e, E=e·G)  — fresh per note, from a CSPRNG
- *   shared = ECDH(e, R) = (e·R).x  — R = recipient enc public key = d·G
+ *   ephemeral keypair (e, E=e·G), fresh per note, from a CSPRNG
+ *   shared = ECDH(e, R) = (e·R).x, R = recipient enc public key = d·G
  *   key    = HKDF-SHA256(shared, salt=E_bytes, info="talise.shield.ecies.v1")
  *   ct,tag = AES-256-GCM(key, iv, plaintext)
  *   blob   = E_bytes(65) ‖ iv(12) ‖ ciphertext+tag(128+16)
@@ -27,7 +27,7 @@
  * several of those (older Safari, some edge/serverless runtimes), which would
  * break recoverability on a recipient's other device. We therefore standardise
  * on P-256. The curve arithmetic below is the PUBLISHED NIST P-256 (FIPS 186-4)
- * — used only to (a) derive the recipient's static pubkey deterministically
+ *, used only to (a) derive the recipient's static pubkey deterministically
  * from the bigint enc scalar (so it is recoverable, like the viewing key) and
  * (b) compute the raw ECDH point; the AEAD + KDF are WebCrypto. We do NOT
  * hand-roll any non-standard curve.
@@ -36,7 +36,7 @@
  * and tx.ts keep compiling: `decryptNote(blob, encPrivKey: bigint)` and
  * `encryptNote(note, recipientEncKey)` where the recipient key is either the
  * recipient's public-key bytes (normal send path) or the bigint enc scalar
- * (self-encryption / tests — the pubkey is derived on the fly).
+ * (self-encryption / tests, the pubkey is derived on the fly).
  */
 
 import { BN254_SCALAR_FIELD } from "./keys";
@@ -66,9 +66,9 @@ export function decodeNotePlaintext(bytes: Uint8Array): Note | null {
 
 /**
  * The recipient's ECIES key, as accepted by `encryptNote`:
- *   • `Uint8Array` — the recipient's 65-byte uncompressed P-256 public key
+ *   • `Uint8Array`, the recipient's 65-byte uncompressed P-256 public key
  *     (0x04‖X‖Y), as published. This is the normal send path.
- *   • `bigint`     — the recipient's enc private scalar; the public key is
+ *   • `bigint`   , the recipient's enc private scalar; the public key is
  *     derived from it. Convenient for self-encryption and tests.
  */
 export type RecipientEncKey = Uint8Array | bigint;
@@ -130,7 +130,7 @@ export async function encryptNote(
  * throws on a non-matching blob, so scan.ts can sweep the whole feed.
  *
  * Signature kept `(blob, key: bigint)` so scan.ts's `decryptNote(ct, viewingKey)`
- * keeps compiling — the bigint is the recipient enc private scalar.
+ * keeps compiling, the bigint is the recipient enc private scalar.
  */
 export async function decryptNote(
   blob: Uint8Array,
@@ -167,7 +167,7 @@ export async function decryptNote(
     }
     return note;
   } catch {
-    // GCM auth failure (wrong key), off-curve point, etc. — not our note.
+    // GCM auth failure (wrong key), off-curve point, etc., not our note.
     return null;
   }
 }

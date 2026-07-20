@@ -25,7 +25,7 @@ const CETUS_STATS_POOLS =
 
 /** Minimum pool TVL (USD) for a coin to count as tradeable, to keep thin spam out. */
 const MIN_POOL_TVL_USD = 500;
-/** Higher floor for price derivation — thin pools give noisy implied prices. */
+/** Higher floor for price derivation, thin pools give noisy implied prices. */
 const MIN_PRICE_TVL_USD = 2000;
 /** Symbols pinned to $1 as the price-propagation anchors. */
 const STABLE_ANCHORS = new Set(["USDC", "USDSUI"]);

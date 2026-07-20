@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * Scan-to-pay for the WEB app (mobile-first) — a full-screen camera overlay
- * that reads a Talise payment QR (pay links, sui: URIs, addresses, handles —
+ * Scan-to-pay for the WEB app (mobile-first), a full-screen camera overlay
+ * that reads a Talise payment QR (pay links, sui: URIs, addresses, handles -
  * lib/scan-parse.ts) and routes into the Send flow with the recipient (and
  * amount, when the code carries one) prefilled.
  *
  * Detection strategy, best-first:
- *   1. Native `BarcodeDetector` (Chrome/Android, Samsung Internet) — free.
- *   2. jsQR on downscaled canvas frames (~8 fps) — covers iOS Safari, which
+ *   1. Native `BarcodeDetector` (Chrome/Android, Samsung Internet), free.
+ *   2. jsQR on downscaled canvas frames (~8 fps), covers iOS Safari, which
  *      still ships no BarcodeDetector.
  *
- * Camera teardown is unconditional on close/unmount — we never hold the
+ * Camera teardown is unconditional on close/unmount, we never hold the
  * camera while hidden.
  */
 
@@ -31,7 +31,7 @@ export function ScanSheet({ open, onClose }: Props) {
   const routedRef = useRef(false);
   const [cam, setCam] = useState<CamState>("starting");
   const [unrecognized, setUnrecognized] = useState(false);
-  // "Scanned ✓" success beat — without it the Send page snapped in the
+  // "Scanned ✓" success beat, without it the Send page snapped in the
   // instant a code was read, too fast to register. ~0.9s hold.
   const [scannedOk, setScannedOk] = useState(false);
 
@@ -106,7 +106,7 @@ export function ScanSheet({ open, onClose }: Props) {
               const codes = await detector.detect(video);
               if (codes.length > 0 && codes[0].rawValue) handleRaw(codes[0].rawValue);
             } catch {
-              /* per-frame failure — keep scanning */
+              /* per-frame failure, keep scanning */
             }
             timer = window.setTimeout(() => {
               raf = requestAnimationFrame(tick);
@@ -115,7 +115,7 @@ export function ScanSheet({ open, onClose }: Props) {
           raf = requestAnimationFrame(tick);
           return;
         } catch {
-          /* constructor rejected the format — fall through to jsQR */
+          /* constructor rejected the format, fall through to jsQR */
         }
       }
 
@@ -128,7 +128,7 @@ export function ScanSheet({ open, onClose }: Props) {
         const w = video.videoWidth;
         const h = video.videoHeight;
         if (w && h) {
-          // Downscale to ≤480px wide — jsQR cost is O(pixels) and QR modules
+          // Downscale to ≤480px wide, jsQR cost is O(pixels) and QR modules
           // survive the shrink fine.
           const scale = Math.min(1, 480 / w);
           canvas.width = Math.round(w * scale);
@@ -204,7 +204,7 @@ export function ScanSheet({ open, onClose }: Props) {
         <div className="absolute inset-0 z-10 flex items-center justify-center" style={{ background: "rgba(21,48,12,0.55)" }}>
           <div
             className="talise-scan-pop flex flex-col items-center gap-3 rounded-3xl bg-[#f7fcf2] px-8 py-6"
-            style={{ boxShadow: "10px 10px 0 #15300c" }}
+            style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
           >
             <span className="flex size-16 items-center justify-center rounded-full bg-[#CAFFB8]">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -232,7 +232,7 @@ export function ScanSheet({ open, onClose }: Props) {
               <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
-          <span className="text-[16px] font-semibold tracking-[-0.02em] text-[#f7fcf2]">
+          <span className="text-[16px] font-semibold tracking-[-0.05em] text-[#f7fcf2]">
             Point &amp; pay
           </span>
           <span className="size-10" aria-hidden />
@@ -261,7 +261,7 @@ export function ScanSheet({ open, onClose }: Props) {
         )}
       </div>
 
-      {/* Plain style tag (not styled-jsx — that needs an App Router registry).
+      {/* Plain style tag (not styled-jsx, that needs an App Router registry).
           Class names are unique enough to never collide. */}
       <style>{`
         .talise-scan-sweep { top: 12%; animation: talise-sweep 2.4s ease-in-out infinite alternate; }

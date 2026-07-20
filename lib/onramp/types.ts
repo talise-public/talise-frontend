@@ -8,14 +8,14 @@
  *
  * This mirrors the shape of the off-ramp layer (web/lib/offramp/*): ONE
  * internal interface, swappable adapters, a registry/selector. Adapters own
- * NO persistence and NO on-chain logic — the API routes + DB do.
+ * NO persistence and NO on-chain logic, the API routes + DB do.
  *
  * KYC is TIERED and dynamic per country:
- *   none      — nothing verified
- *   lite      — name/email/mobile/country/address (no ID document)
- *   standard  — lite + government ID + selfie/liveness + purpose of usage
+ *   none    , nothing verified
+ *   lite    , name/email/mobile/country/address (no ID document)
+ *   standard, lite + government ID + selfie/liveness + purpose of usage
  *               (+ SSN when country = US)
- *   enhanced  — standard + proof of address + source of funds
+ *   enhanced, standard + proof of address + source of funds
  *
  * NOTE: every adapter here is a STUB. With no API key set it returns
  * deterministic, typed mock data so the routes + modal can be wired and
@@ -139,7 +139,7 @@ export interface CustomerResult {
   kycUrl?: string;
   /** Bridge hosted Terms-of-Service URL (link.tos_link). */
   tosUrl?: string;
-  /** Bridge kyc_links id (link.id) — the stable handle for status polling. */
+  /** Bridge kyc_links id (link.id), the stable handle for status polling. */
   kycLinkId?: string;
 }
 
@@ -191,10 +191,10 @@ export interface SessionResult {
     bankAddress?: string;
     accountNumber?: string;
     routingNumber?: string;
-    /** "checking" | "savings" — Bridge USD virtual accounts are checking. */
+    /** "checking" | "savings", Bridge USD virtual accounts are checking. */
     accountType?: string;
     beneficiaryName?: string;
-    /** Account holder's address — sending forms ask for recipient address. */
+    /** Account holder's address, sending forms ask for recipient address. */
     beneficiaryAddress?: string;
     iban?: string;
     bic?: string;
@@ -232,7 +232,7 @@ export interface OnrampProvider {
   readonly deliverAsset: DeliverAsset;
   /**
    * True when the provider's HOSTED WIDGET performs KYC itself (e.g. Transak,
-   * MoonPay) — Talise collects no identity fields up front; the widget asks
+   * MoonPay), Talise collects no identity fields up front; the widget asks
    * for whatever the amount/country requires. The session route then skips
    * Talise-side profile collection and derives a stable partner reference from
    * the authenticated user. Bridge (API-driven KYC) leaves this false/unset.

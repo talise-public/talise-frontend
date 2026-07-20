@@ -128,33 +128,23 @@ export default function AnalyticsClient() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={indexNow}
-          disabled={busy}
-          className="inline-flex h-11 items-center gap-2 rounded-full bg-[#3d7a29] px-6 text-[14px] font-semibold text-[#f7fcf2] transition-transform hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-        >
+        <button type="button" onClick={indexNow} disabled={busy} className="bp-btn bp-btn-ghost">
           <HugeiconsIcon
             icon={indexing ? Loading03Icon : RefreshIcon}
-            size={18}
+            size={16}
             strokeWidth={1.8}
             className={indexing ? "animate-spin" : ""}
           />
           {indexing
             ? progress
-              ? `Indexing… ${num(progress.cursor)}/${num(progress.total)}`
+              ? `Indexing ${num(progress.cursor)}/${num(progress.total)}`
               : "Indexing…"
             : "Index now"}
         </button>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={busy}
-          className="inline-flex h-11 items-center gap-2 rounded-full bg-[#15300c] px-6 text-[14px] font-semibold text-[#f7fcf2] transition-transform hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-        >
+        <button type="button" onClick={refresh} disabled={busy} className="bp-btn bp-btn-solid">
           <HugeiconsIcon
             icon={RefreshIcon}
-            size={18}
+            size={16}
             strokeWidth={1.8}
             className={refreshing ? "animate-spin" : ""}
           />
@@ -163,10 +153,7 @@ export default function AnalyticsClient() {
       </div>
 
       {error && (
-        <div
-          className="flex items-start gap-3 rounded-[28px] bg-[#f7fcf2] p-5 text-[14px] text-[#c0532f]"
-          style={{ boxShadow: "10px 10px 0 #15300c" }}
-        >
+        <div className="flex items-start gap-3 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-[14px] text-[#b8503a]">
           <HugeiconsIcon
             icon={AlertCircleIcon}
             size={20}
@@ -213,26 +200,23 @@ function IndexProgressStrip({
   const fullPassDone = index.fullPassAt != null;
 
   return (
-    <section
-      className="rounded-[28px] bg-[#f7fcf2] px-6 py-5 sm:px-7"
-      style={{ boxShadow: "10px 10px 0 #15300c" }}
-    >
+    <section className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5 sm:px-7">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#3d7a29]">
+          <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--color-accent)]">
             On-chain index
           </span>
-          <span className="text-[14px] font-semibold tabular-nums text-[#15300c]">
+          <span className="tabular-nums text-[14px] font-semibold text-[var(--color-fg)]">
             Indexed {num(done)} / {num(total)} users
           </span>
-          <span className="text-[13px] font-medium tabular-nums text-[#3d7a29]">
+          <span className="tabular-nums text-[13px] font-medium text-[var(--color-accent)]">
             {pct}%
           </span>
         </div>
-        <div className="flex items-center gap-3 text-[12px] text-[#3a5230]">
+        <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--color-fg-muted)]">
           <span>Last run {relTime(index.lastRunAt)}</span>
           {fullPassDone && (
-            <span className="inline-flex items-center gap-1 text-[#2f6420]">
+            <span className="inline-flex items-center gap-1 text-[var(--color-accent)]">
               <HugeiconsIcon
                 icon={CheckmarkCircle02Icon}
                 size={14}
@@ -244,15 +228,15 @@ function IndexProgressStrip({
         </div>
       </div>
 
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#15300c]/10">
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-[3px] bg-[var(--color-surface-2)]">
         <div
-          className={`h-full rounded-full bg-[#3d7a29] transition-[width] duration-500 ease-out ${indexing ? "animate-pulse" : ""}`}
+          className={`h-full rounded-[3px] bg-[var(--color-accent-deep)] transition-[width] duration-500 ease-out ${indexing ? "animate-pulse" : ""}`}
           style={{ width: `${pct}%` }}
         />
       </div>
 
       {indexError && (
-        <p className="mt-2 text-[12px] text-[#c0532f]">{indexError}</p>
+        <p className="mt-2 text-[12px] text-[#b8503a]">{indexError}</p>
       )}
     </section>
   );
@@ -261,23 +245,16 @@ function IndexProgressStrip({
 function LoadingSkeleton() {
   return (
     <div className="space-y-8" aria-busy="true">
-      <div
-        className="h-[88px] animate-pulse rounded-[28px] bg-[#f7fcf2]"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
-      />
+      <div className="h-[88px] animate-pulse rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)]" />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className={`h-[152px] animate-pulse rounded-[28px] bg-[#f7fcf2] ${i === 0 ? "sm:col-span-2" : ""}`}
-            style={{ boxShadow: "10px 10px 0 #15300c" }}
+            className={`h-[152px] animate-pulse rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] ${i === 0 ? "sm:col-span-2" : ""}`}
           />
         ))}
       </div>
-      <div
-        className="h-[420px] animate-pulse rounded-[28px] bg-[#f7fcf2]"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
-      />
+      <div className="h-[420px] animate-pulse rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)]" />
     </div>
   );
 }

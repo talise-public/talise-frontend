@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SecondaryActions — the compact row under the Home balance card. The two
+ * SecondaryActions, the compact row under the Home balance card. The two
  * primary actions (Send / Request) live inline inside the BalanceCard; this row
  * keeps the remaining quick actions (Add money, Receive) reachable without
  * adding weight to the card. Receive opens the QR/handle sheet inline; Add money
@@ -20,7 +20,7 @@ import { TokenBucketSheet } from "./TokenBucketSheet";
 // ("Add money") stays on ONE line inside its third-width grid cell instead of
 // wrapping to two lines. Roomier padding returns at sm+ where width is ample.
 const BTN =
-  "inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-full border border-[#15300c]/15 bg-white/60 px-3 sm:px-5 py-2.5 text-[13px] font-medium text-[#3a5230] backdrop-blur-sm transition-colors hover:border-[#15300c]/30 hover:text-[#15300c] active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#3d7a29]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7fcf2]";
+  "inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-[4px] border border-[rgba(18,26,15,0.14)] bg-white px-3 sm:px-5 py-2.5 text-[11px] uppercase tracking-[0.06em] text-[#55634e] font-mono transition-colors hover:border-[rgba(18,26,15,0.3)] hover:text-[#121a0f] active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#2f6a1f]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#edf0ea]";
 
 export function SecondaryActions({ me }: { me: Me | null }) {
   const [receiveOpen, setReceiveOpen] = useState(false);

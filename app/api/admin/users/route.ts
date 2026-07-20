@@ -83,14 +83,14 @@ export async function GET(req: Request) {
     );
   }
 
-  // tier: 'all' | '0'..'3' — treat NULL as 0.
+  // tier: 'all' | '0'..'3', treat NULL as 0.
   const TIERS = new Set(["0", "1", "2", "3"]);
   if (tierParam !== "all" && TIERS.has(tierParam)) {
     args.push(Number(tierParam));
     where.push(`COALESCE(kyc_tier, 0) = $${args.length}`);
   }
 
-  // type: 'all' | 'personal' | 'business' — NULL counts as personal.
+  // type: 'all' | 'personal' | 'business', NULL counts as personal.
   if (typeParam === "personal") {
     where.push(`COALESCE(account_type, 'personal') = 'personal'`);
   } else if (typeParam === "business") {

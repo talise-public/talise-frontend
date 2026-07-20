@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Web-session-only snapshot powering the post-claim waitlist dashboard:
  * the user's referral code, verified referral count, and live waitlist
  * position (more referrals → closer to the front). Mirrors /api/auth/me's
- * session model (readSessionEntryId — cookie only, no bearer).
+ * session model (readSessionEntryId, cookie only, no bearer).
  *
  * Shape:
  *   { signedIn: false }
@@ -28,7 +28,7 @@ export async function GET() {
     return NextResponse.json({ signedIn: false }, { status: 401 });
   }
 
-  // Guarantee a referral code exists — most rows get one at upsert, but
+  // Guarantee a referral code exists, most rows get one at upsert, but
   // ensureReferralCode is idempotent and backfills any older row that doesn't.
   const referralCode = await ensureReferralCode(userId, user.name ?? user.email);
   const { position, total } = await getWaitlistRank(userId);

@@ -5,11 +5,11 @@ import { requireAdminApi } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/admin/ledger — rewards / commerce ledger, read-only.
+ * GET /api/admin/ledger, rewards / commerce ledger, read-only.
  *
  * Params:
- *   tab  — 'rewards' | 'goals' | 'redemptions' | 'invoices' (default 'rewards')
- *   page — 0-based page, pageSize 50.
+ *   tab, 'rewards' | 'goals' | 'redemptions' | 'invoices' (default 'rewards')
+ *   page, 0-based page, pageSize 50.
  *
  * Whitelisted tab drives a fixed SELECT (no raw interpolation). A cold /
  * empty / absent table yields { rows: [], total: 0 } rather than a 500.

@@ -63,14 +63,14 @@ function pillars(): string {
   const items = [
     "Hold USD, gold, bitcoin in one account",
     "Earning DeepBook yield by default",
-    "Sign in with Google — no bank, no seed phrase",
+    "Sign in with Google, no bank, no seed phrase",
     "Send any asset to anyone in one transaction",
   ];
   const rows = items
     .map(
       (it) => /* html */ `
         <tr><td style="padding:8px 0;font-size:14px;line-height:1.6;color:${FG_MUTED};">
-          <span style="color:${ACCENT};font-weight:600;margin-right:8px;">—</span>${it}
+          <span style="color:${ACCENT};font-weight:600;margin-right:8px;">-</span>${it}
         </td></tr>`
     )
     .join("");
@@ -117,7 +117,7 @@ export function welcomeWithAddressHtml(d: WelcomeData): string {
     ${wordmark()}
     <tr><td style="padding:0 4px;">
       <div style="font-size:12px;letter-spacing:0.06em;color:${ACCENT};margin-bottom:12px;">
-        — position #${d.position}
+      , position #${d.position}
       </div>
       <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:40px;line-height:1.05;letter-spacing:-0.02em;margin:0 0 16px 0;color:${FG};">
         You&rsquo;re in, <span style="color:${FG_MUTED};">${escapeHtml(name)}</span>.
@@ -145,7 +145,7 @@ export function welcomeWithAddressHtml(d: WelcomeData): string {
 
     <tr><td style="padding:28px 4px 0 4px;font-size:12px;line-height:1.6;color:${FG_DIM};">
       We never see your Google password. The salt that ties your account to this address
-      is stored encrypted on our servers — when Talise launches, signing in with the same
+      is stored encrypted on our servers, when Talise launches, signing in with the same
       Google account restores this exact wallet.
     </td></tr>
   `;
@@ -166,7 +166,7 @@ export function welcomeEmailOnlyHtml(position: number): string {
     ${wordmark()}
     <tr><td style="padding:0 4px;">
       <div style="font-size:12px;letter-spacing:0.06em;color:${ACCENT};margin-bottom:12px;">
-        — position #${position}
+      , position #${position}
       </div>
       <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:40px;line-height:1.05;letter-spacing:-0.02em;margin:0 0 16px 0;color:${FG};">
         You&rsquo;re in.

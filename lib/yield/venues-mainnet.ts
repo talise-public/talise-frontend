@@ -7,7 +7,7 @@ import "server-only";
  * from docs literals (which are often stale). See docs/strategy/YIELD-ROUTER.md.
  *
  * RULE (per all four SDK maintainers): do NOT hardcode the UPGRADEABLE package
- * target for Suilend / NAVI / Scallop — they upgrade and publish the current
+ * target for Suilend / NAVI / Scallop, they upgrade and publish the current
  * id through their SDK/API at runtime. Hardcode only the STABLE shared-object
  * ids (market / storage / protocol object) below and let the SDK resolve the
  * live package when building txs. AlphaLend's latest package id is read from
@@ -18,7 +18,7 @@ import "server-only";
  * SDKs; the talise::yield_router Move package brackets rotations.
  */
 
-/** Native Circle USDC on Sui — the unit every venue here supplies. NOT the
+/** Native Circle USDC on Sui, the unit every venue here supplies. NOT the
  *  deprecated Wormhole wUSDC (`0x5d4b30…::coin::COIN`). */
 export const USDC_TYPE =
   "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";

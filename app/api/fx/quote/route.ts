@@ -10,18 +10,18 @@ export const dynamic = "force-dynamic";
  * Server-authoritative FX quote endpoint (cross-border master plan §6, §11).
  *
  * The single place clients (iOS cross-border send, the offramp flow) get a
- * locked, executable quote. Pricing — mid-market off the live feed minus
- * the corridor's volatility-tier spread — lives entirely server-side so a
+ * locked, executable quote. Pricing, mid-market off the live feed minus
+ * the corridor's volatility-tier spread, lives entirely server-side so a
  * client can never self-price. The returned quote carries an `expiresAt`;
  * the commit path must re-validate freshness before settling.
  *
  * POST { from, to, amount }
  *   200 → { quote }                        (locked, spread-inclusive)
  *   400 → bad currency / bad amount
- *   503 → STALE_FEED / SNAPSHOT_ONLY       (circuit breaker — fail over,
+ *   503 → STALE_FEED / SNAPSHOT_ONLY       (circuit breaker, fail over,
  *         do NOT serve a stale price; caller retries or settles in USDC)
  *
- * Rate-limited per IP — quotes are an FX-scraping surface.
+ * Rate-limited per IP, quotes are an FX-scraping surface.
  */
 export async function POST(req: Request) {
   const ip = getClientIp(req);

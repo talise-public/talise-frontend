@@ -25,13 +25,13 @@ export const runtime = "nodejs";
  *   POST → save a team by name: `{ name, members: [{recipient, amount?, label?}] }`.
  *
  * The POST response is one of two shapes:
- *   • `{ mode: "db", team }`        — on-chain disabled: plain DB upsert (legacy).
- *   • `{ mode: "onchain", bytes,    — on-chain enabled: sponsor-ready Move-call
+ *   • `{ mode: "db", team }`      , on-chain disabled: plain DB upsert (legacy).
+ *   • `{ mode: "onchain", bytes,  , on-chain enabled: sponsor-ready Move-call
  *        edit, chainObjectId?, name } bytes for the client to sign; the roster
  *                                     is then finalized in /api/payouts/teams/record.
  *
  * Auth + the private-beta guardrail mirror the sibling batch routes exactly.
- * Teams carry NO money and are NEVER trusted on the send path — recipients are
+ * Teams carry NO money and are NEVER trusted on the send path, recipients are
  * re-resolved + re-screened at /api/payouts/batch/prepare time.
  */
 

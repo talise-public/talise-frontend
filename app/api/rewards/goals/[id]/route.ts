@@ -49,7 +49,7 @@ async function auth(req: Request) {
 }
 
 /**
- * GET /api/rewards/goals/[id] — fetch a single goal (handy for the
+ * GET /api/rewards/goals/[id], fetch a single goal (handy for the
  * edit sheet pre-populate path).
  */
 export async function GET(req: Request, ctx: Ctx) {
@@ -63,7 +63,7 @@ export async function GET(req: Request, ctx: Ctx) {
 }
 
 /**
- * PATCH /api/rewards/goals/[id] — update name/target/deadline/color, or
+ * PATCH /api/rewards/goals/[id], update name/target/deadline/color, or
  * archive (`{ archive: true }`). Returns the post-update goal.
  */
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -108,7 +108,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 /**
- * POST /api/rewards/goals/[id] — tracking deposit OR withdrawal.
+ * POST /api/rewards/goals/[id], tracking deposit OR withdrawal.
  * Body: { amountUsd: number, action?: "deposit" | "withdraw" }.
  *  - deposit (default): bumps `current_usd`, writes a `goal_deposit` event.
  *  - withdraw: reduces `current_usd` back toward 0 (the dollars were always
@@ -139,7 +139,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const isWithdraw = body.action === "withdraw";
 
   // Throttle per account+action (deposits mint nothing now, but both are
-  // self-report writes — keep the anti-abuse cap).
+  // self-report writes, keep the anti-abuse cap).
   const rl = await rateLimitAsync({
     key: `goal-${isWithdraw ? "withdraw" : "deposit"}:user:${userId}`,
     limit: 12,

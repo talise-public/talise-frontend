@@ -3,7 +3,7 @@ import "server-only";
 import { bridgeFetch } from "./client";
 
 /**
- * Bridge Transfers status (`/v0/transfers/{id}`) — reconciliation for one-time
+ * Bridge Transfers status (`/v0/transfers/{id}`), reconciliation for one-time
  * payments. The create calls live in onramp.ts / offramp.ts; this is the read
  * + cancel side. Push updates arrive via `transfer.*` webhooks; this GET is
  * for polling / reconciliation.

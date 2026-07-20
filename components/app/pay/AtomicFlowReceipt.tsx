@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * AtomicFlowReceipt — "what happened in one transaction" card.
+ * AtomicFlowReceipt, "what happened in one transaction" card.
  *
  * Talise sends are a single sponsored PTB that can bundle a payment, a round-up
- * Save into NAVI, and an on-chain receipt — all in ONE signature, no wallet
+ * Save into NAVI, and an on-chain receipt, all in ONE signature, no wallet
  * prompt, no gas. The plain success screen hid that; this card surfaces the
  * real legs as a compact checklist so the atomic composability is visible.
  *
- * Every row is derived ONLY from real data passed in by the caller — we never
+ * Every row is derived ONLY from real data passed in by the caller, we never
  * fabricate a step that didn't run (the Save row only appears when the server
  * actually supplied a round-up leg). Reusable for Earn/Cheque success later via
  * the typed props.
@@ -27,7 +27,7 @@ export type AtomicFlowReceiptProps = {
   recipientDisplay: string;
   /** Already-formatted round-up amount incl. symbol (e.g. "$0.50"); omit/empty when no Save leg ran. */
   savedText?: string;
-  /** On-chain transaction digest — links to the explorer. */
+  /** On-chain transaction digest, links to the explorer. */
   digest: string;
 };
 
@@ -106,7 +106,7 @@ export function AtomicFlowReceipt({
 
   return (
     <div className="w-full rounded-[28px] border border-[#15300c]/15 bg-white/60 px-5 py-4 text-left backdrop-blur-sm">
-      {/* Header: the POINT — every leg above landed in a single signature. */}
+      {/* Header: the POINT, every leg above landed in a single signature. */}
       <div className="mb-3 flex items-center justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#3d7a29]">
           1 atomic transaction

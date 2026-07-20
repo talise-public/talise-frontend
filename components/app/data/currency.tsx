@@ -2,7 +2,7 @@
 
 /**
  * Display-currency context. USDsui is always 1:1 USD under the hood; the
- * currency picker ONLY changes how an amount is rendered — it never touches
+ * currency picker ONLY changes how an amount is rendered, it never touches
  * the send/limit/settlement paths. Rates load from /api/fx (USD base); the
  * chosen currency persists in localStorage.
  *
@@ -53,7 +53,7 @@ export type CurrencyCtx = {
   rate: number;
   /** Format a USD amount in the active display currency (smart decimals by default). */
   formatUsd: (usd: number, o?: { fixed?: boolean }) => string;
-  /** Alias for formatUsd — converts the USD value into the local currency string. */
+  /** Alias for formatUsd, converts the USD value into the local currency string. */
   formatLocal: (usd: number, o?: { fixed?: boolean }) => string;
   /** USD → local numeric value (no symbol). */
   toLocal: (usd: number) => number;
@@ -121,7 +121,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         if (parsed?.rates) setRates({ USD: 1, ...parsed.rates });
       }
     } catch {
-      /* storage blocked — defaults are fine */
+      /* storage blocked, defaults are fine */
     }
   }, []);
 
@@ -162,7 +162,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CurrencyCtx>(() => {
     const def = defFor(currency);
-    // Fall back to a 1:1 rate (USD display) if the chosen rate is missing —
+    // Fall back to a 1:1 rate (USD display) if the chosen rate is missing -
     // the UI never shows a broken/NaN amount.
     const rate = rates[currency] && rates[currency] > 0 ? rates[currency] : 1;
     const symbol = rate === 1 && currency !== "USD" ? "$" : def.symbol;

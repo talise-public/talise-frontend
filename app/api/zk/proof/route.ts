@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/zk/proof
  *
- * Mints a zkLogin proof and returns it. Pure pre-fetch — no transaction
+ * Mints a zkLogin proof and returns it. Pure pre-fetch, no transaction
  * broadcast, no Onara, no signing of bytes. Used by the home page on first
  * load to warm the proof cache so the user's first send doesn't pay the
  * 2-4s Shinami cost.
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Per-user global rate limit — the prover is expensive (Shinami quota +
+  // Per-user global rate limit, the prover is expensive (Shinami quota +
   // compute); cap warm-cache prefetch abuse without hurting normal load.
   const rl = await rateLimitAsync({ key: `zk-proof:user:${userId}`, limit: 60, windowSec: 3600 });
   if (!rl.ok) {
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   // Mobile callers: pull JWT + salt from the bearer's signing context.
   // ALSO prefer the (ephPubKey, maxEpoch, randomness) bound at sign-in
-  // time over the client-supplied values — those are the only ones the
+  // time over the client-supplied values, those are the only ones the
   // JWT's nonce was Poseidon-hashed from, so they're the only ones the
   // prover will accept.
   const mobileCtx = isMobileRequest(req) ? await mobileSigningContext(userId) : null;

@@ -14,9 +14,9 @@ import type { BridgeFiatCurrency, BridgeTransfer } from "./onramp";
  * USDsui → USDC before it reaches Bridge; the API leg below is pure USDC.
  *
  * Two primitives:
- *   1. External Account — register the payout bank account (US ACH or
+ *   1. External Account, register the payout bank account (US ACH or
  *      SEPA/IBAN). Returns an `id` used below.
- *   2. Liquidation Address — a PERSISTENT Sui address bound to that external
+ *   2. Liquidation Address, a PERSISTENT Sui address bound to that external
  *      account. Any USDC sent there is paid out as fiat. This is the clean
  *      cash-out UX: Talise shows one address; USDC in → fiat to their bank.
  *      Settlement arrives as `liquidation_address.drain.*` webhooks.
@@ -25,7 +25,7 @@ import type { BridgeFiatCurrency, BridgeTransfer } from "./onramp";
  * returns a single-use Sui deposit address instead.
  *
  * Fiat destinations: USD (ACH/wire), EUR (SEPA), GBP (Faster Payments). NOT
- * NGN — Nigerian payout stays on Linq.
+ * NGN, Nigerian payout stays on Linq.
  */
 
 // ── External accounts (payout bank) ──────────────────────────────────
@@ -158,7 +158,7 @@ export type BridgeLiquidationAddress = {
  * Create a persistent USDsui-on-Sui liquidation address that pays out to
  * `externalAccountId` in `destinationCurrency` over `destinationPaymentRail`
  * (e.g. ach / sepa / faster_payments). The returned `address` is what Talise
- * shows the user to cash out — USDsui in, fiat to their bank out.
+ * shows the user to cash out, USDsui in, fiat to their bank out.
  */
 export async function createSuiLiquidationAddress(input: {
   customerId: string;
@@ -207,7 +207,7 @@ export async function listTransfers(
 }
 
 /**
- * Find an existing persistent cash-out address for a corridor — a static
+ * Find an existing persistent cash-out address for a corridor, a static
  * transfer template ("payment route") first, then a liquidation address for
  * back-compat. Prefers an exact `wantRail` match but falls back to any active
  * route in the same currency, so whatever the user (or the Bridge dashboard)
@@ -271,7 +271,7 @@ export async function findExistingCashout(
 
 /**
  * A human-friendly summary of the payout bank behind a cash-out route, for the
- * app to display ("paying out to Lead ••1324"). Best-effort — returns null if
+ * app to display ("paying out to Lead ••1324"). Best-effort, returns null if
  * the external account can't be fetched.
  */
 export async function cashoutBankSummary(
@@ -345,7 +345,7 @@ export async function createStaticOfframpTemplate(input: {
  */
 export async function createOfframpTransfer(input: {
   customerId: string;
-  /** USD the bank should receive, decimal string — set on the destination. */
+  /** USD the bank should receive, decimal string, set on the destination. */
   amount: string;
   fromAddress: string; // the user's Sui wallet sending USDC
   externalAccountId: string;

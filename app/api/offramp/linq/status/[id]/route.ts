@@ -35,7 +35,7 @@ export async function GET(
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Polling is frequent but cheap — generous cap, still bounds abuse.
+  // Polling is frequent but cheap, generous cap, still bounds abuse.
   const rl = await rateLimitAsync({ key: `offramp-linq-status:user:${userId}`, limit: 60, windowSec: 60 });
   if (!rl.ok) {
     return NextResponse.json(
@@ -65,7 +65,7 @@ export async function GET(
       args: [status, Date.now(), id],
     });
   } catch (e) {
-    // Linq unreachable — fall back to the last stored status.
+    // Linq unreachable, fall back to the last stored status.
     console.warn("[offramp/linq/status] getOrderStatus failed:", (e as Error).message);
   }
 

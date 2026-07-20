@@ -3,14 +3,18 @@ import { readSessionEntryId } from "@/lib/session";
 import { userById, isAppAccessAllowed } from "@/lib/db";
 import { readBalanceSnapshot } from "@/lib/snapshots";
 import { AppShell } from "@/components/app/AppShell";
+import SmoothScroll from "@/components/SmoothScroll";
 import type { Me, Balances } from "@/components/app/data";
 
 export const dynamic = "force-dynamic";
 
 // Same type system as the v2 landing so the app feels like one product.
+// Load the lighter weights too, this is the TWK Everett *fallback*, and the
+// blueprint headings render at regular (400)/medium (500). Without 400/500 the
+// browser substituted 700, making every heading read bold ("thick Everett").
 const display = Hanken_Grotesk({
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-display-v2",
   display: "swap",
 });
@@ -33,7 +37,7 @@ const sans = DM_Sans({
  *   • Signed in + allowed     → the app.
  *
  * The PUBLIC surfaces (/c claim, /i invoice, /pay links, /u profiles) are
- * intentionally NOT gated — they're how non-members receive money.
+ * intentionally NOT gated, they're how non-members receive money.
  */
 /**
  * Wraps every /app surface in the v2 landing type system + warm mint
@@ -42,13 +46,17 @@ const sans = DM_Sans({
 function V2Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`${display.variable} ${sans.variable} relative min-h-screen overflow-x-hidden`}
+      className={`app-clean ${display.variable} ${sans.variable} relative min-h-screen overflow-x-hidden`}
       style={{
-        fontFamily: "var(--font-sans-v2), system-ui, sans-serif",
-        color: "#15300c",
-        background: "radial-gradient(120% 90% at 12% -5%, #e6f9d6 0%, #f7fcf2 46%, #ffeede 100%)",
+        // Leading/primary text runs in TWK Everett (Hanken fallback); only the
+        // sub-elements (eyebrows, labels, meta, amounts) opt into mono via their
+        // own font-mono classes. Mirrors the landing's Everett-leading voice.
+        fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif',
+        color: "#121a0f",
+        background: "#edf0ea",
       }}
     >
+      <SmoothScroll />
       {children}
     </div>
   );
@@ -81,7 +89,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         accountType: u.account_type ?? "personal",
       };
       // Seed the balance from the display snapshot so the dashboard paints the
-      // real number on first byte — no client round-trip, no skeleton flash.
+      // real number on first byte, no client round-trip, no skeleton flash.
       // (Display-only; the client still revalidates fresh against chain.)
       const snap = await readBalanceSnapshot(id).catch(() => null);
       if (snap) {
@@ -116,18 +124,18 @@ function WaitingRoom({ email, name }: { email: string; name: string | null }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
       <div
-        className="w-full max-w-sm rounded-[28px] bg-[#f7fcf2] p-8 text-center"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        className="w-full max-w-sm rounded-[16px] border border-[rgba(18,26,15,0.12)] bg-white p-8 text-center"
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 20px 44px -24px rgba(18,26,15,0.28)" }}
       >
         <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#CAFFB8]">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <circle cx="12" cy="12" r="9" stroke="#15300c" strokeWidth="1.8" />
-            <path d="M12 7.5V12l3 2" stroke="#15300c" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="12" r="9" stroke="#121a0f" strokeWidth="1.8" />
+            <path d="M12 7.5V12l3 2" stroke="#121a0f" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </span>
         <h1
-          className="mt-5 text-[24px] font-[800] uppercase leading-[1.02] tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="mt-5 text-[26px] leading-[1.05] tracking-[-0.05em] text-[#121a0f]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           {first ? `You're in line, ${first}` : "You're in line"}
         </h1>

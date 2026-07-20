@@ -6,10 +6,10 @@ import { suiscanTxUrl } from "@/lib/sui";
 export const runtime = "nodejs";
 
 /**
- * POST /api/invoices/[id]/settle — TRUSTLESS public settlement of a rich
+ * POST /api/invoices/[id]/settle, TRUSTLESS public settlement of a rich
  * (`work_invoices`) invoice.
  *
- * Anyone (the payer — NO auth required) can close an open invoice by submitting
+ * Anyone (the payer, NO auth required) can close an open invoice by submitting
  * the on-chain digest of their payment. The server never trusts the caller: it
  * loads the invoice + issuer authoritatively, fetches the transaction by digest
  * via the canonical verifier, and only marks the invoice paid when the tx
@@ -47,7 +47,7 @@ export async function POST(
     );
   }
 
-  // Per-invoice rate limit — settlement does an RPC round-trip, so cap retries.
+  // Per-invoice rate limit, settlement does an RPC round-trip, so cap retries.
   const rl = await rateLimitAsync({
     key: `invoice-settle:${id}`,
     limit: 30,

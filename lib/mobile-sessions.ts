@@ -16,14 +16,14 @@ import { encryptAtRest, decryptAtRest } from "@/lib/crypto-at-rest";
  * Each session also stores the Google id_token (JWT) and Shinami salt
  * that the user signed in with. These two are what the zkLogin signer
  * needs to assemble a SerializedSignature on every sponsor-execute call
- * — the web flow stores them in a signing cookie; mobile stores them
+ *, the web flow stores them in a signing cookie; mobile stores them
  * here. JWT outlives a single bearer (Google JWTs are 1h, our bearers
  * are 24h) but Shinami's prover still accepts an expired JWT as long
- * as the proof was minted while it was fresh — so for signing purposes
+ * as the proof was minted while it was fresh, so for signing purposes
  * we keep the JWT until the bearer rotates.
  */
 // Long-lived, SLIDING session. A consumer wallet shouldn't log people out on
-// a fixed timer — the app keeps the user signed in and only the session's own
+// a fixed timer, the app keeps the user signed in and only the session's own
 // genuine expiry ends it. 60-day window, slid forward on every authed request
 // (see verifyMobileBearer), so an active user effectively never expires; only
 // a session unused for 60 straight days lapses.
@@ -34,14 +34,14 @@ const MOBILE_SESSION_SLIDE_THRESHOLD_MS = 1000 * 60 * 60 * 24; // 1 day
 
 // Gate the schema DDL to ONCE per process. verifyMobileBearer() (and
 // issueMobileBearer) used to re-run ~7 CREATE/INDEX/ALTER statements on
-// every authed request — the ALTERs throw-and-swallow every time once the
+// every authed request, the ALTERs throw-and-swallow every time once the
 // columns exist, wasting a DB round-trip per request on the hot auth path.
 // The memoized promise makes it a no-op after the first call on an instance,
 // mirroring ensureSchema's own `_schemaReadyP` discipline. The `?? undefined`
 // reset on failure lets a transient error retry on the next call.
 let _mobileSchemaReadyP: Promise<void> | null = null;
 
-// Bump whenever ANY DDL below changes — the one-SELECT version gate skips the
+// Bump whenever ANY DDL below changes, the one-SELECT version gate skips the
 // replay (~7 round-trips, several on purpose-failing ALTERs) on every cold
 // start. This schema is on the AUTH path of every API request, so the skip
 // directly speeds up the first authenticated call of each cold instance.
@@ -116,7 +116,7 @@ export async function issueMobileBearer(
     salt?: string;
     /// The ephemeral public key whose nonce-hash is baked into jwt.nonce.
     /// Persisted so sponsor-execute uses the SAME pubkey the prover
-    /// expects — mismatching it produces -32602 Invalid params.
+    /// expects, mismatching it produces -32602 Invalid params.
     ephemeralPubKeyB64?: string;
     maxEpoch?: number;
     randomness?: string;
@@ -165,7 +165,7 @@ export async function verifyMobileBearer(signedToken: string): Promise<number | 
   // Sliding refresh: this token was just used, so push its expiry forward to
   // now + TTL. Throttled to at most once/day per session (only when the new
   // expiry would advance by ≥1 day) to avoid a DB write on every request.
-  // Fire-and-forget — never block or fail the auth check on the slide.
+  // Fire-and-forget, never block or fail the auth check on the slide.
   const freshExpiry = now + MOBILE_SESSION_TTL_MS;
   if (freshExpiry - r.expires_at >= MOBILE_SESSION_SLIDE_THRESHOLD_MS) {
     void db()
@@ -192,7 +192,7 @@ export async function revokeAllMobileSessions(userId: number) {
  * mobile-originated requests (replacing the web flow's signing cookie).
  *
  * ROW SELECTION (money-safety critical): a user can accumulate several
- * live rows — re-login inserts a fresh one and an error-triggered rebind
+ * live rows, re-login inserts a fresh one and an error-triggered rebind
  * can insert another. Picking `created_at DESC` (newest) is WRONG: the
  * newest row can carry a STALE, already-expired `max_epoch` (e.g. a rebind
  * that reused an old ~27-day-old ephemeral key), and Onara then rejects the
@@ -203,7 +203,7 @@ export async function revokeAllMobileSessions(userId: number) {
  *
  * Selection order:
  *   1. When the caller passes `ephemeralPubKeyB64` (the key the client just
- *      signed with), prefer the row that MATCHES it — that guarantees the
+ *      signed with), prefer the row that MATCHES it, that guarantees the
  *      assembled proof lines up with the user signature.
  *   2. Among candidate rows, prefer the greatest `max_epoch` (freshest,
  *      most likely still valid) rather than the newest `created_at`.
@@ -268,7 +268,7 @@ export async function readEntryIdFromRequest(req: Request): Promise<number | nul
     const token = auth.slice(7).trim();
     return verifyMobileBearer(token);
   }
-  // Fall back to cookie-based session — leaves existing web flows intact.
+  // Fall back to cookie-based session, leaves existing web flows intact.
   const { readSessionEntryId } = await import("./session");
   return readSessionEntryId();
 }

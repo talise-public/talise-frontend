@@ -23,7 +23,7 @@ import {
 } from "@mysten/sui/zklogin";
 
 const ZK_STORAGE_KEY = "talise:zk:eph";
-// Metadata-only expiry marker (a timestamp — NO key material) kept in
+// Metadata-only expiry marker (a timestamp, NO key material) kept in
 // localStorage so EVERY tab can tell "the signing session expired" apart
 // from "this tab never had a key" (sessionStorage is per-tab). Written at
 // sign-in, cleared at sign-out.
@@ -32,7 +32,7 @@ const ZK_EXPIRY_MARKER = "talise:zk:expiresAt";
 const EPHEMERAL_TTL_MS = 55 * 60 * 1000;
 
 /**
- * Cached zkLogin proof — generated server-side once per session via Shinami
+ * Cached zkLogin proof, generated server-side once per session via Shinami
  * (2-4s), then reused for every subsequent signing without another prover
  * round trip. Same shape the server's `mintZkProof` returns. Stays valid
  * for the lifetime of the ephemeral key.
@@ -57,7 +57,7 @@ type StoredAuth = {
 function readStored(): StoredAuth | null {
   if (typeof window === "undefined") return null;
   // SESSION-SCOPE ONLY. The stored blob contains the ephemeral signing
-  // PRIVATE key — a same-origin script (any XSS) that can read it can drain
+  // PRIVATE key, a same-origin script (any XSS) that can read it can drain
   // the wallet. localStorage persists + is readable across the whole origin,
   // so we never keep the key there. Prefer sessionStorage; if a legacy
   // localStorage copy exists (older builds wrote both), migrate it into
@@ -86,7 +86,7 @@ function readStored(): StoredAuth | null {
 }
 
 function writeStored(s: StoredAuth) {
-  // sessionStorage ONLY — never localStorage (the blob holds the ephemeral
+  // sessionStorage ONLY, never localStorage (the blob holds the ephemeral
   // signing key; see readStored). The OAuth sign-in redirect stays in the
   // same tab, so sessionStorage survives it. Defensively purge any legacy
   // localStorage copy a prior build may have written.
@@ -94,7 +94,7 @@ function writeStored(s: StoredAuth) {
   try {
     localStorage.removeItem(ZK_STORAGE_KEY);
   } catch {
-    /* private mode / storage disabled — non-fatal */
+    /* private mode / storage disabled, non-fatal */
   }
 }
 
@@ -116,7 +116,7 @@ export function clearExpiryMarker() {
 
 /**
  * True when a signing session WAS minted on this browser and its ephemeral
- * window has lapsed — the cue to sign the user out for a clean re-sign-in
+ * window has lapsed, the cue to sign the user out for a clean re-sign-in
  * (cookies may still be valid for days, but the wallet can no longer sign).
  * False when there's no marker at all (never signed in here / already
  * signed out) or the session is still inside its window.
@@ -149,7 +149,7 @@ export function readCachedProof(): StoredZkProof | null {
 /**
  * Persist a freshly-minted zk proof so the NEXT sign call skips the
  * 2-4s Shinami round trip. The proof is bound to the ephemeral key in
- * storage — if the key is rotated (sign-in flow), the proof goes with it.
+ * storage, if the key is rotated (sign-in flow), the proof goes with it.
  */
 export function writeCachedProof(proof: StoredZkProof): void {
   const s = readStored();
@@ -163,7 +163,7 @@ export function writeCachedProof(proof: StoredZkProof): void {
  * from these fields. Returns null if no ephemeral key is present.
  *
  * Note: this includes the ephemeral PRIVATE key. The key is a one-shot
- * 55-minute artifact that we deliberately treat as session-scope —
+ * 55-minute artifact that we deliberately treat as session-scope -
  * acceptable for a same-origin POST over TLS.
  */
 export function readEphemeralForT2000(): {
@@ -190,7 +190,7 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 /**
  * Run the full client-side OAuth bootstrap: provision an ephemeral key, set
  * the server-side state cookie, optionally stash a return-to path, then
- * redirect to Google. Caller never returns from this function — the page
+ * redirect to Google. Caller never returns from this function, the page
  * unloads as part of the redirect.
  */
 export async function triggerOauthSignIn(opts?: { returnTo?: string }) {
@@ -199,7 +199,7 @@ export async function triggerOauthSignIn(opts?: { returnTo?: string }) {
   // Fire the three independent pre-redirect calls CONCURRENTLY so the Google
   // screen opens as soon as the slowest settles, not the sum of all three:
   //   • return-to cookie (optional)
-  //   • ephemeral key + nonce (needs the Sui epoch — now edge-cached)
+  //   • ephemeral key + nonce (needs the Sui epoch, now edge-cached)
   //   • OAuth state cookie
   const state = crypto.randomUUID();
   const returnToP =
@@ -233,7 +233,7 @@ export async function triggerOauthSignIn(opts?: { returnTo?: string }) {
   // time gets out of sync when the same code is served from multiple
   // hosts (`talise.io/waitlist` vs `app.talise.io` mobile bridge),
   // which Google rejects as `redirect_uri_mismatch`. Falling back to
-  // the env only if `window` is missing (SSR — shouldn't happen here).
+  // the env only if `window` is missing (SSR, shouldn't happen here).
   //
   // NOTE: every host you serve from must be registered as an
   // Authorized redirect URI in Google Cloud Console:
@@ -241,7 +241,7 @@ export async function triggerOauthSignIn(opts?: { returnTo?: string }) {
   //   https://app.talise.io/auth/callback
   //   (plus any preview deploy hosts you actually use)
   // Use the static NEXT_PUBLIC_GOOGLE_REDIRECT_URI rather than
-  // window.location.origin — Vercel may have us on www.talise.io OR
+  // window.location.origin, Vercel may have us on www.talise.io OR
   // talise.io and Google rejects unregistered URIs. The env pins the
   // ONE host that's registered in Google Cloud Console. The callback
   // route reads the matching GOOGLE_REDIRECT_URI server-side for the
@@ -271,7 +271,7 @@ function suiClient(): SuiGrpcClient {
   if (_sui) return _sui;
   const net = clientNetwork();
   // gRPC-Web endpoint for the browser client. On mainnet we route through
-  // Hayabusa (the same transparent gRPC-Web proxy the server uses) — it's
+  // Hayabusa (the same transparent gRPC-Web proxy the server uses), it's
   // CORS-ready and races multiple fullnodes internally, so it's both faster
   // AND more reliable than a single direct fullnode for a browser with no
   // fallback chain. Env-overridable (NEXT_PUBLIC_HAYABUSA_GRPC_URL="" → direct).
@@ -320,7 +320,7 @@ export async function provisionEphemeralAuth(): Promise<{ nonce: string }> {
   try {
     localStorage.setItem(ZK_EXPIRY_MARKER, String(Date.now() + EPHEMERAL_TTL_MS));
   } catch {
-    /* storage blocked — the per-send bounce still covers expiry */
+    /* storage blocked, the per-send bounce still covers expiry */
   }
 
   return { nonce };
@@ -340,7 +340,7 @@ function loadEphemeralKeypair(): { keypair: Ed25519Keypair; stored: StoredAuth }
  * Build, sign, and submit a transaction. Server proxies the ZK proof so the
  * JWT never leaves our backend.
  *
- * `buildTx` can be sync or async — async lets it fetch coin objects for asset
+ * `buildTx` can be sync or async, async lets it fetch coin objects for asset
  * transfers (USDC, etc.) before composing the PTB.
  *
  * Returns the transaction digest on success.
@@ -352,7 +352,7 @@ export type SignAndSubmitResult = {
 };
 
 function sponsorshipEnabled(): boolean {
-  // Default ON when unset — gasless is the better default. Set
+  // Default ON when unset, gasless is the better default. Set
   // NEXT_PUBLIC_SPONSOR_ENABLED=false to force the user to pay their own gas.
   const v = process.env.NEXT_PUBLIC_SPONSOR_ENABLED;
   if (v === undefined || v === "") return true;
@@ -388,7 +388,7 @@ export async function signAndSubmit(
   const useSponsored = opts.sponsored ?? sponsorshipEnabled();
 
   if (useSponsored) {
-    // Build the transaction kind only — server attaches gas data from the
+    // Build the transaction kind only, server attaches gas data from the
     // sponsor hot wallet.
     const kindBytes = await tx.build({
       client: client as never,
@@ -418,7 +418,7 @@ export async function signAndSubmit(
     // Trip 2: server wraps the ephemeral sig into a zkLoginSignature, adds
     // its own sponsor signature, and broadcasts.
     //
-    // We pass `cachedProof` if we have one — the server skips the 2-4s
+    // We pass `cachedProof` if we have one, the server skips the 2-4s
     // Shinami round trip when provided. On cache miss the server returns
     // `freshProof` in the response so we can persist it for next time.
     const cachedProof = stored.proof;
@@ -450,7 +450,7 @@ export async function signAndSubmit(
       throw new Error(`transaction failed: ${reason}`);
     }
 
-    // First successful tx in this session — persist the proof so every
+    // First successful tx in this session, persist the proof so every
     // subsequent send skips Shinami entirely.
     if (freshProof) writeCachedProof(freshProof);
 
@@ -464,7 +464,7 @@ export async function signAndSubmit(
   const { signature: userSignature } = await keypair.signTransaction(txBytes);
 
   // Ask our server to call the Mysten prover and wrap the final zkLoginSignature.
-  // Server reads JWT + salt from its own httpOnly cookie — we don't send them.
+  // Server reads JWT + salt from its own httpOnly cookie, we don't send them.
   const r = await fetch("/api/sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -523,7 +523,7 @@ export async function signAndSubmit(
   }
 
   const digest = txInner?.digest ?? (exec.digest as string | undefined) ?? "";
-  // Object changes not requested on the include set here — keep parity
+  // Object changes not requested on the include set here, keep parity
   // with the sponsored path's empty-array behavior. If the caller needs
   // created object ids it should poll `getTransaction(digest)` separately.
   return { digest, created: groupCreated(undefined) };
@@ -545,13 +545,13 @@ export function buildSuiTransfer(opts: {
   };
 }
 
-// Legacy USDC type — kept ONLY for the DeepBook USDC/SUI compat path in
+// Legacy USDC type, kept ONLY for the DeepBook USDC/SUI compat path in
 // `buildCrossAssetSend` and for ecosystem auto-conversion. Day-to-day
 // settlement is USDsui.
 const USDC_COIN_TYPE =
   "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
-// USDsui — the Sui-native USD stable. All user-facing send/payroll/invest
+// USDsui, the Sui-native USD stable. All user-facing send/payroll/invest
 // flows settle in USDsui.
 const USDSUI_COIN_TYPE =
   "0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI";
@@ -561,7 +561,7 @@ const USDSUI_COIN_TYPE =
  *
  * Each (recipient, amount) becomes a separate split + transfer leg. With
  * Sui's PTB limits we comfortably handle 50+ recipients in one tx.
- * Settlement is atomic — either everyone gets paid or no one does.
+ * Settlement is atomic, either everyone gets paid or no one does.
  */
 export function buildBatchUsdsuiPayroll(opts: {
   senderAddress: string;
@@ -687,7 +687,7 @@ export function buildUsdsuiTransfer(opts: {
     const client = suiClient();
     // gRPC `listCoins` returns `{ objects: Coin[], hasNextPage, cursor }`.
     // Each Coin has `objectId`, `balance`, `type`, etc. Default limit is
-    // 50 — bumped to 200 here since one wallet may hold many small dust
+    // 50, bumped to 200 here since one wallet may hold many small dust
     // coins after a NAVI withdraw and we want the merge to succeed.
     const coinsRes = await client.listCoins({
       owner: opts.senderAddress,
@@ -716,7 +716,7 @@ export function buildUsdsuiTransfer(opts: {
 export const _utils = { fromBase64, toBase64 };
 
 /**
- * Cross-asset send via DeepBook Spot — the legacy USDC↔SUI on-chain
+ * Cross-asset send via DeepBook Spot, the legacy USDC↔SUI on-chain
  * proof-of-swap path.
  *
  * NOTE: Cross-asset to USDsui goes through Cetus via the T2000 SDK; DeepBook
@@ -745,7 +745,7 @@ export function buildCrossAssetSend(opts: {
   return async (tx: Transaction) => {
     if (opts.payAsset === opts.receiveAsset) {
       throw new Error(
-        "Same-asset transfer — use buildSuiTransfer / buildUsdsuiTransfer."
+        "Same-asset transfer, use buildSuiTransfer / buildUsdsuiTransfer."
       );
     }
     const { coinWithBalance } = await import("@mysten/sui/transactions");
@@ -757,7 +757,7 @@ export function buildCrossAssetSend(opts: {
       ? coinWithBalance({ type: types.USDC, balance: opts.payAmount })
       : tx.splitCoins(tx.gas, [opts.payAmount])[0];
 
-    // 2) Empty DEEP coin — SUI/USDC pool is whitelisted on mainnet (input-fee mode),
+    // 2) Empty DEEP coin, SUI/USDC pool is whitelisted on mainnet (input-fee mode),
     //    so no DEEP is consumed even though the Move signature requires the slot.
     const deepCoin = coinWithBalance({ type: types.DEEP, balance: 0n });
 
@@ -807,10 +807,10 @@ export function buildCrossAssetSend(opts: {
 /**
  * Build a DeepBook Spot LP deposit PTB.
  *
- *  1) `balance_manager::new` — mints a fresh BalanceManager with the caller
+ *  1) `balance_manager::new`, mints a fresh BalanceManager with the caller
  *     as the cryptographic owner.
- *  2) `balance_manager::deposit<USDsui>` — funds the BM with the user's USDsui.
- *  3) `transfer::public_share_object` — shares the BM so future order-placement
+ *  2) `balance_manager::deposit<USDsui>`, funds the BM with the user's USDsui.
+ *  3) `transfer::public_share_object`, shares the BM so future order-placement
  *     PTBs (and the pool itself) can interact with it. Only the owner can
  *     withdraw, so sharing is safe.
  *
@@ -818,7 +818,7 @@ export function buildCrossAssetSend(opts: {
  *
  * NOTE: this is the legacy DeepBook path. The actual `spotLpIntent` already
  * routes through T2000's NAVI `save()` primitive, so this builder is unused
- * at runtime today — we keep it consistent with the USDsui rename for clarity.
+ * at runtime today, we keep it consistent with the USDsui rename for clarity.
  */
 export function buildSpotLPDeposit(opts: {
   senderAddress: string;
@@ -863,7 +863,7 @@ export function buildSpotLPDeposit(opts: {
  *
  * `amountMicro` is in microUSDsui (6 decimals).
  *
- * NOTE: T2000 owns this flow at runtime via NAVI `save()` — this builder is
+ * NOTE: T2000 owns this flow at runtime via NAVI `save()`, this builder is
  * kept consistent with the USDsui rename but is not the active codepath.
  * DeepBook margin pools today are USDC-typed, so the on-chain pool/type
  * config still references the legacy USDC pool object; we treat the user's

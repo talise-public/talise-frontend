@@ -39,11 +39,11 @@ const APY_BG_REFRESH_MS = 2 * 60_000;
  * refresh horizon), and only block on the live venue read when the cache is
  * empty or too old to serve blind. Previously this always blocked on the
  * live legs (NAVI open API + DeepBook on-chain stats, each capped at 5s) and
- * used the cache only as a failure fallback — that's where the 4-6s
+ * used the cache only as a failure fallback, that's where the 4-6s
  * /api/yield/comparison responses came from.
  *
  * Stale-honest beats blank (2026-06-11 ₦0-balance incident): if the live
- * read fails or times out but ANY cached APY exists — however old — serve
+ * read fails or times out but ANY cached APY exists, however old, serve
  * it rather than dropping the venue. Returns null only when we have neither
  * a live nor a cached APY.
  */
@@ -66,7 +66,7 @@ async function resolveVenueApy(
     return g.value;
   }
 
-  // No usable row (or too old to serve blind) — pay the capped live read
+  // No usable row (or too old to serve blind), pay the capped live read
   // once, then persist after the response flushes.
   const live = await withTimeout(
     liveFetch().catch(() => null),
@@ -88,13 +88,13 @@ async function resolveVenueApy(
 const YIELD_LEG_TIMEOUT_MS = 5_000;
 
 /**
- * Server-side yield queries — all stateless (no zkLogin signer needed).
+ * Server-side yield queries, all stateless (no zkLogin signer needed).
  *
  * The NAVI position is read DIRECTLY (no @t2000/sdk): `readNaviUsdsuiSupply`
  * does one `devInspect` of NAVI's on-chain `get_user_state` getter for the
  * supplied balance, and `fetchNaviUsdsuiSupplyApy` reads the portal-accurate
  * APY from NAVI's open API. This replaced @t2000/sdk's `getFinancialSummary`
- * (which cost ~4.2s and keyed the APY off USDC's pool — a SDK bug).
+ * (which cost ~4.2s and keyed the APY off USDC's pool, a SDK bug).
  *
  * Pending rewards are not surfaced from the direct read (NAVI's reward
  * getter would add a second `devInspect`; the only consumer is the USD
@@ -109,7 +109,7 @@ export type EarnSnapshot = {
   apy: number;
   /** Projected daily yield at the current APY. */
   dailyYield: number;
-  /** Pending claimable rewards (per token). Currently always empty —
+  /** Pending claimable rewards (per token). Currently always empty -
    *  see the module note above. */
   pending: PendingReward[];
   /** Sum of USD valuations across all pending rewards. */
@@ -135,7 +135,7 @@ export async function getEarnSnapshot(address: string): Promise<EarnSnapshot> {
  * uses `best` to answer "what's the best place to put my dollars?".
  *
  * Each venue's APY is fetched independently and failures are
- * non-fatal — if one venue is offline we still return the other.
+ * non-fatal, if one venue is offline we still return the other.
  */
 export type YieldVenue = {
   id: "navi" | "deepbook" | "sam" | "scallop" | "suilend" | "alphalend";
@@ -157,13 +157,13 @@ export async function getYieldComparison(
 ): Promise<YieldComparison> {
   // Two kinds of legs run in parallel here:
   //
-  //   APYs (global, same for every user) — resolved through the durable
+  //   APYs (global, same for every user), resolved through the durable
   //   global_kv cache via `resolveVenueApy`, so the common case is a
   //   ~10-50ms DB read instead of a 1-5s NAVI open-API / DeepBook on-chain
   //   round trip. Cold serverless instances and transient RPC outages still
   //   return last-known APYs.
   //
-  //   Positions (per-user) — must stay live (one NAVI `devInspect` + one
+  //   Positions (per-user), must stay live (one NAVI `devInspect` + one
   //   DeepBook SupplierCap lookup), but each is timeout-capped and
   //   failure-tolerant so a slow/flaky read degrades to supplied=0 rather
   //   than stalling or emptying the comparison.
@@ -173,7 +173,7 @@ export async function getYieldComparison(
       "deepbook_usdsui_apy",
       async () => (await fetchUsdsuiMarginApy())?.apy ?? null
     ),
-    // Scallop USDsui supply — the second live aggregator-router venue. Read
+    // Scallop USDsui supply, the second live aggregator-router venue. Read
     // from Scallop's market API (USDsui pool), cached like the others.
     resolveVenueApy("scallop_usdsui_apy", () => fetchScallopUsdsuiApy()),
     withTimeout(readNaviUsdsuiSupply(address).catch(() => 0), YIELD_LEG_TIMEOUT_MS, 0),
@@ -187,7 +187,7 @@ export async function getYieldComparison(
       name: "NAVI lending",
       apy: naviApy,
       supplied: naviSupplied,
-      // Pending rewards aren't surfaced from the direct NAVI read — see the
+      // Pending rewards aren't surfaced from the direct NAVI read, see the
       // module note above. Kept in `meta` so consumers don't change shape.
       meta: { pendingUsd: 0 },
     });
@@ -203,9 +203,9 @@ export async function getYieldComparison(
       },
     });
   }
-  // Scallop — USDsui supply market. GATED: supply currently reverts on a stale
+  // Scallop, USDsui supply market. GATED: supply currently reverts on a stale
   // version object (see SCALLOP_SUPPLY_ENABLED in lib/yield/ptb.ts), so we don't
-  // surface it as a depositable venue — that would route "best" to a venue whose
+  // surface it as a depositable venue, that would route "best" to a venue whose
   // deposit reverts on chain. Re-enable once the version object is refreshed.
   if (SCALLOP_SUPPLY_ENABLED && scallopApy != null) {
     venues.push({
@@ -216,7 +216,7 @@ export async function getYieldComparison(
       meta: { router: true },
     });
   }
-  // SAM — the aggregating vault venue (Scallop/Suilend/NAVI + compounded
+  // SAM, the aggregating vault venue (Scallop/Suilend/NAVI + compounded
   // rewards behind one share token). Dormant until its on-chain interface is
   // configured (samConfigured()); then it reads its offered APY + the user's
   // samUSDC position and joins the comparison, typically as `best` since it

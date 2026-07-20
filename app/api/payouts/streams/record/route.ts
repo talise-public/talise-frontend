@@ -7,7 +7,7 @@ import { teamStreamsEnabled, activateTeamStream } from "@/lib/team-streams";
 export const runtime = "nodejs";
 
 /**
- * POST /api/payouts/streams/record — { streamId, digest }
+ * POST /api/payouts/streams/record, { streamId, digest }
  *
  * Activate a drafted team stream once the funding send has landed in the escrow.
  * The first tranche becomes due one interval from now; the cron takes it from there.

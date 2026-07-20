@@ -21,7 +21,7 @@ export const maxDuration = 60;
  * off.
  *
  * Auth: Vercel adds `Authorization: Bearer $CRON_SECRET` to scheduled
- * invocations when CRON_SECRET is set — require it then; allow when unset (dev).
+ * invocations when CRON_SECRET is set, require it then; allow when unset (dev).
  */
 export async function GET(req: Request) {
   const denied = requireCron(req);

@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * conversationsStore — a tiny localStorage-backed store for the Talise Agent's
+ * conversationsStore, a tiny localStorage-backed store for the Talise Agent's
  * chat history (the ChatGPT-style sidebar).
  *
  * Conversations are DISPLAY-ONLY transcripts: we persist the finished prose +
  * any parsed intent so a thread can be re-opened and re-rendered. They never
- * feed the send/plan paths — execution always re-validates through
+ * feed the send/plan paths, execution always re-validates through
  * /api/agent/plan and only moves money against server-resolved values.
  *
  * Storage shape (key `talise.agent.conversations.v1`): an array of
@@ -62,7 +62,7 @@ function write(list: Conversation[]) {
   try {
     window.localStorage.setItem(KEY, JSON.stringify(trimmed));
   } catch {
-    /* quota / private-mode — fail soft, history just won't persist */
+    /* quota / private-mode, fail soft, history just won't persist */
   }
   for (const l of listeners) l(trimmed);
 }

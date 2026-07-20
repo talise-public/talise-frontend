@@ -55,7 +55,7 @@ export function formatHandle(username: string): string {
 /**
  * Long / canonical user-facing form. Used in error messages and search
  * hints where users need to see exactly which name was looked up. Uses
- * `@` instead of `.` to keep Talise branding consistent — the on-chain
+ * `@` instead of `.` to keep Talise branding consistent, the on-chain
  * SuiNS NameRecord stays the standard `.talise.sui` form.
  */
 export function formatHandleFull(username: string): string {

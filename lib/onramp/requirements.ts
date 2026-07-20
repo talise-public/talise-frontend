@@ -8,7 +8,7 @@
  * thresholds differ.
  *
  * Thresholds (USD): these are conservative scaffold defaults, NOT a
- * compliance-reviewed table — tune per provider/jurisdiction before live.
+ * compliance-reviewed table, tune per provider/jurisdiction before live.
  *   < $100        → lite
  *   $100 – $1,000 → standard
  *   > $1,000      → enhanced

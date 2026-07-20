@@ -7,13 +7,13 @@ import { storeBlob, readBlob } from "./walrus";
  * Private notes on claimable money links.
  *
  * The sender can attach a short message to a money link. We encrypt it, store
- * the ciphertext on Walrus, and record only the blob id on the cheque row — so
+ * the ciphertext on Walrus, and record only the blob id on the cheque row, so
  * the note is private (Talise's DB never holds the plaintext) and the blob is
  * meaningless to anyone scanning Walrus.
  *
  * KEY DERIVATION (today): the content key is derived from the cheque's claim
  * secret, which lives ONLY in the share link (`/c/<id>#<secret>`). So exactly
- * whoever holds the link can open the note — same trust model as the funds.
+ * whoever holds the link can open the note, same trust model as the funds.
  *
  * UPGRADE PATH (Seal): swap `deriveKey` for Mysten Seal identity-based / threshold
  * encryption keyed to the cheque id, gated by a `seal_approve` policy in

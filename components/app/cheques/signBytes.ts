@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * signSponsorReadyBytes — sign server-built sponsor-ready TransactionData bytes
+ * signSponsorReadyBytes, sign server-built sponsor-ready TransactionData bytes
  * with the zkLogin ephemeral key and broadcast via /api/zk/sponsor-execute.
  *
  * The plain-send pipeline lives in `useSignAndSend`, but cheques and streams
@@ -70,7 +70,7 @@ export async function signSponsorReadyBytes(
     // Expired signing session: tear down + re-auth through Google.
     if (isSessionExpiryError(e)) {
       void forceFreshSignIn({ reauthNow: true });
-      throw new ApiError(401, "Your session expired — signing you in again…", "SESSION_EXPIRED");
+      throw new ApiError(401, "Your session expired, signing you in again…", "SESSION_EXPIRED");
     }
     throw e;
   }
@@ -110,10 +110,10 @@ export function friendlyError(
       lower.includes("not found") ||
       lower.includes("unavailable");
     if (rollout && rolloutSubject) {
-      return `${rolloutSubject} are rolling out — check back soon.`;
+      return `${rolloutSubject} are rolling out, check back soon.`;
     }
     if (code === 429) {
-      return "You're going a little fast — give it a minute and try again.";
+      return "You're going a little fast, give it a minute and try again.";
     }
     if (e.code === "NOT_SIGNED_IN") {
       return "Taking you to sign in…";

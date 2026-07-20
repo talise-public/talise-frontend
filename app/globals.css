@@ -4,6 +4,26 @@
 @import "tw-animate-css";
 
 /*
+ * TWK Everett (Weltkern, licensed) — the display face for the blueprint design
+ * system used by both the /v3 landing and the restyled /app wallet. We ship ONE
+ * Light weight and declare it across the whole 100–900 range on purpose: every
+ * heading, at any requested font-weight, renders this single Light file, so the
+ * app reads in one consistent thin weight (no bold/black Everett anywhere).
+ */
+/* Small/medium display → Light; big display → Regular. Everett Light reads too
+   thin at large sizes, so headings that ask for 500+ get the Regular cut. */
+@font-face {
+  font-family: "TWK Everett";
+  src: url("/fonts/TWKEverett-Light.otf") format("opentype");
+  font-weight: 100 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "TWK Everett";
+  src: url("/fonts/TWKEverett-Regular.otf") format("opentype");
+  font-weight: 500 900; font-style: normal; font-display: swap;
+}
+
+/*
  * Dark mode by default — matches the iOS app's palette so the web feels
  * like the same product. Marketing / landing pages that want the old
  * editorial monochrome can opt back in with `.light-page` at the root
@@ -109,11 +129,15 @@ body {
  */
 html:has(.app-clean),
 html:has(.app-clean) body {
-  background: #fafdf8; /* .app-clean --color-bg */
+  background: #edf0ea; /* .app-clean blueprint canvas */
 }
 html:has(.landing-mint),
 html:has(.landing-mint) body {
   background: #f7fcf2; /* .landing-mint gradient floor */
+}
+html:has(.landing-v3),
+html:has(.landing-v3) body {
+  background: #ecefe8; /* .landing-v3 neutral canvas */
 }
 
 /* Desktop (precise pointer): no scroll bounce at all — the page sits fixed.
@@ -150,6 +174,61 @@ html:has(.landing-mint) body {
   background: var(--color-bg);
   color: var(--color-fg);
 }
+
+/*
+ * ── Blueprint scope for public CONTENT pages (legal, blog, docs, perps) ──────
+ * The same engineering-blueprint identity as the /v3 landing + /app wallet:
+ * neutral canvas, forest accent, TWK Everett headings, mono microtype,
+ * rectangular hairline cards, and a construction frame (rails + `+` ticks).
+ * Apply `.bp-page` to a page root; children inherit the tokens via the cascade.
+ */
+.bp-page {
+  --color-bg: #ecefe8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f6f1;
+  --color-fg: #121a0f;
+  --color-fg-muted: #55634e;
+  --color-fg-dim: #8a9784;
+  --color-line: rgba(18, 26, 15, 0.12);
+  --color-line-soft: rgba(18, 26, 15, 0.06);
+  --color-accent: #2f6a1f;
+  --color-accent-deep: #2f6a1f;
+  --color-accent-soft: #e6efdd;
+  --color-accent-light: #caffb8;
+  --bp-display: "TWK Everett", var(--font-display-v2), "Hanken Grotesk", system-ui, sans-serif;
+
+  color: var(--color-fg);
+  background: var(--color-bg);
+  font-family: var(--bp-display);
+  letter-spacing: -0.02em;
+}
+.bp-page h1, .bp-page h2, .bp-page h3, .bp-page h4 {
+  font-family: var(--bp-display);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+.bp-page .bp-frame {
+  position: relative;
+  margin: 0 auto;
+  border-left: 1px solid var(--color-line);
+  border-right: 1px solid var(--color-line);
+}
+.bp-page .bp-tick { position: absolute; width: 11px; height: 11px; z-index: 5; pointer-events: none; }
+.bp-page .bp-tick::before, .bp-page .bp-tick::after { content: ""; position: absolute; background: var(--color-accent); }
+.bp-page .bp-tick::before { left: 5px; top: 0; width: 1px; height: 11px; }
+.bp-page .bp-tick::after { top: 5px; left: 0; height: 1px; width: 11px; }
+.bp-page .bp-tick-tl { left: 0; top: 0; transform: translate(-50%, -50%); }
+.bp-page .bp-tick-tr { right: 0; top: 0; transform: translate(50%, -50%); }
+.bp-page .bp-tick-bl { left: 0; bottom: 0; transform: translate(-50%, 50%); }
+.bp-page .bp-tick-br { right: 0; bottom: 0; transform: translate(50%, 50%); }
+.bp-page .bp-card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 10px; }
+.bp-page .bp-kicker {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--color-accent);
+}
+.bp-page .bp-kicker::before { content: ""; width: 8px; height: 8px; background: currentColor; }
+.bp-page ::selection { background: var(--color-accent-light); color: var(--color-fg); }
 
 /*
  * ── Premium light-mint landing scope ──────────────────────────────────
@@ -191,22 +270,111 @@ html:has(.landing-mint) body {
  * so flipping this scope re-skins every app component for free.
  */
 .app-clean {
-  --color-bg: #fafdf8;          /* faint warm-white canvas */
+  /* Engineering-blueprint palette — neutral (faintly-green) canvas, white
+     hairline cards, forest-green accent, mint soft-fill. Matches the /v3
+     landing so the app + marketing read as one designed product. */
+  --color-bg: #edf0ea;          /* neutral blueprint canvas */
   --color-surface: #ffffff;     /* white cards */
-  --color-surface-2: #f1f5ee;   /* soft fill — chips, secondary tiles */
-  --color-fg: #14250e;          /* deep ink-green — big numbers, headings */
-  --color-fg-muted: #586b50;    /* secondary text (AA on white) */
-  --color-fg-dim: #7e8c75;      /* tertiary / labels */
-  /* Whisper-soft translucent hairline — reads as a gentle edge on white, never
-     a hard grey box. One token re-skins every border/ring/divide in the app. */
-  --color-line: rgba(20, 37, 14, 0.07);
-  --color-accent: #2f7d31;      /* forest — links / accent text */
+  --color-surface-2: #f4f6f1;   /* soft fill — chips, secondary tiles */
+  --color-fg: #121a0f;          /* ink */
+  --color-fg-muted: #55634e;    /* secondary text (AA) */
+  --color-fg-dim: #8a9784;      /* tertiary / labels */
+  --color-line: rgba(18, 26, 15, 0.12);  /* blueprint hairline */
+  --color-accent: #2f6a1f;      /* forest — links / accent text */
   --color-accent-light: #caffb8;
-  --color-accent-deep: #2f7d31; /* solid CTA fill (white text, AA) */
-  --color-accent-soft: #e7f4e1; /* soft mint — chip / pill backgrounds */
+  --color-accent-deep: #2f6a1f; /* solid CTA fill (white text, AA) */
+  --color-accent-soft: #e6efdd; /* soft mint — chip / pill backgrounds */
+
+  /* TWK Everett first, Hanken (next/font) fallback — used by `font-display`. */
+  --font-display: "TWK Everett", var(--font-display-v2), "Hanken Grotesk", system-ui, sans-serif;
+
+  /* TWK Everett wants a tight −0.05em across the app. Mono labels (their own
+     positive tracking) and the balance/figures (own letter-spacing) override. */
+  letter-spacing: -0.05em;
 
   color: var(--color-fg);
   background: var(--color-bg);
+}
+
+/* ── Blueprint primitives for the /app wallet (mirror the /v3 landing) ─────
+   Bracket-cornered mono buttons + `+` corner ticks, scoped to .app-clean so
+   they never leak to the marketing pages. Colours come from the app tokens. */
+.app-clean .bp-btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; height: 46px; padding: 0 22px;
+  font-family: var(--font-mono), monospace; font-size: 12.5px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  transition: transform 180ms ease, background 180ms ease, color 180ms ease, border-color 180ms ease, opacity 180ms ease;
+}
+.app-clean .bp-btn:not(:disabled):hover { transform: translateY(-2px); }
+.app-clean .bp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.app-clean .bp-btn-full { width: 100%; }
+.app-clean .bp-btn-solid { background: var(--color-accent-deep); color: #f4fbef; }
+.app-clean .bp-btn-solid:not(:disabled):hover { background: #256016; }
+.app-clean .bp-btn-ghost { background: transparent; color: var(--color-fg); border: 1px solid var(--color-line); }
+.app-clean .bp-btn-ghost:not(:disabled):hover { background: var(--color-surface-2); }
+.app-clean .bp-btn-danger { background: transparent; color: #b8503a; border: 1px solid #b8503a; }
+.app-clean .bp-btn-danger:not(:disabled):hover { background: #b8503a; color: #fff; }
+.app-clean .bp-bracket, .app-clean .bp-bracket-2 { position: absolute; inset: 0; pointer-events: none; }
+.app-clean .bp-bracket::before, .app-clean .bp-bracket::after,
+.app-clean .bp-bracket-2::before, .app-clean .bp-bracket-2::after {
+  content: ""; position: absolute; width: 11px; height: 11px;
+  border-color: var(--color-accent); border-style: solid; border-width: 0;
+}
+.app-clean .bp-bracket::before { left: -4px; top: -4px; border-left-width: 1.5px; border-top-width: 1.5px; }
+.app-clean .bp-bracket::after { right: -4px; bottom: -4px; border-right-width: 1.5px; border-bottom-width: 1.5px; }
+.app-clean .bp-bracket-2::before { right: -4px; top: -4px; border-right-width: 1.5px; border-top-width: 1.5px; }
+.app-clean .bp-bracket-2::after { left: -4px; bottom: -4px; border-left-width: 1.5px; border-bottom-width: 1.5px; }
+/* Mint bracket corners — for buttons/cards on a dark (forest) surface. */
+.app-clean .bp-brackets-mint .bp-bracket::before,
+.app-clean .bp-brackets-mint .bp-bracket::after,
+.app-clean .bp-brackets-mint .bp-bracket-2::before,
+.app-clean .bp-brackets-mint .bp-bracket-2::after { border-color: #CAFFB8; }
+.app-clean .bp-tick { position: absolute; z-index: 3; width: 11px; height: 11px; pointer-events: none; }
+/* Mint tick variant for dark surfaces. */
+.app-clean .bp-tick-mint::before, .app-clean .bp-tick-mint::after { background: #CAFFB8; }
+
+/* Tighten every tabular figure — numerals default too wide, especially around
+   commas and the currency symbol. Pulled to -0.05em to match the text; amounts
+   with their own inline tracking (e.g. the balance's -0.08em) still win. */
+.app-clean .tabular-nums {
+  /* ALL numbers render in Google Sans. `!important` deliberately overrides any
+     inline TWK Everett / mono on a figure — numbers are always Google Sans. */
+  font-family: "Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif !important;
+  letter-spacing: -0.02em;
+}
+
+/* Content that fits the viewport is CENTERED (fixed to viewport, no dead space);
+   content taller than the viewport falls back to top-aligned and scrolls — the
+   `safe` keyword prevents the top from ever being clipped. */
+.app-main-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+}
+/* Smooth programmatic / anchor scrolling app-wide (respects reduced-motion). */
+html:has(.app-clean) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html:has(.app-clean) { scroll-behavior: auto; }
+}
+
+/* Lenis smooth (momentum) scroll — landing + app. Lenis drives the position in
+   JS, so it disables native smooth behaviour; elements marked
+   `data-lenis-prevent` (sheets, dialogs, terminal panels) keep native scroll. */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+.app-clean .bp-tick::before, .app-clean .bp-tick::after { content: ""; position: absolute; background: var(--color-accent); }
+.app-clean .bp-tick::before { left: 5px; top: 0; width: 1px; height: 11px; }
+.app-clean .bp-tick::after { top: 5px; left: 0; height: 1px; width: 11px; }
+.app-clean .bp-tick-tl { left: 0; top: 0; transform: translate(-50%, -50%); }
+.app-clean .bp-tick-tr { right: 0; top: 0; transform: translate(50%, -50%); }
+.app-clean .bp-tick-bl { left: 0; bottom: 0; transform: translate(-50%, 50%); }
+.app-clean .bp-tick-br { right: 0; bottom: 0; transform: translate(50%, 50%); }
+@media (prefers-reduced-motion: reduce) {
+  .app-clean .bp-btn { transition: none; }
 }
 
 /* Flat white cards — no glass blur/gradient, just a hairline + a whisper of
@@ -581,3 +749,7 @@ input[type="number"] {
 .talise-appshell .rounded-2xl {
   border-radius: 0.875rem;
 }
+
+/* Hide the scrollbar on horizontally-scrollable strips (e.g. the mobile nav pill). */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

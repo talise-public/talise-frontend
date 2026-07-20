@@ -8,11 +8,11 @@ import { moneyRulesEnabled, prepareExecuteRule } from "@/lib/money-rules";
 export const runtime = "nodejs";
 
 /**
- * POST /api/rules/[id]/execute — return the Onara-sponsored, PERMISSIONLESS
+ * POST /api/rules/[id]/execute, return the Onara-sponsored, PERMISSIONLESS
  * `standing_order::execute_due` bytes for a due rule the caller owns. The client
  * signs these (owner is the sender) and posts to /api/zk/sponsor-execute, then
  * calls /api/rules/[id]/executed with the digest. This is the "fire due rules on
- * app-open" trigger — there is no cron. The contract gates the actual release on
+ * app-open" trigger, there is no cron. The contract gates the actual release on
  * the Clock + schedule, so signing an not-yet-due rule simply aborts ENotDue.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

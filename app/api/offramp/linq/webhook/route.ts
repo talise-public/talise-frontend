@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  * Linq order-state callback. The raw body is HMAC-SHA256 signed in the
  * `X-Linq-Signature: sha256=<hex>` header (keyed by LINQ_WEBHOOK_SECRET). We
  * verify it, then mirror the order state into `linq_offramps` by Linq's order
- * id. Idempotent — reprocessing the same event is a harmless no-op. Always
+ * id. Idempotent, reprocessing the same event is a harmless no-op. Always
  * 2xx within 10s so Linq marks delivery successful; polling /status is the
  * reconciliation fallback for any missed event.
  */
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: "no orderId" });
   }
 
-  // Status text — prefer the event-implied phase when no explicit status.
+  // Status text, prefer the event-implied phase when no explicit status.
   const statusText =
     evt.status ??
     (evt.event === "order.completed"
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       args: [statusText, Date.now(), evt.orderId],
     });
   } catch (e) {
-    // Don't fail the webhook on a DB hiccup — Linq would retry/we reconcile via poll.
+    // Don't fail the webhook on a DB hiccup, Linq would retry/we reconcile via poll.
     console.warn("[offramp/linq/webhook] update failed:", (e as Error).message);
   }
 

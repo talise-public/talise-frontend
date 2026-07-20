@@ -36,10 +36,10 @@ export type InvoicePayViewProps = {
 };
 
 /**
- * The public invoice page body. Renders the invoice as a classic document —
+ * The public invoice page body. Renders the invoice as a classic document -
  * big "Invoice" heading with the issuer underneath, date / invoice-no / due
  * meta, a proper line-items table, totals bottom-right, payment terms + notes
- * — then a single "Pay" CTA that deep-links into /app/pay with the amount +
+ *, then a single "Pay" CTA that deep-links into /app/pay with the amount +
  * recipient prefilled. Standalone (no AppShell / CurrencyProvider) so it
  * formats its own currency locally.
  */
@@ -61,7 +61,7 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
         const r = data?.rates?.[invoice.currency];
         if (!cancelled && typeof r === "number" && r > 0) setRate(r);
       } catch {
-        /* keep 1:1 — better than a broken figure */
+        /* keep 1:1, better than a broken figure */
       }
     })();
     return () => {
@@ -119,13 +119,13 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      /* clipboard blocked — silently ignore */
+      /* clipboard blocked, silently ignore */
     }
   };
 
   const hasItems = invoice.lineItems.length > 0;
   // Subtotal is the sum of line rows (per-row rounded, same as the table);
-  // the authoritative figure is always amountUsd — never recompute the total.
+  // the authoritative figure is always amountUsd, never recompute the total.
   const subtotalUsd = invoice.lineItems.reduce(
     (sum, li) => sum + Math.round(li.qty * li.unitUsd * 100) / 100,
     0
@@ -133,21 +133,26 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
 
   // Shared cell typography for the line-items table header.
   const thCls =
-    "py-2.5 font-mono text-[10px] font-medium uppercase tracking-wider text-[#3d7a29]";
+    "py-2.5 font-mono text-[10px] font-medium uppercase tracking-wider text-[var(--color-accent)]";
 
   return (
-    <main
-      className="relative min-h-dvh overflow-hidden px-5 py-10 text-[#15300c] sm:py-16"
-      style={{ background: "radial-gradient(120% 90% at 15% 0%, #e6f9d6 0%, #f7fcf2 45%, #ffeede 100%)" }}
-    >
-      <div className="relative z-10 mx-auto w-full max-w-xl">
+    <main className="bp-page relative min-h-dvh overflow-hidden text-[var(--color-fg)]">
+      <div
+        className="bp-frame relative z-10 mx-auto flex min-h-dvh w-full flex-col px-5 py-10 sm:py-16"
+        style={{ maxWidth: 640 }}
+      >
+        <span aria-hidden className="bp-tick bp-tick-tl" />
+        <span aria-hidden className="bp-tick bp-tick-tr" />
+        <span aria-hidden className="bp-tick bp-tick-bl" />
+        <span aria-hidden className="bp-tick bp-tick-br" />
+
         {/* Brand row */}
         <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-[#15300c]">
+          <Link href="/" className="flex items-center gap-2 text-[var(--color-fg)]">
             <Diamond />
             <span
-              className="text-[18px] font-[800] lowercase tracking-[-0.03em]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="text-[18px] font-[500] lowercase tracking-[-0.03em]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
             >
               talise
             </span>
@@ -156,7 +161,7 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
         </div>
 
         <GlassCard className="overflow-hidden p-0">
-          {/* Diagonal status stamp — classic rubber-stamp treatment for settled
+          {/* Diagonal status stamp, classic rubber-stamp treatment for settled
               documents. Decorative only; the StatusPill above is the a11y label. */}
           {invoice.status !== "open" && (
             <div
@@ -164,11 +169,11 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
               aria-hidden
             >
               <span
-                className="inline-block -rotate-12 rounded-md border-2 px-3 py-1 font-mono text-[16px] font-bold uppercase opacity-45 sm:text-[18px]"
+                className="inline-block -rotate-12 border-2 px-3 py-1 font-mono text-[16px] font-bold uppercase opacity-45 sm:text-[18px]"
                 style={{
                   letterSpacing: "0.28em",
-                  color: invoice.status === "paid" ? "#3d7a29" : "#c0532f",
-                  borderColor: invoice.status === "paid" ? "#3d7a29" : "#c0532f",
+                  color: invoice.status === "paid" ? "var(--color-accent)" : "#c0532f",
+                  borderColor: invoice.status === "paid" ? "var(--color-accent)" : "#c0532f",
                 }}
               >
                 {invoice.status === "paid" ? "Paid" : "Void"}
@@ -176,62 +181,62 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
             </div>
           )}
 
-          {/* Document header — big heading, issuer underneath */}
+          {/* Document header, big heading, issuer underneath */}
           <div className="px-5 pb-6 pt-7 sm:px-8">
             <h1
-              className="text-[34px] font-[800] uppercase leading-none tracking-[-0.02em] text-[#15300c] sm:text-[40px]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="text-[34px] font-[500] leading-none tracking-[-0.03em] text-[var(--color-fg)] sm:text-[40px]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
             >
               Invoice
             </h1>
-            <p className="mt-2.5 text-[15px] font-medium text-[#15300c]">
+            <p className="mt-2.5 text-[15px] font-medium text-[var(--color-fg)]">
               {issuer.name || issuer.handle}
             </p>
             {issuer.name && issuer.name !== issuer.handle && (
-              <p className="mt-0.5 font-mono text-[12px] text-[#3d7a29]">{issuer.handle}</p>
+              <p className="mt-0.5 font-mono text-[12px] text-[var(--color-accent)]">{issuer.handle}</p>
             )}
 
-            {/* Meta — date / invoice no / due on the left, prepared-for on the right */}
+            {/* Meta, date / invoice no / due on the left, prepared-for on the right */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <dl className="space-y-1.5 text-[13px]">
                 <div className="flex gap-2">
-                  <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[#3d7a29]">
+                  <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[var(--color-accent)]">
                     Date
                   </dt>
-                  <dd className="text-[#15300c]">{createdLabel}</dd>
+                  <dd className="text-[var(--color-fg)]">{createdLabel}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[#3d7a29]">
+                  <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[var(--color-accent)]">
                     Invoice no.
                   </dt>
-                  <dd className="break-all font-mono text-[12px] leading-[1.6] text-[#3a5230]">
+                  <dd className="break-all font-mono text-[12px] leading-[1.6] text-[var(--color-fg-muted)]">
                     {invoice.id}
                   </dd>
                 </div>
                 {dueLabel && (
                   <div className="flex gap-2">
-                    <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[#3d7a29]">
+                    <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[var(--color-accent)]">
                       Due date
                     </dt>
-                    <dd className="text-[#15300c]">{dueLabel}</dd>
+                    <dd className="text-[var(--color-fg)]">{dueLabel}</dd>
                   </div>
                 )}
               </dl>
               {invoice.customerName && (
                 <div className="sm:max-w-[45%] sm:text-right">
                   <Eyebrow>Prepared for</Eyebrow>
-                  <p className="mt-1 text-[15px] font-medium text-[#15300c]">{invoice.customerName}</p>
+                  <p className="mt-1 text-[15px] font-medium text-[var(--color-fg)]">{invoice.customerName}</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Line items — a proper document table. When the invoice has no
+          {/* Line items, a proper document table. When the invoice has no
               itemisation, a single description row (the memo) keeps the shape. */}
           <div className="px-5 sm:px-8">
             <table className="w-full text-left text-[14px]">
               <thead>
-                <tr className="border-y border-[#15300c]/10">
+                <tr className="border-y border-[var(--color-line)]">
                   <th className={`${thCls} pr-3`}>Description</th>
                   {hasItems && (
                     <>
@@ -245,34 +250,34 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
               <tbody>
                 {hasItems ? (
                   invoice.lineItems.map((li, i) => (
-                    <tr key={i} className="border-b border-[#15300c]/10">
-                      <td className="py-3 pr-3 text-[#15300c]">{li.description}</td>
+                    <tr key={i} className="border-b border-[var(--color-line)]">
+                      <td className="py-3 pr-3 text-[var(--color-fg)]">{li.description}</td>
                       <td
-                        className="px-2 py-3 text-right text-[#3a5230] sm:px-3"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
+                        className="px-2 py-3 text-right text-[var(--color-fg-muted)] sm:px-3"
+                        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                       >
                         {li.qty}
                       </td>
                       <td
-                        className="whitespace-nowrap px-2 py-3 text-right text-[#3a5230] sm:px-3"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
+                        className="whitespace-nowrap px-2 py-3 text-right text-[var(--color-fg-muted)] sm:px-3"
+                        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                       >
                         {money(li.unitUsd)}
                       </td>
                       <td
-                        className="whitespace-nowrap py-3 pl-3 text-right font-medium text-[#15300c]"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
+                        className="whitespace-nowrap py-3 pl-3 text-right font-medium text-[var(--color-fg)]"
+                        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                       >
                         {money(Math.round(li.qty * li.unitUsd * 100) / 100)}
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <tr className="border-b border-[#15300c]/10">
-                    <td className="py-3 pr-3 text-[#15300c]">{invoice.memo || "Amount due"}</td>
+                  <tr className="border-b border-[var(--color-line)]">
+                    <td className="py-3 pr-3 text-[var(--color-fg)]">{invoice.memo || "Amount due"}</td>
                     <td
-                      className="whitespace-nowrap py-3 pl-3 text-right font-medium text-[#15300c]"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
+                      className="whitespace-nowrap py-3 pl-3 text-right font-medium text-[var(--color-fg)]"
+                      style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                     >
                       {money(invoice.amountUsd)}
                     </td>
@@ -281,74 +286,74 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
               </tbody>
             </table>
 
-            {/* Totals — bottom-right. No tax on Talise invoices, so it's just
+            {/* Totals, bottom-right. No tax on Talise invoices, so it's just
                 subtotal + total (or total alone for un-itemised invoices). */}
             <div className="flex justify-end py-4">
               <div className="w-full max-w-[260px] space-y-2">
                 {hasItems && (
                   <div className="flex items-baseline justify-between gap-6">
-                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-[#3d7a29]">
+                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-[var(--color-accent)]">
                       Subtotal
                     </span>
                     <span
-                      className="text-[14px] text-[#3a5230]"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
+                      className="text-[14px] text-[var(--color-fg-muted)]"
+                      style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                     >
                       {money(subtotalUsd)}
                     </span>
                   </div>
                 )}
-                <div className="flex items-baseline justify-between gap-6 border-t border-[#15300c]/10 pt-2">
-                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-[#15300c]">
+                <div className="flex items-baseline justify-between gap-6 border-t border-[var(--color-line)] pt-2">
+                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-[var(--color-fg)]">
                     Total
                   </span>
                   <span
-                    className="text-[22px] font-semibold text-[#15300c]"
-                    style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
+                    className="text-[22px] font-semibold text-[var(--color-fg)]"
+                    style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                   >
                     {money(invoice.amountUsd)}
                   </span>
                 </div>
                 {invoice.currency !== "USD" && (
-                  <p className="text-right font-mono text-[11px] text-[#3d7a29]">
+                  <p className="text-right font-mono text-[11px] text-[var(--color-accent)]">
                     Settles as {invoice.amountUsd.toFixed(2)} USDsui · 1:1 USD
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Document footer — payment terms + notes */}
-            <div className="grid grid-cols-1 gap-4 border-t border-[#15300c]/10 py-5 sm:grid-cols-2">
+            {/* Document footer, payment terms + notes */}
+            <div className="grid grid-cols-1 gap-4 border-t border-[var(--color-line)] py-5 sm:grid-cols-2">
               <div>
                 <Eyebrow>Payment terms</Eyebrow>
-                <p className="mt-1.5 text-[13px] text-[#3a5230]">
+                <p className="mt-1.5 text-[13px] text-[var(--color-fg-muted)]">
                   {dueLabel ? `Due by ${dueLabel}` : "Due on receipt"}
                 </p>
               </div>
               {hasItems && invoice.memo && (
                 <div>
                   <Eyebrow>Notes</Eyebrow>
-                  <p className="mt-1.5 text-[13px] text-[#3a5230]">{invoice.memo}</p>
+                  <p className="mt-1.5 text-[13px] text-[var(--color-fg-muted)]">{invoice.memo}</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Pay CTA / status block */}
-          <div className="border-t border-[#15300c]/10 px-5 py-5 sm:px-8">
+          <div className="border-t border-[var(--color-line)] px-5 py-5 sm:px-8">
             {invoice.status === "open" ? (
               <>
                 <PrimaryButton href={payHref} full>
                   <HugeiconsIcon icon={ArrowRight02Icon} size={18} strokeWidth={2} />
                   Pay {money(invoice.amountUsd)}
                 </PrimaryButton>
-                <p className="mt-3 text-center text-[12px] text-[#3d7a29]">
+                <p className="mt-3 text-center text-[12px] text-[var(--color-accent)]">
                   Sign in with Google to pay, no gas, no wallet setup. Money moves as USDsui.
                 </p>
               </>
             ) : invoice.status === "paid" ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-center gap-2 rounded-xl bg-[#CAFFB8] py-3 text-[14px] text-[#15300c]">
+                <div className="flex items-center justify-center gap-2 rounded-[10px] bg-[var(--color-accent-light)] py-3 text-[14px] text-[var(--color-fg)]">
                   <HugeiconsIcon icon={CheckmarkCircle02Icon} size={18} strokeWidth={2} />
                   Paid
                   {invoice.paidAt
@@ -361,24 +366,24 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
                   . Thank you.
                 </div>
                 {invoice.payDigest && (
-                  <div className="rounded-xl border border-[#15300c]/10 px-4 py-3.5">
+                  <div className="rounded-[10px] border border-[var(--color-line)] px-4 py-3.5">
                     <MicroLabel>On-chain receipt</MicroLabel>
                     <a
                       href={`https://suiscan.xyz/mainnet/tx/${invoice.payDigest}`}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="mt-1.5 block break-all font-mono text-[12px] text-[#3d7a29] underline-offset-2 hover:underline"
+                      className="mt-1.5 block break-all font-mono text-[12px] text-[var(--color-accent)] underline-offset-2 hover:underline"
                     >
                       {invoice.payDigest}
                     </a>
-                    <p className="mt-1.5 text-[11px] text-[#3d7a29]">
-                      Settled on Sui — verify this payment on-chain.
+                    <p className="mt-1.5 text-[11px] text-[var(--color-accent)]">
+                      Settled on Sui, verify this payment on-chain.
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-[#15300c]/15 bg-white/60 py-3 text-[14px] text-[#3d7a29] backdrop-blur-sm">
+              <div className="flex items-center justify-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-2)] py-3 text-[14px] text-[var(--color-fg-muted)]">
                 <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={2} />
                 This invoice was voided by the issuer.
               </div>
@@ -391,18 +396,18 @@ export function InvoicePayView({ invoice, issuer, origin }: InvoicePayViewProps)
           <button
             type="button"
             onClick={copyLink}
-            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] text-[#3d7a29] transition-colors hover:text-[#15300c]"
+            className="inline-flex items-center gap-2 rounded-[6px] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--color-accent)] transition-colors hover:text-[var(--color-fg)]"
           >
             <HugeiconsIcon icon={Copy01Icon} size={14} strokeWidth={2} />
             {copied ? "Link copied" : "Copy invoice link"}
           </button>
         </div>
-        <p className="mt-5 text-center text-[12px] text-[#3d7a29]">
+        <p className="mt-5 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--color-fg-dim)]">
           Powered by{" "}
-          <Link href="/" className="text-[#3a5230] underline-offset-2 hover:underline">
+          <Link href="/" className="text-[var(--color-accent)] underline-offset-2 hover:underline">
             Talise
           </Link>{" "}
-          — money that moves like a message.
+        , money that moves like a message.
         </p>
       </div>
     </main>

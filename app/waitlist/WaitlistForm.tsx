@@ -42,10 +42,10 @@ type ClaimSuccess = {
 // Outer state machine. `checking` is the initial probe while we race
 // /api/auth/me and /api/waitlist/handle/existing. After that we land
 // on exactly one of:
-//   • needsSignIn   — render the Google CTA
-//   • signedOutCancel — user backed out of the Google sheet (quiet pill)
-//   • needsClaim    — session active, no handle yet → handle picker
-//   • existing      — session active + already owns a handle (welcome back)
+//   • needsSignIn , render the Google CTA
+//   • signedOutCancel, user backed out of the Google sheet (quiet pill)
+//   • needsClaim  , session active, no handle yet → handle picker
+//   • existing    , session active + already owns a handle (welcome back)
 type Phase =
   | "checking"
   | "needsSignIn"
@@ -91,12 +91,12 @@ export function WaitlistForm() {
         };
         setSession(sess);
 
-        // /api/auth/me is the source of truth — `user.talise_username`
+        // /api/auth/me is the source of truth, `user.talise_username`
         // resolves to `handle` on the response. If it's set the user
         // has already claimed; otherwise drop straight into the
         // picker. The old /handle/existing backstop call doubled the
         // spinner time on every signed-in load for new users without
-        // adding signal — /api/auth/me already covers it.
+        // adding signal, /api/auth/me already covers it.
         if (meBody.handle) {
           setExistingHandle(meBody.handle);
           setPhase("existing");
@@ -222,7 +222,7 @@ export function WaitlistForm() {
  * enabled only when the server returns `available: true`. On claim
  * success the form collapses to a confirmation banner.
  *
- * The claim POST sends ONLY the handle — the route derives the email
+ * The claim POST sends ONLY the handle, the route derives the email
  * from the session cookie.
  */
 function HandleClaim({ session }: { session: Session }) {
@@ -298,7 +298,7 @@ function HandleClaim({ session }: { session: Session }) {
     setClaim("claiming");
     setClaimError("");
     try {
-      // No email in the body — the route reads it from the session
+      // No email in the body, the route reads it from the session
       // cookie. Sending it would be a footgun if it ever drifted out
       // of sync with the actual signed-in user.
       const r = await fetch("/api/waitlist/handle/claim", {
@@ -318,8 +318,8 @@ function HandleClaim({ session }: { session: Session }) {
       };
       if (r.status === 503 && body.reserved && body.handle) {
         // Operator gas was low: the name IS reserved (held in the DB, mint
-        // queued for finalisation). Show the same "you're in" dashboard — the
-        // user owns the name — rather than a false "couldn't claim" error.
+        // queued for finalisation). Show the same "you're in" dashboard, the
+        // user owns the name, rather than a false "couldn't claim" error.
         setClaimSuccess({ handle: body.handle });
         setClaim("claimed");
         return;
@@ -349,7 +349,7 @@ function HandleClaim({ session }: { session: Session }) {
         suiAddress: body.suiAddress,
       });
       setClaim("claimed");
-      // Stay put — the dashboard (position + invite link + shareable profile
+      // Stay put, the dashboard (position + invite link + shareable profile
       // card) IS the destination now. No more bounce to the marketing root;
       // a fresh claimer's first job is to grab their link and start referring.
     } catch (err) {

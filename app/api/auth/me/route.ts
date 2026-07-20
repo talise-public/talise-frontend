@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Lightweight, web-session-cookie-only "am I signed in?" probe used by
  * the waitlist UI to branch between the "needs sign-in" CTA and the
  * "claim now" form. Unlike `/api/me`, this never touches SuiNS or any
- * RPC — it must be sub-10ms so we can race it in parallel with the
+ * RPC, it must be sub-10ms so we can race it in parallel with the
  * "existing handle" lookup on mount.
  *
  * Bearer tokens are intentionally NOT honored here: the waitlist is a

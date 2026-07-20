@@ -9,7 +9,7 @@
  * `verifyTurnstile` POSTs the client token to Cloudflare's siteverify
  * endpoint and returns whether it passed. The caller decides policy
  * (fail-closed when the secret is configured, fall back to rate-limit
- * only when it isn't — see the route). This module is intentionally
+ * only when it isn't, see the route). This module is intentionally
  * dumb: token in, boolean out.
  *
  * Docs: https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
@@ -26,7 +26,7 @@ export function turnstileConfigured(): boolean {
 /**
  * Verify a Turnstile token against Cloudflare's siteverify API.
  *
- * Returns `false` on any failure — missing secret, empty token, network
+ * Returns `false` on any failure, missing secret, empty token, network
  * error, non-200, or `{ success: false }`. The route only calls this when
  * `turnstileConfigured()` is true, so a missing secret returning `false`
  * here is belt-and-suspenders.

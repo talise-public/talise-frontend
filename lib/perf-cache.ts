@@ -5,7 +5,7 @@ const store = new Map<string, Entry<unknown>>();
 /**
  * Tiny in-memory TTL cache for server-side hot-path values like
  * `onara.status()` and `getReferenceGasPrice()`. Lives for the lifetime
- * of the Node process — Next.js Node runtime keeps modules alive across
+ * of the Node process, Next.js Node runtime keeps modules alive across
  * requests so this works in practice.
  *
  * Not safe for per-user secrets. Only use for values that are global
@@ -32,7 +32,7 @@ export function invalidate(key: string) {
 //
 // In-process samples of the prepare + execute legs so an operator can
 // hit `/api/health/send-latency` and see actual ms numbers without
-// grepping Vercel logs. Bounded to 64 entries — enough to spot a
+// grepping Vercel logs. Bounded to 64 entries, enough to spot a
 // regression, small enough that the buffer never matters for memory.
 //
 // Per-leg sample: `{ leg, totalMs, atMs, extras }`. `extras` carries

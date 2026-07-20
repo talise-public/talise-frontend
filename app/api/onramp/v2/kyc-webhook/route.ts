@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  *
  * Reconciles the provider customer id → internal user id via the persisted
  * `onramp_kyc.provider_customer_id`. If we can't resolve a user we still ack
- * (200) so the provider doesn't retry forever — the event is logged.
+ * (200) so the provider doesn't retry forever, the event is logged.
  *
  * Distinct path from the existing Stripe webhook (/api/onramp/webhook); both
  * coexist. Lives behind no feature flag on purpose: a provider may deliver a
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   }
 
   if (!event.providerCustomerId) {
-    console.log("[onramp/v2/kyc-webhook] no customer id on event — ack", {
+    console.log("[onramp/v2/kyc-webhook] no customer id on event, ack", {
       provider: providerName,
       kind: event.kind,
     });
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
   }
 
   if (userId == null) {
-    console.log("[onramp/v2/kyc-webhook] unknown customer — ack", {
+    console.log("[onramp/v2/kyc-webhook] unknown customer, ack", {
       providerCustomerId: event.providerCustomerId,
     });
     return NextResponse.json({ received: true });

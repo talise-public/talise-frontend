@@ -5,9 +5,9 @@ import { requireAdminApi } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/admin/raw — generic READ-ONLY table browser.
+ * GET /api/admin/raw, generic READ-ONLY table browser.
  *
- *   (no ?table)            → { tables: [{ table, rowCount }] } — COUNT(*) per
+ *   (no ?table)            → { tables: [{ table, rowCount }] }, COUNT(*) per
  *                            whitelisted table; rowCount null if it errors/absent.
  *   ?table=<x>&page=<n>    → { table, columns, rows, total, page, pageSize }
  *                            400 if <x> is not whitelisted.
@@ -89,7 +89,7 @@ const FALLBACK_COLUMNS: Record<RawTable, string[]> = {
 
 async function countOne(table: RawTable): Promise<number | null> {
   try {
-    // table is from a fixed whitelist — safe to inline.
+    // table is from a fixed whitelist, safe to inline.
     const r = await db().execute({ sql: `SELECT COUNT(*) FROM ${table}`, args: [] });
     const v = r.rows[0] ? Object.values(r.rows[0])[0] : 0;
     const n = Number(v);
@@ -135,7 +135,7 @@ export async function GET(req: Request) {
     });
     rows = r.rows as Array<Record<string, unknown>>;
   } catch {
-    // Ordering column may not exist on this DB — retry without ORDER BY.
+    // Ordering column may not exist on this DB, retry without ORDER BY.
     try {
       const r = await db().execute({
         sql: `SELECT * FROM ${t} LIMIT $1 OFFSET $2`,

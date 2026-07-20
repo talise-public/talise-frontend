@@ -2,18 +2,18 @@ import type { Metadata } from "next";
 import { LegalPage, LegalSection, LegalList } from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Talise",
+  title: "Privacy Policy, Talise",
   description:
     "How Talise handles your data: what we collect, what we never collect, and how to delete your account.",
 };
 
 /**
- * /privacy — the Talise privacy policy.
+ * /privacy, the Talise privacy policy.
  *
  * Plain-English and HONEST: every claim here matches the shipped product
  * (zkLogin self-custody, Google sign-in profile data, @handles, country,
  * Sui address, bank details for cash-outs, App Attest). No ads, no
- * third-party analytics SDKs, no tracking, no sale of data — and the
+ * third-party analytics SDKs, no tracking, no sale of data, and the
  * policy says exactly that, nothing more. Linked from the iOS app's
  * Profile screen and required by App Store Connect.
  */
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
       <LegalSection title="The short version">
         <p>
           Talise is a self-custodial wallet. Your keys are derived on your
-          device — we never hold them and can never recover them. We collect
+          device, we never hold them and can never recover them. We collect
           only what we need to run the service: your Google profile basics,
           your chosen handle and country, your Sui address, and bank details
           if you cash out. We show <strong>no ads</strong>, run{" "}
@@ -54,36 +54,36 @@ export default function PrivacyPolicy() {
         <LegalList
           items={[
             <>
-              <strong>Google account basics</strong> — your email address,
+              <strong>Google account basics</strong>, your email address,
               display name, and profile picture, provided by Google when you
               sign in.
             </>,
             <>
-              <strong>Your @handle</strong> — the username you choose so
+              <strong>Your @handle</strong>, the username you choose so
               other people can pay you by name.
             </>,
             <>
-              <strong>Country</strong> — the country you tell us you are in.
+              <strong>Country</strong>, the country you tell us you are in.
             </>,
             <>
-              <strong>Sui address</strong> — the blockchain address derived
+              <strong>Sui address</strong>, the blockchain address derived
               from your sign-in. This is how your wallet exists on-chain.
             </>,
             <>
-              <strong>Transaction history</strong> — your payments are
+              <strong>Transaction history</strong>, your payments are
               recorded on the Sui blockchain, which is public by nature. We
               also keep records of your activity in the app so we can show it
               to you and meet our legal obligations.
             </>,
             <>
-              <strong>Bank account details</strong> — if you cash out to a
+              <strong>Bank account details</strong>, if you cash out to a
               Nigerian bank account, we collect the account details you link
               so the payout can be made.
             </>,
             <>
-              <strong>Device integrity attestations</strong> — the iOS app
+              <strong>Device integrity attestations</strong>, the iOS app
               uses Apple App Attest to prove requests come from a genuine
-              copy of the app. Attestations verify the device, not you — we
+              copy of the app. Attestations verify the device, not you, we
               do not use them to identify or track you.
             </>,
           ]}
@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
       <LegalSection title="How we use your data">
         <p>
           We use the data above for one purpose: providing the Talise service
-          — creating your account, showing your balance and activity, letting
+        , creating your account, showing your balance and activity, letting
           people pay you by handle, executing cash-outs you request, keeping
           the service secure, and meeting legal requirements. That&apos;s it.
         </p>
@@ -117,17 +117,17 @@ export default function PrivacyPolicy() {
         <LegalList
           items={[
             <>
-              <strong>Payment partners</strong> — when you cash out, we pass
+              <strong>Payment partners</strong>, when you cash out, we pass
               your bank account details and the payout amount to the payment
               partner that executes the bank transfer.
             </>,
             <>
-              <strong>The blockchain</strong> — transactions on Sui are
+              <strong>The blockchain</strong>, transactions on Sui are
               public by design. Your Sui address and on-chain activity are
               visible to anyone, as on any public blockchain.
             </>,
             <>
-              <strong>Legal compliance</strong> — we may disclose information
+              <strong>Legal compliance</strong>, we may disclose information
               if required by law, regulation, or a valid legal process.
             </>,
           ]}

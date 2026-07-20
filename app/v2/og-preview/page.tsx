@@ -26,7 +26,7 @@ function Frame({ id, children, bg }: { id: string; children: React.ReactNode; bg
   );
 }
 
-/* 1 — Highlighter headline, the signature look */
+/* 1, Highlighter headline, the signature look */
 function Og1() {
   return (
     <Frame id="og1" bg={MINT_BG}>
@@ -53,7 +53,7 @@ function Og1() {
   );
 }
 
-/* 2 — Product card showcase */
+/* 2, Product card showcase */
 function Og2() {
   return (
     <Frame id="og2" bg={MINT_BG}>
@@ -91,7 +91,7 @@ function Og2() {
   );
 }
 
-/* 3 — Forest premium (dark) */
+/* 3, Forest premium (dark) */
 function Og3() {
   return (
     <Frame id="og3" bg="radial-gradient(120% 120% at 18% 0%, #3d7a29 0%, #1c4513 45%, #0e2a08 100%)">
@@ -118,7 +118,7 @@ function Og3() {
   );
 }
 
-/* 4 — Bento trio, playful-premium */
+/* 4, Bento trio, playful-premium */
 function Og4() {
   const tiles = [
     { bg: "#CAFFB8", img: "/v2/coin.png", t: "Hold", tilt: "-3deg" },
@@ -155,7 +155,7 @@ function Og4() {
   );
 }
 
-/* 5 — Editorial minimal */
+/* 5, Editorial minimal */
 function Og5() {
   return (
     <Frame id="og5" bg="radial-gradient(110% 120% at 90% 10%, #ffeede 0%, #f7fcf2 50%, #eafad9 100%)">

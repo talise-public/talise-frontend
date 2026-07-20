@@ -1,22 +1,26 @@
 # Talise web — multi-stage Dockerfile.
 #
-# Use this when deploying somewhere that doesn't auto-detect Next.js
+# LEGACY / ALTERNATIVE: production runs on Vercel + Postgres (see DEPLOY.md).
+# Use this only when deploying somewhere that doesn't auto-detect Next.js
 # (Fly.io, bare Docker, K8s). Railway prefers Nixpacks via railway.toml,
 # so this file is a fallback / portability hedge.
+#
+# The app requires a Postgres `DATABASE_URL` (postgres://…) — there is no
+# SQLite/libSQL code path. This container is STATELESS: all state lives in the
+# external Postgres, so no persistent volume is needed.
 #
 # Image layout:
 #   1. deps      — install pnpm deps from the lockfile (cacheable)
 #   2. build     — compile Next.js (uses standalone output mode)
 #   3. runner    — minimal Node 20 image with just the standalone bundle
-#                  + a writable /app/.data volume for the SQLite file
 # Final image: ~180 MB.
 
 # ─── 1. deps ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Native libs that libSQL's better-sqlite3 fallback needs at build time.
-# Alpine is musl so we need libc6-compat for prebuilt binaries.
+# Alpine is musl so we need libc6-compat for prebuilt native binaries
+# (e.g. sharp).
 RUN apk add --no-cache libc6-compat
 
 COPY package.json pnpm-lock.yaml ./
@@ -51,11 +55,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# SQLite file lives here. Mount a volume at /app/.data in production so
-# the DB survives container restarts.
-RUN mkdir -p /app/.data && chown -R nextjs:nodejs /app/.data
-VOLUME ["/app/.data"]
-
+# Stateless container: all state lives in the external Postgres pointed to
+# by DATABASE_URL. No local DB file / volume to persist.
 USER nextjs
 
 # Next.js reads PORT from env.

@@ -1,5 +1,5 @@
 /**
- * FATF Travel Rule scaffolding — IVMS-101 types + transfer routing.
+ * FATF Travel Rule scaffolding, IVMS-101 types + transfer routing.
  *
  * Master plan reference: docs/strategy/cross-border-masterplan.md §7
  * ("Compliance Operating Model" → "FATF Travel Rule"). Compliance is a P0
@@ -8,25 +8,25 @@
  *
  * What the Travel Rule requires (FATF Recommendation 16): for transfers at or
  * above a threshold (~$1,000 in most jurisdictions; KR ~KRW 1M), the
- * originating VASP must transmit originator + beneficiary identity data —
- * formatted as IVMS-101 — to the beneficiary VASP via a Travel Rule network
+ * originating VASP must transmit originator + beneficiary identity data -
+ * formatted as IVMS-101, to the beneficiary VASP via a Travel Rule network
  * (Notabene, Sumsub, TRP, TRUST) BEFORE or alongside settlement.
  *
  * The wallet model splits cleanly into three routes (see `routeTransfer`):
  *
- *   • INTERNAL      — Talise ↔ Talise. Both legs are inside Talise's own
+ *   • INTERNAL    , Talise ↔ Talise. Both legs are inside Talise's own
  *                     ledger, so no external IVMS-101 message is needed; the
  *                     originator/beneficiary data already lives with us. This
  *                     is the bulk of consumer flow.
- *   • EXTERNAL_VASP — Talise → another VASP (exchange, custodial wallet). Above
+ *   • EXTERNAL_VASP, Talise → another VASP (exchange, custodial wallet). Above
  *                     threshold this requires VASP discovery + an IVMS-101
  *                     exchange over a Travel Rule network, with a "sunrise"
  *                     fallback when the counterparty isn't reachable.
- *   • UNHOSTED      — Talise → self-custodial / unhosted wallet. No counterparty
+ *   • UNHOSTED    , Talise → self-custodial / unhosted wallet. No counterparty
  *                     VASP exists; obligation is typically beneficiary
  *                     self-declaration per local rules.
  *
- * SCOPE: this file is an additive library only — pure IVMS-101 types, the
+ * SCOPE: this file is an additive library only, pure IVMS-101 types, the
  * threshold constant, the routing classifier, and a Notabene-shaped client
  * STUB. It is intentionally NOT wired into the send path. The documented
  * integration point lives at the bottom of this file
@@ -41,7 +41,7 @@
 import { db, ensureSchema } from "@/lib/db";
 
 // ───────────────────────────────────────────────────────────────────
-// IVMS-101 — interVASP Messaging Standard
+// IVMS-101, interVASP Messaging Standard
 //
 // IVMS-101 is the FATF-endorsed data model for originator/beneficiary
 // information. The full standard is large; the subset below covers the
@@ -133,7 +133,7 @@ export interface IvmsLegalPerson {
 }
 
 /**
- * IVMS-101 `Person` — exactly one of natural / legal is populated. The
+ * IVMS-101 `Person`, exactly one of natural / legal is populated. The
  * discriminated union keeps tsc honest about which branch is present.
  */
 export type IvmsPerson =
@@ -141,7 +141,7 @@ export type IvmsPerson =
   | { legalPerson: IvmsLegalPerson; naturalPerson?: never };
 
 /**
- * IVMS-101 originator — who is sending. Carries the person identity plus the
+ * IVMS-101 originator, who is sending. Carries the person identity plus the
  * on-chain account(s) the value moves from.
  */
 export interface IvmsOriginator {
@@ -151,7 +151,7 @@ export interface IvmsOriginator {
 }
 
 /**
- * IVMS-101 beneficiary — who is receiving. Carries the person identity plus
+ * IVMS-101 beneficiary, who is receiving. Carries the person identity plus
  * the on-chain account(s) the value moves to.
  */
 export interface IvmsBeneficiary {
@@ -193,7 +193,7 @@ export function isAboveThreshold(amountUsd: number): boolean {
 
 /**
  * What kind of counterparty the beneficiary address belongs to. The caller
- * (a future pre-broadcast screening gate) is expected to resolve this — a
+ * (a future pre-broadcast screening gate) is expected to resolve this, a
  * Talise-owned address is INTERNAL; a known exchange/custodial address is
  * EXTERNAL_VASP; anything else is treated as UNHOSTED.
  */
@@ -255,7 +255,7 @@ export function routeTransfer(input: RouteTransferInput): RouteTransferDecision 
       obligation: "NONE",
       requiresAction: false,
       rationale:
-        "Talise→Talise transfer — originator/beneficiary data stays in Talise's own ledger; no external IVMS-101 message required.",
+        "Talise→Talise transfer, originator/beneficiary data stays in Talise's own ledger; no external IVMS-101 message required.",
     };
   }
 
@@ -269,8 +269,8 @@ export function routeTransfer(input: RouteTransferInput): RouteTransferDecision 
       obligation,
       requiresAction: aboveThreshold,
       rationale: aboveThreshold
-        ? `Transfer to an external VASP at/above the $${THRESHOLD_USD} threshold — IVMS-101 must be exchanged via a Travel Rule network (with sunrise fallback if the counterparty is unreachable).`
-        : `Transfer to an external VASP below the $${THRESHOLD_USD} threshold — no IVMS-101 exchange required.`,
+        ? `Transfer to an external VASP at/above the $${THRESHOLD_USD} threshold, IVMS-101 must be exchanged via a Travel Rule network (with sunrise fallback if the counterparty is unreachable).`
+        : `Transfer to an external VASP below the $${THRESHOLD_USD} threshold, no IVMS-101 exchange required.`,
     };
   }
 
@@ -284,13 +284,13 @@ export function routeTransfer(input: RouteTransferInput): RouteTransferDecision 
     obligation,
     requiresAction: aboveThreshold,
     rationale: aboveThreshold
-      ? `Transfer to an unhosted (self-custodial) wallet at/above the $${THRESHOLD_USD} threshold — collect beneficiary self-declaration per local rules; no counterparty VASP to message.`
-      : `Transfer to an unhosted wallet below the $${THRESHOLD_USD} threshold — no self-declaration required.`,
+      ? `Transfer to an unhosted (self-custodial) wallet at/above the $${THRESHOLD_USD} threshold, collect beneficiary self-declaration per local rules; no counterparty VASP to message.`
+      : `Transfer to an unhosted wallet below the $${THRESHOLD_USD} threshold, no self-declaration required.`,
   };
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Travel Rule network client — Notabene-shaped STUB
+// Travel Rule network client, Notabene-shaped STUB
 //
 // Notabene (https://notabene.id) is one of the leading Travel Rule networks.
 // Its real flow is: (1) discover the beneficiary VASP for a destination
@@ -353,7 +353,7 @@ export interface TravelRuleClient {
 }
 
 /**
- * Stub Travel Rule client. Returns a deterministic STUBBED result — no
+ * Stub Travel Rule client. Returns a deterministic STUBBED result, no
  * network call. Intended for development + tests until the real Notabene
  * adapter is implemented. Logs once per call so it's obvious a stub is in the
  * path if it ever leaks into a non-stub environment.
@@ -377,7 +377,7 @@ export function stubTravelRuleClient(): TravelRuleClient {
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Persistence — travel_rule_records
+// Persistence, travel_rule_records
 //
 // Above-threshold transfer metadata is captured for audit + case
 // management. The table is defined idempotently in web/lib/db.ts
@@ -416,7 +416,7 @@ export interface RecordTravelRuleInput {
 /**
  * Persist an above-threshold transfer's Travel Rule metadata into
  * `travel_rule_records`. Below-threshold transfers don't need a record, but
- * the helper does not enforce that — the caller decides what to persist (an
+ * the helper does not enforce that, the caller decides what to persist (an
  * audit program may want to log below-threshold external transfers too).
  *
  * Idempotency is the caller's responsibility (pass a stable
@@ -455,12 +455,12 @@ export async function recordTravelRuleTransfer(
  * TRAVEL_RULE_INTEGRATION_POINT
  *
  * Where this module plugs into the send path WHEN compliance is sequenced in
- * (master plan §7 — P0 blocker, BEFORE any new corridor). Intentionally not
+ * (master plan §7, P0 blocker, BEFORE any new corridor). Intentionally not
  * wired today; this is a pointer for the future pre-broadcast screening gate.
  *
  * Target: web/app/api/send/sponsor-prepare/route.ts, after the recipient
  * (`to`) and `amountNum` (USD; USDsui is 1:1) are validated and the user row
- * (`user`) is loaded — i.e. just before the PTB is built.
+ * (`user`) is loaded, i.e. just before the PTB is built.
  *
  * Sketch:
  *
@@ -510,4 +510,4 @@ export async function recordTravelRuleTransfer(
  * address list), and the real Notabene adapter.
  */
 export const TRAVEL_RULE_INTEGRATION_POINT =
-  "web/app/api/send/sponsor-prepare/route.ts — after recipient + amount validation, before PTB build";
+  "web/app/api/send/sponsor-prepare/route.ts, after recipient + amount validation, before PTB build";

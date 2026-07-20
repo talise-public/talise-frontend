@@ -13,7 +13,7 @@ import type {
  * CRITICAL: the migration (web/migrations/2026-06-05-onramp-kyc.sql) is NOT
  * applied, so the table may not exist yet. Every write/read here is wrapped
  * in try/catch and NO-OPS gracefully (logging once) if the table is missing,
- * so nothing throws in dev. This module is DISPLAY/COMPLIANCE-STATE only —
+ * so nothing throws in dev. This module is DISPLAY/COMPLIANCE-STATE only -
  * it never participates in any send/balance/limit decision.
  *
  * This is intentionally separate from `users.kyc_tier` (lib/kyc.ts), which
@@ -66,7 +66,7 @@ export async function getOnrampKyc(
   } catch (err) {
     if (isMissingTable(err)) {
       console.warn(
-        "[onramp/kyc-store] onramp_kyc table not present — read no-op. " +
+        "[onramp/kyc-store] onramp_kyc table not present, read no-op. " +
           "Apply web/migrations/2026-06-05-onramp-kyc.sql to enable."
       );
       return null;
@@ -119,7 +119,7 @@ export async function upsertOnrampKyc(
   } catch (err) {
     if (isMissingTable(err)) {
       console.warn(
-        "[onramp/kyc-store] onramp_kyc table not present — write no-op. " +
+        "[onramp/kyc-store] onramp_kyc table not present, write no-op. " +
           "Apply web/migrations/2026-06-05-onramp-kyc.sql to enable.",
         { userId, patch }
       );

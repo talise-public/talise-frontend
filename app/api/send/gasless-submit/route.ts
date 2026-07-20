@@ -22,7 +22,7 @@ export const runtime = "nodejs";
  *
  * Plain USDsui sends use Sui's gasless stablecoin path:
  * `0x2::coin::send_funds<T>` with `gasPrice=0` and no gas owner.
- * No Onara round-trip — we just assemble the user's zkLogin signature
+ * No Onara round-trip, we just assemble the user's zkLogin signature
  * and broadcast directly to the fullnode.
  *
  * Mirrors `/api/zk/sponsor-execute` for everything except the gas /
@@ -36,11 +36,11 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Gate reads run CONCURRENTLY — app-access, rate limit and the user row
+  // Gate reads run CONCURRENTLY, app-access, rate limit and the user row
   // are independent lookups; serial they stacked 3 DB round-trips on the
   // submit critical path. Denial precedence is unchanged.
   const [denied, rl, user] = await Promise.all([
-    // Private-beta guardrail: signed-in is not enough — the account must be
+    // Private-beta guardrail: signed-in is not enough, the account must be
     // on the app allowlist before it can originate any value-moving call.
     denyUnlessAppApproved(userId),
     // Per-user global rate limit on this money route (anti-abuse / anti-DDoS).
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     const tProof = Date.now();
 
     // Submit directly to the fullnode. Gasless txs need only the
-    // user's zkLogin signature — no sponsor signature involved. The
+    // user's zkLogin signature, no sponsor signature involved. The
     // gRPC client auto-detects gasless eligibility, so no extra flag
     // needed here (prepare already set gasPrice=0 on the build).
     const submit = (sig: string) =>
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     } catch (err) {
       // Stale client proof (cached proof minted against a previous
       // ephemeral key) → "Groth16 proof verify failed" at the node.
-      // Re-mint fresh from the server-held jwt+salt and retry once —
+      // Re-mint fresh from the server-held jwt+salt and retry once -
       // mirrors zk/sponsor-execute's recovery.
       const m = ((err as Error)?.message ?? "").toLowerCase();
       const staleProof =
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
         m.includes("signature is not valid");
       if (!assembled.isFresh && body.cachedProof && staleProof) {
         console.warn(
-          `[send/gasless-submit] stale cached proof rejected on-chain (user=${userId}) — re-minting fresh and retrying once`
+          `[send/gasless-submit] stale cached proof rejected on-chain (user=${userId}), re-minting fresh and retrying once`
         );
         assembled = await assemble(false);
         result = await submit(assembled.signature);
@@ -149,12 +149,12 @@ export async function POST(req: Request) {
     //   { $kind: "FailedTransaction", FailedTransaction: { digest, ... } }
     const okTx = result.Transaction as { digest?: string } | undefined;
     const failedTx = result.FailedTransaction as { digest?: string } | undefined;
-    // MONEY-SAFETY: a Move-ABORT comes back as FailedTransaction WITH a digest —
+    // MONEY-SAFETY: a Move-ABORT comes back as FailedTransaction WITH a digest -
     // never report it as a delivered send (no funds moved).
     if ((result.$kind as string | undefined) === "FailedTransaction" || (failedTx && !okTx)) {
       console.error("[send/gasless-submit] FAILED on-chain tx:", JSON.stringify(failedTx ?? result));
       return NextResponse.json(
-        { error: "transaction failed on chain (aborted) — funds not moved", code: "TX_ABORTED" },
+        { error: "transaction failed on chain (aborted), funds not moved", code: "TX_ABORTED" },
         { status: 502 }
       );
     }
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Deferred Spend-and-Save — fire-and-forget. The gasless rail
+    // Deferred Spend-and-Save, fire-and-forget. The gasless rail
     // can't co-bundle the NAVI supply (PTB allowlist), so
     // sponsor-prepare stashed the rounded-up USDsui amount under
     // this user; we now hand it to the `roundup_queue` for the cron
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
     // Two layers of detachment intentionally:
     //   1. `takePendingRoundup` is synchronous (in-memory map).
     //   2. `enqueueRoundup` is awaited inside a void-returning IIFE so
-    //      the response isn't gated on the DB write — a queue insert
+    //      the response isn't gated on the DB write, a queue insert
     //      failure must not surface as a failed send.
     const pendingRoundupUsd = takePendingRoundup(userId);
     if (pendingRoundupUsd && pendingRoundupUsd > 0) {
@@ -194,7 +194,7 @@ export async function POST(req: Request) {
     }
 
     // Notify the recipient that money landed (email now; push once APNs is
-    // wired). Fire-and-forget — never gates the response, never throws.
+    // wired). Fire-and-forget, never gates the response, never throws.
     const inbound = takePendingInbound(userId);
     if (inbound) {
       void notifyInboundSettlement({
@@ -204,7 +204,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Rewards earn — fire-and-forget, same shape as sponsor-execute.
+    // Rewards earn, fire-and-forget, same shape as sponsor-execute.
     const meta = body.meta;
     if (
       meta &&
@@ -244,12 +244,12 @@ export async function POST(req: Request) {
     const msg = (err as Error).message ?? "submit failed";
     console.warn(`[send/gasless-submit] user=${userId} failed: ${msg}`);
     // A fresh proof mint failing with "Invalid params" (-32602) means the
-    // JWT can no longer prove (expired id_token / nonce mismatch) — a
+    // JWT can no longer prove (expired id_token / nonce mismatch), a
     // session problem: route the client to a clean re-sign-in.
     if (/-32602|invalid params/i.test(msg)) {
       return NextResponse.json(
         {
-          error: "Sign in again — your session needs a refresh.",
+          error: "Sign in again, your session needs a refresh.",
           code: "session_rebind_required",
         },
         { status: 401 }

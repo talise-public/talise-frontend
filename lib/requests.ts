@@ -7,12 +7,12 @@ import { isUsdsui } from "@/lib/usdsui";
 import { sealAndStoreNote, fetchAndOpenNote } from "@/lib/cheque-note";
 
 /**
- * Payment requests — the INVERSE of a cheque.
+ * Payment requests, the INVERSE of a cheque.
  *
  * A cheque says "I have money for you, come claim it"; a request says "I need
  * $X from you, here's a link to pay me". The requester is the PAYEE: when the
  * request is settled, USDsui is credited to THEIR address (so the settle core
- * here mirrors web/lib/invoices.ts:settleInvoiceByDigest — verify on-chain, sum
+ * here mirrors web/lib/invoices.ts:settleInvoiceByDigest, verify on-chain, sum
  * the credit to the requester, bind by amount, record the digest once).
  *
  * Self-bootstrapping schema in its OWN table (`work_requests`) created by
@@ -26,7 +26,7 @@ import { sealAndStoreNote, fetchAndOpenNote } from "@/lib/cheque-note";
  * `currency` is the requester's chosen DISPLAY denomination.
  *
  * An optional private note is encrypted with the cheque-note primitive
- * (AES-256-GCM) and stored on Walrus — only the blob id lands in our DB, never
+ * (AES-256-GCM) and stored on Walrus, only the blob id lands in our DB, never
  * the plaintext. The content key is derived from the request id (the public
  * slug in the link), so exactly whoever holds the link can open the note,
  * matching the request's own "anyone with the link can pay" trust model.
@@ -35,7 +35,7 @@ import { sealAndStoreNote, fetchAndOpenNote } from "@/lib/cheque-note";
 // ── Schema (self-bootstrapping, memoized once-per-process) ──────────────────
 
 let _schemaReady: Promise<void> | null = null;
-// Bump whenever ANY DDL below changes — the version gate skips the whole DDL
+// Bump whenever ANY DDL below changes, the version gate skips the whole DDL
 // replay on every cold start while the stored marker matches.
 const REQUESTS_SCHEMA_VERSION = "2026-06-28.1";
 
@@ -54,7 +54,7 @@ export function ensureRequestsSchema(): Promise<void> {
     // One row per payment request. `id` is a public slug (used in /req/<id>).
     // `amount_usd` is the canonical settle figure; `currency` is the display
     // denomination. `note_blob_id` is the Walrus blob of the encrypted private
-    // note (null if none). The funds are NOT escrowed — settlement is a direct
+    // note (null if none). The funds are NOT escrowed, settlement is a direct
     // USDsui payment to the requester, verified on-chain by `pay_digest`.
     await c.execute(
       `CREATE TABLE IF NOT EXISTS work_requests (
@@ -137,7 +137,7 @@ export interface RequestPreview {
   currency: string;
   /** The requester's display handle/name (resolved from `users`). */
   requesterDisplay: string;
-  /** The requester's Sui address — the payer settles to this. */
+  /** The requester's Sui address, the payer settles to this. */
   requesterAddress: string;
   /** A short public label/memo (plaintext column). */
   requesterNote: string | null;
@@ -222,7 +222,7 @@ export async function createRequest(input: {
   currency: string;
   /** A short public label/memo printed on the request page. */
   requesterNote?: string | null;
-  /** Optional PRIVATE note — encrypted with the request id + stored on Walrus. */
+  /** Optional PRIVATE note, encrypted with the request id + stored on Walrus. */
   note?: string | null;
   ttlMs?: number | null;
 }): Promise<WorkRequest> {
@@ -234,7 +234,7 @@ export async function createRequest(input: {
 
   // Best-effort: the private note is encrypted with the request id (the slug in
   // the link) and stored on Walrus. If Walrus is slow/unavailable we still
-  // create the request (note just omitted) — the money link must never fail
+  // create the request (note just omitted), the money link must never fail
   // because of an attached message.
   let noteBlobId: string | null = null;
   if (input.note && input.note.trim()) {
@@ -313,7 +313,7 @@ export async function listRequestsFor(userId: number): Promise<WorkRequest[]> {
 }
 
 /**
- * The PUBLIC preview shown on /req/<id> — no auth. Resolves the requester's
+ * The PUBLIC preview shown on /req/<id>, no auth. Resolves the requester's
  * display + pay address from `users`, and (best-effort) decrypts the private
  * Walrus note. Returns null if the request or its requester is gone.
  */
@@ -325,7 +325,7 @@ export async function previewRequest(id: string): Promise<RequestPreview | null>
   if (!requester) return null;
 
   // Best-effort: open the encrypted note. A failure (Walrus down, corrupt
-  // blob) just omits the note — the request still renders + is payable.
+  // blob) just omits the note, the request still renders + is payable.
   let note: string | null = null;
   if (req.noteBlobId) {
     note = await fetchAndOpenNote(req.id, req.noteBlobId).catch(() => null);
@@ -383,7 +383,7 @@ export type SettleRequestResult =
   | { ok: false; status: number; error: string };
 
 /**
- * Verify a payment on-chain and authoritatively close the request — the single
+ * Verify a payment on-chain and authoritatively close the request, the single
  * source of truth shared by the public pay route and any in-app pay callback.
  * Mirrors web/lib/invoices.ts:settleInvoiceByDigest exactly: the requester is
  * the PAYEE, so we sum USDsui credited to THEIR address and bind by amount.
@@ -441,7 +441,7 @@ export async function settleRequestByDigest(
   try {
     tx = await getNormalizedTransaction(digest);
   } catch (e) {
-    // RPC indexing lag is common right after broadcast — the caller retries.
+    // RPC indexing lag is common right after broadcast, the caller retries.
     return {
       ok: false,
       status: 400,
@@ -475,7 +475,7 @@ export async function settleRequestByDigest(
 
   // Bind the payment to THIS request by amount: within ±0.5% of the requested
   // figure, regardless of who reports the digest. (A symmetric tolerance absorbs
-  // fee/rounding dust on either side; it must NEVER collapse to a single micro —
+  // fee/rounding dust on either side; it must NEVER collapse to a single micro -
   // doing so would let any caller settle a request with a dust payment.)
   const tol = (expectedMicro * 50n) / 10_000n;
   const maxMicro = expectedMicro + tol;
@@ -516,7 +516,7 @@ export async function settleRequestByDigest(
  * (the digest already settled another request) propagates as an error to the
  * caller. Returns true iff THIS call claimed the row.
  *
- * Low-level DB writer — most callers should go through `settleRequestByDigest`,
+ * Low-level DB writer, most callers should go through `settleRequestByDigest`,
  * which verifies the payment on-chain first.
  */
 export async function markRequestPaid(

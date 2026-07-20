@@ -8,12 +8,12 @@ export const runtime = "nodejs";
 
 /**
  * Per-leg timeout fence. Same pattern as `lib/activity.ts` + the withdraw
- * routes — without this, a hung leg (the round-up config read previously
+ * routes, without this, a hung leg (the round-up config read previously
  * timed out for a single user, wedging the iOS -1001 cascade) blocks the
  * entire response past iOS's URLSession default and the client retries.
  *
  * On timeout: log loudly, resolve with `fallback` so the partial response
- * still ships. Errors are also swallowed to fallback — the iOS card has
+ * still ships. Errors are also swallowed to fallback, the iOS card has
  * its own empty-state, the alternative is a stalled feed.
  */
 function withTimeout<T>(
@@ -48,7 +48,7 @@ function withTimeout<T>(
 
 /**
  * Mobile-friendly rewards snapshot. Same source of truth as the web /rewards
- * page (lib/db.ts → getRewardsSummary) — only difference is the response
+ * page (lib/db.ts → getRewardsSummary), only difference is the response
  * envelope shape, mapped to the iOS RewardsSummary Codable.
  *
  * Every leg is fenced with a hard per-leg timeout. Outer 8s ceiling on the
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
   }
   try {
     // Empty-shaped fallbacks match the shape `getRewardsSummary` /
-    // `getRewardsExtras` / `getRoundupConfig` would return — keeps the
+    // `getRewardsExtras` / `getRoundupConfig` would return, keeps the
     // response envelope unconditional so iOS Codable doesn't choke.
     const tFan = Date.now();
     const summaryFallback = {
@@ -115,13 +115,13 @@ export async function GET(req: Request) {
         pointsToNext: extras.tier.pointsToNext,
         nextLabel: extras.tier.nextLabel,
       },
-      // Lifetime tallies — used by the Rewards card stats row.
+      // Lifetime tallies, used by the Rewards card stats row.
       // Lifetime, not monthly, because lifetime is what we can compute
       // cheaply from a single users-row read; monthly would need a
       // GROUP-BY on rewards_events.
       lifetimeSentUsd: extras.lifetimeSentUsd,
       lifetimeSavedUsd: extras.lifetimeSavedUsd,
-      // Round-up config — drives the toggle + % slider on iOS.
+      // Round-up config, drives the toggle + % slider on iOS.
       roundup: {
         enabled: roundup.enabled,
         percentage: roundup.percentage,

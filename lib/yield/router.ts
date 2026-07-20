@@ -1,18 +1,18 @@
 import "server-only";
 
 /**
- * Talise Yield Router — the pure decision core (Phase 0).
+ * Talise Yield Router, the pure decision core (Phase 0).
  *
  * Stateless functions over venue snapshots: rank the safe USDC venues,
  * respect per-venue risk caps, pick the best, and decide whether to ROTATE
- * an existing position to a better venue. There is NO money path here — this
+ * an existing position to a better venue. There is NO money path here, this
  * module only ranks + decides. The actual deposit/withdraw/rotate PTBs are
  * built elsewhere (per-venue adapters + the talise_yield package); keeping
  * the optimizer pure makes it trivially testable and impossible to misuse to
  * move funds. See docs/strategy/YIELD-ROUTER.md.
  *
  * Venues are an ALLOWLIST (the 4 safest USDC supply primitives on Sui).
- * Aggregators (SAM, Kai, Mole, Aftermath) are deliberately NOT here — we
+ * Aggregators (SAM, Kai, Mole, Aftermath) are deliberately NOT here, we
  * never nest an aggregator inside our own router.
  */
 
@@ -40,7 +40,7 @@ export type VenueSnapshot = {
   apy: number;
   /** User's USDC currently supplied here (0 if none). */
   supplied: number;
-  /** Venue TVL, if known — informational / circuit-breaker input. */
+  /** Venue TVL, if known, informational / circuit-breaker input. */
   tvl?: number;
   /** Circuit breaker: true → don't route in, recommend exit. */
   paused?: boolean;
@@ -48,7 +48,7 @@ export type VenueSnapshot = {
 
 /**
  * Rotation hysteresis. A candidate must beat the current venue by MORE than
- * this *plus* the amortized move cost before we recommend rotating — otherwise
+ * this *plus* the amortized move cost before we recommend rotating, otherwise
  * we churn on noise and bleed the swap+gas cost on every wiggle. This guard is
  * the single most important thing separating a profitable rotator from a
  * value-destroying one.
@@ -86,7 +86,7 @@ export type RebalanceDecision = {
 /**
  * Decide whether an existing position in `current` should rotate. Moves only
  * when the best eligible venue beats the current APY by more than the
- * hysteresis threshold once the move cost is netted out — OR when the current
+ * hysteresis threshold once the move cost is netted out, OR when the current
  * venue is paused (forced exit to the best alternative).
  */
 export function rebalanceDecision(
@@ -107,7 +107,7 @@ export function rebalanceDecision(
   // Forced exit: the venue we're in went paused (circuit breaker tripped).
   const currentPaused = snapshots.find((s) => s.id === current)?.paused === true;
   if (currentPaused && best.id !== current) {
-    return { shouldMove: true, from: current, to: best.id, netGainBps: bps(best.apy - currentApy), reason: "current venue paused — forced exit" };
+    return { shouldMove: true, from: current, to: best.id, netGainBps: bps(best.apy - currentApy), reason: "current venue paused, forced exit" };
   }
 
   if (best.id === current) {
@@ -124,7 +124,7 @@ export function rebalanceDecision(
     netGainBps,
     reason: worth
       ? `${best.id} beats ${current} by ${grossGainBps.toFixed(0)}bps (net ${netGainBps.toFixed(0)}bps after move cost)`
-      : `gain ${netGainBps.toFixed(0)}bps below ${REBALANCE_THRESHOLD_BPS}bps threshold — hold`,
+      : `gain ${netGainBps.toFixed(0)}bps below ${REBALANCE_THRESHOLD_BPS}bps threshold, hold`,
   };
 }
 
@@ -132,7 +132,7 @@ export function rebalanceDecision(
  * Multi-venue split (Phase 3 / pooled). Greedily fills the highest-APY venues
  * first, never exceeding each venue's risk cap, until `total` USDC is placed.
  * Returns the per-venue USDC allocation. Used when we diversify rather than
- * single-best — keeps Scallop/AlphaLend exposure within their caps by design.
+ * single-best, keeps Scallop/AlphaLend exposure within their caps by design.
  */
 export function allocate(
   snapshots: VenueSnapshot[],

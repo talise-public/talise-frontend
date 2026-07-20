@@ -5,11 +5,11 @@ import { bcs } from "@mysten/sui/bcs";
 import { USDSUI_TYPE } from "@/lib/usdsui";
 
 /**
- * Talise shielded-pool SDK — SERVER-SIDE DEPOSIT PTB builder (native bridge).
+ * Talise shielded-pool SDK, SERVER-SIDE DEPOSIT PTB builder (native bridge).
  *
  * The in-app private send is two legs with two different signers:
- *   • DEPOSIT  — the USER signs (it spends their own USDsui). zkLogin + Onara gas.
- *   • WITHDRAW — the relayer signs (severs the link). /api/shield/relay.
+ *   • DEPOSIT, the USER signs (it spends their own USDsui). zkLogin + Onara gas.
+ *   • WITHDRAW, the relayer signs (severs the link). /api/shield/relay.
  *
  * The webview (`/app/shield-prove`) derives the user's NON-CUSTODIAL shield key,
  * proves the deposit in WASM (note secrets never leave the device), and POSTs the
@@ -27,7 +27,7 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
  * On the deposit leg the on-chain `ext_data::assert_relayer(sender == relayer)`
  * requires `ext.relayer == sender`. The sender is the USER (zkLogin), so the
  * relayer field is set to the user's address. The proof binds pool / value /
- * nullifiers / commitments — NOT the relayer — so this is sound (verified by the
+ * nullifiers / commitments, NOT the relayer, so this is sound (verified by the
  * mainnet lifecycle harness). The `transact` return coin is a ZERO coin on a
  * deposit, transferred harmlessly back to the user.
  */
@@ -36,7 +36,7 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
 export type ShieldDepositProof = {
   /** 128-byte compressed Groth16 proof points, hex (no 0x). */
   proofPointsHex: string;
-  /** Targeted Merkle root (u256 decimal) — must be a known on-chain root. */
+  /** Targeted Merkle root (u256 decimal), must be a known on-chain root. */
   root: string;
   /** Signed public value (deposit: == +amount), u256 decimal. */
   publicValue: string;
@@ -52,9 +52,9 @@ export type AppendShieldDepositParams = {
   packageId: string;
   poolObjectId: string;
   coinType?: string;
-  /** Cleartext deposit value in micros — must equal the proof's public value. */
+  /** Cleartext deposit value in micros, must equal the proof's public value. */
   amountMicros: bigint;
-  /** The user's own Sui address — ext.relayer (== sender) AND the zero-coin sink. */
+  /** The user's own Sui address, ext.relayer (== sender) AND the zero-coin sink. */
   userAddress: string;
   proof: ShieldDepositProof;
   /** ECIES note blobs for the two output notes (self-encrypted). */
@@ -75,7 +75,7 @@ function pointsFromHex(hex: string): Uint8Array {
 /**
  * Append the deposit `transact` calls onto `tx` (sender already set). Sources the
  * exact-$amount deposit coin from the user's USDsui balance. Throws on a malformed
- * proof — the build fails closed, no funds move.
+ * proof, the build fails closed, no funds move.
  */
 export function appendShieldDeposit(p: AppendShieldDepositParams): void {
   const { tx, packageId } = p;
@@ -112,7 +112,7 @@ export function appendShieldDeposit(p: AppendShieldDepositParams): void {
     ],
   });
 
-  // Exact-amount USDsui from the user's own coins — never the sponsor's gas coin.
+  // Exact-amount USDsui from the user's own coins, never the sponsor's gas coin.
   const depositCoin = tx.add(
     coinWithBalance({ type: coinType, balance: p.amountMicros, useGasCoin: false })
   );
@@ -124,6 +124,6 @@ export function appendShieldDeposit(p: AppendShieldDepositParams): void {
     arguments: [tx.object(p.poolObjectId), depositCoin, proofArg, extArg],
   });
 
-  // The transact return coin is ZERO on a deposit — transfer it back to the user.
+  // The transact return coin is ZERO on a deposit, transfer it back to the user.
   tx.transferObjects([out], tx.pure.address(p.userAddress));
 }

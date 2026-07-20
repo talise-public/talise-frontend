@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /app/ramps — money in & money out.
+ * /app/ramps, money in & money out.
  *
  * Order is top-up FIRST, cash-out SECOND (the funnel reads in → out). Top-up
  * isn't wired yet (no card processor keys), so it renders as a clearly
@@ -11,7 +11,7 @@
  *
  * Cash-out (off-ramp) is the live action: NGN bank payout, capped server-side
  * ($200/account/day). Queued corridors (KES/GHS) collapse into a single
- * overlapped-flag stack row — greyscaled circles + one "Coming soon" pill.
+ * overlapped-flag stack row, greyscaled circles + one "Coming soon" pill.
  */
 
 import { useEffect, useState } from "react";
@@ -33,15 +33,15 @@ const NOTIFY_KEY = "talise:ramp-notify:onramp";
 // order in lib/linq.ts). Set true to re-lock the cash-out card.
 const OFFRAMP_LOCKED = false;
 // Per-day cash-out cap, mirrored for a subtle UI note (keep in sync with
-// OFFRAMP_MAX_USD in lib/linq.ts — that server value is the real enforcement).
+// OFFRAMP_MAX_USD in lib/linq.ts, that server value is the real enforcement).
 const OFFRAMP_CAP_USD = 200;
-// On-ramp (card top-up via Transak) is NOT live yet — keep it hard OFF so the
+// On-ramp (card top-up via Transak) is NOT live yet, keep it hard OFF so the
 // top-up card stays the grey "notify me" state and never opens a checkout that
 // can't complete. Restore the env check once the processor actually works:
 //   const ONRAMP_ENABLED = process.env.NEXT_PUBLIC_ONRAMP_ENABLED === "true";
 const ONRAMP_ENABLED = false;
 
-/** Queued off-ramp corridors — rendered as one overlapped grey flag stack. */
+/** Queued off-ramp corridors, rendered as one overlapped grey flag stack. */
 const COMING_SOON_CORRIDORS: { cc: string; country: string }[] = [
   { cc: "ke", country: "Kenya" },
   { cc: "gh", country: "Ghana" },
@@ -61,8 +61,8 @@ export default function RampsPage() {
           Ramps
         </div>
         <h1
-          className="max-w-xl text-[clamp(26px,5vw,40px)] font-[800] uppercase leading-[1.02] tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="max-w-xl text-[clamp(26px,5vw,40px)] font-[500] leading-[1.02] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Money in, money out, at the real rate.
         </h1>
@@ -70,20 +70,20 @@ export default function RampsPage() {
           {/* Short on phones; the fuller line reads on wider screens. */}
           <span className="sm:hidden">Cash out to your bank, settled in under a second.</span>
           <span className="hidden sm:inline">
-            Cash out straight to your bank — a live rate, one clear fee,
+            Cash out straight to your bank, a live rate, one clear fee,
             settled in under a second.
           </span>
         </p>
       </header>
 
-      {/* TOP-UP (on-ramp) — first in the funnel. Grey-framed while unavailable;
+      {/* TOP-UP (on-ramp), first in the funnel. Grey-framed while unavailable;
           a real action card the moment the processor keys land. */}
       <AddMoneyCard onBuy={() => setAddOpen(true)} />
 
-      {/* CASH-OUT (off-ramp) — the live action. */}
+      {/* CASH-OUT (off-ramp), the live action. */}
       <div
         className="relative flex flex-col overflow-hidden rounded-[28px] bg-[#f7fcf2] p-7 sm:p-9"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         <div className="relative flex items-start justify-between gap-3">
           <div className="flex items-center gap-3.5">
@@ -95,8 +95,8 @@ export default function RampsPage() {
                 Off-ramp
               </span>
               <h2
-                className="text-[20px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-                style={{ fontFamily: "var(--font-display-v2)" }}
+                className="text-[20px] font-[500] tracking-[-0.05em] text-[#15300c]"
+                style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
               >
                 Cash out to your bank
               </h2>
@@ -118,7 +118,7 @@ export default function RampsPage() {
             </span>
             <StatusPill label={OFFRAMP_LOCKED ? "Coming soon" : "Live"} tone={OFFRAMP_LOCKED ? "neutral" : "success"} />
           </li>
-          {/* Queued corridors: one overlapped, greyscaled flag stack — not a
+          {/* Queued corridors: one overlapped, greyscaled flag stack, not a
               dead full row per country. */}
           <li className="flex items-center justify-between gap-3 py-3.5">
             <span className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export default function RampsPage() {
 /**
  * Top-up card. While the processor isn't wired it's a GREY-FRAMED,
  * deliberately muted card (grey ring, grey icon wash, Soon pill) with a
- * one-tap Notify-me — unmistakably "not yet", but holding the top slot it
+ * one-tap Notify-me, unmistakably "not yet", but holding the top slot it
  * will own once live. With ONRAMP_ENABLED it's a real action card.
  */
 function AddMoneyCard({ onBuy }: { onBuy: () => void }) {
@@ -193,14 +193,14 @@ function AddMoneyCard({ onBuy }: { onBuy: () => void }) {
     } catch {
       /* ignore */
     }
-    toast("You're on the list — we'll let you know the moment it's live.", "success");
+    toast("You're on the list, we'll let you know the moment it's live.", "success");
   }
 
   if (ONRAMP_ENABLED) {
     return (
       <div
         className="relative flex items-center gap-3.5 overflow-hidden rounded-[28px] bg-[#f7fcf2] px-7 py-5"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#CAFFB8] text-[#15300c]">
           <HugeiconsIcon icon={CreditCardIcon} size={20} strokeWidth={1.8} />
@@ -210,8 +210,8 @@ function AddMoneyCard({ onBuy }: { onBuy: () => void }) {
             On-ramp
           </span>
           <h2
-            className="text-[18px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-            style={{ fontFamily: "var(--font-display-v2)" }}
+            className="text-[18px] font-[500] tracking-[-0.05em] text-[#15300c]"
+            style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
           >
             Add money with a card
           </h2>
@@ -240,8 +240,8 @@ function AddMoneyCard({ onBuy }: { onBuy: () => void }) {
               On-ramp
             </span>
             <h2
-              className="flex items-center gap-2 text-[20px] font-[800] uppercase tracking-[-0.02em] text-[#3a5230]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="flex items-center gap-2 text-[20px] font-[500] tracking-[-0.05em] text-[#3a5230]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
             >
               Add money with a card
               <StatusPill label="Soon" tone="neutral" />
@@ -264,7 +264,7 @@ function AddMoneyCard({ onBuy }: { onBuy: () => void }) {
             size={15}
             strokeWidth={2}
           />
-          {notified ? "On the list — we'll let you know" : "Notify me when it's live"}
+          {notified ? "On the list, we'll let you know" : "Notify me when it's live"}
         </button>
       </div>
     </div>

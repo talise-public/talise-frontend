@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Stable zero address — APYs are global, so we don't need a real user here. */
+/** Stable zero address, APYs are global, so we don't need a real user here. */
 const ZERO_ADDR =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -16,14 +16,14 @@ const ZERO_ADDR =
 const SNAPSHOT_KEY = "yield_best_daily";
 
 /**
- * GET /api/cron/yield-rebalance — the once-a-day "check best yield" heartbeat.
+ * GET /api/cron/yield-rebalance, the once-a-day "check best yield" heartbeat.
  *
  * SAM-style routing has two halves:
- *   • ROUTE TO BEST — new deposits already resolve `venue:"best"` at deposit
+ *   • ROUTE TO BEST, new deposits already resolve `venue:"best"` at deposit
  *     time (app/api/earn/supply/prepare), so money always lands in the top
  *     live venue. This cron refreshes the global APY caches once a day so that
  *     resolution is cheap + stable rather than a per-request live fetch.
- *   • REBALANCE — compares the new best against the previously-recorded best
+ *   • REBALANCE, compares the new best against the previously-recorded best
  *     via `rebalanceDecision` (hysteresis + move-cost netting) and records the
  *     verdict. Funds sit in per-user, NON-CUSTODIAL positions, so this cron
  *     cannot move them itself; the recorded decision is what the app acts on
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
         prevApy = prev.apy ?? 0;
       }
     } catch {
-      /* no prior snapshot — treat as initial placement */
+      /* no prior snapshot, treat as initial placement */
     }
 
     // Refresh global APYs + pick the current best (positions irrelevant here).

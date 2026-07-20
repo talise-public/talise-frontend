@@ -21,7 +21,7 @@ const HANDLE_RE = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
  * Attribute a referral if a code was provided either explicitly in the body
  * or implicitly via the `talise_ref` cookie. Always clears the cookie when
  * we attempted attribution so we don't try again next time. Failures are
- * silent — onboarding completes regardless.
+ * silent, onboarding completes regardless.
  */
 async function tryAttributeReferral(
   newUserId: number,

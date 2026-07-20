@@ -7,7 +7,7 @@ import { userById } from "@/lib/db";
 export const runtime = "nodejs";
 
 /**
- * Shield-identity REGISTRY endpoint — the lookup rail for hidden-amount
+ * Shield-identity REGISTRY endpoint, the lookup rail for hidden-amount
  * shielded transfers (Workstream C).
  *
  * POST { pubkey, encPubkeyHex } → publish the caller's own shield identity.

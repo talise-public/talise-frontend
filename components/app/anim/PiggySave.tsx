@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * PiggySave — the web port of the iOS save-success "piggy bank" (Figma 141:2 /
+ * PiggySave, the web port of the iOS save-success "piggy bank" (Figma 141:2 /
  * SavingsSuccessView's `SavingsPiggy` scrapbook entry).
  *
  * A soft mint/forest piggy bank drops in with the iOS scrapbook wobble, a warm
  * gold coin falls into its slot, and the piggy gives a little squash-and-settle
- * "gulp" as the coin lands — then a couple of mint sparkles twinkle. Tuned for
+ * "gulp" as the coin lands, then a couple of mint sparkles twinkle. Tuned for
  * the light-mint app theme; the piggy body is the soft mint fill with forest
  * outlines so it reads cleanly on the white lifted cards.
  *
@@ -22,9 +22,9 @@ import { motion, useReducedMotion, type Transition } from "framer-motion";
 const GOLD = "#E8B23A";
 const GOLD_LIGHT = "#F6D17A";
 const GOLD_DEEP = "#C8902A";
-const FOREST = "#3d7a29"; // accent-deep — outlines + details
+const FOREST = "#3d7a29"; // accent-deep, outlines + details
 const FOREST_SOFT = "#5ba23f";
-const MINT = "#caffb8"; // accent-light — body fill + sparkles
+const MINT = "#caffb8"; // accent-light, body fill + sparkles
 const MINT_DEEP = "#a6ec8c"; // belly shade
 
 const settleSpring: Transition = { type: "spring", stiffness: 380, damping: 15, mass: 0.9 };
@@ -83,11 +83,11 @@ export function PiggySave({
         <Coin px={size * 0.2} />
       </motion.div>
 
-      {/* Piggy — scrapbook drop-in, then a coin-landing squash gulp. */}
+      {/* Piggy, scrapbook drop-in, then a coin-landing squash gulp. */}
       <motion.div
         style={{ width: size, height: size, transformOrigin: "50% 90%", willChange: "transform, opacity" }}
         initial={{ y: -28, scale: 1.16, rotate: -7, opacity: 0 }}
-        // Springs accept exactly TWO keyframes (from → to) — the old
+        // Springs accept exactly TWO keyframes (from → to), the old
         // 3-keyframe arrays ([-28, 0, 0]) hard-crashed framer-motion at
         // runtime. `initial` carries the from-pose; animate to the rest
         // pose and let the spring overshoot do the settling.
@@ -105,7 +105,7 @@ export function PiggySave({
         </motion.div>
       </motion.div>
 
-      {/* Sparkles — a brief twinkle after the gulp. */}
+      {/* Sparkles, a brief twinkle after the gulp. */}
       {[
         { x: -size * 0.36, y: -size * 0.12, s: 8, d: 0.7 },
         { x: size * 0.38, y: -size * 0.02, s: 10, d: 0.78 },
@@ -132,7 +132,7 @@ export function PiggySave({
  * the `size` frame.
  */
 function Piggy({ size }: { size: number }) {
-  // The REAL mobile-app piggy (ios SavingsPiggy asset) — same art on both
+  // The REAL mobile-app piggy (ios SavingsPiggy asset), same art on both
   // platforms; the drop-in spring + squash gulp around it are unchanged.
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -149,8 +149,8 @@ function Piggy({ size }: { size: number }) {
 
 /**
  * The coin that drops into the slot: the mobile app's SuiCoinMark on a green
- * disc. The mark itself is pure WHITE on transparent — bare, it's invisible
- * on the light theme — so it rides a forest coin face, which is also how the
+ * disc. The mark itself is pure WHITE on transparent, bare, it's invisible
+ * on the light theme, so it rides a forest coin face, which is also how the
  * droplet reads as a "coin" at this size.
  */
 function Coin({ px }: { px: number }) {

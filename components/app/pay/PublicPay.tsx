@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PublicPay — the standalone, ungated /pay/<handle> page.
+ * PublicPay, the standalone, ungated /pay/<handle> page.
  *
  * This is the shareable target of a Talise payment link. It is NOT behind the
  * /app gate, so it can't read the recipient table (that endpoint is authed).
@@ -11,7 +11,7 @@
  * visitor isn't signed in, the app's send pipeline triggers Google sign-in and
  * returns them to the prefilled review.
  *
- * Self-contained light-mint styling — it lives outside AppShell, so it carries
+ * Self-contained light-mint styling, it lives outside AppShell, so it carries
  * its own `.landing-mint` root (flips tokens + reskins `.talise-glass` to the
  * white lifted card) and can't rely on the shell's providers (no useCurrency
  * here). Amounts are shown in USD.
@@ -79,121 +79,119 @@ export function PublicPay({ slug, amountUsd, memo }: PublicPayProps) {
   };
 
   return (
-    <main
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-10 text-[#15300c]"
-      style={{
-        background:
-          "radial-gradient(120% 90% at 15% 0%, #e6f9d6 0%, #f7fcf2 45%, #ffeede 100%)",
-      }}
-    >
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Brand mark */}
-        <div className="mb-8 flex justify-center">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Diamond />
-            <span
-              className="text-[18px] font-[800] lowercase tracking-[-0.03em] text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
-            >
-              talise
+    <main className="bp-page relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-10">
+      <div className="bp-frame flex min-h-screen w-full flex-col items-center justify-center" style={{ maxWidth: 520 }}>
+        <span aria-hidden className="bp-tick bp-tick-tl" />
+        <span aria-hidden className="bp-tick bp-tick-tr" />
+        <span aria-hidden className="bp-tick bp-tick-bl" />
+        <span aria-hidden className="bp-tick bp-tick-br" />
+
+        <div className="relative z-10 w-full max-w-sm px-4">
+          {/* Brand mark */}
+          <div className="mb-8 flex justify-center">
+            <Link href="/" className="inline-flex items-center gap-2 text-[var(--color-fg)]">
+              <Diamond />
+              <span
+                className="text-[18px] lowercase tracking-[-0.03em]"
+                style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontWeight: 500 }}
+              >
+                talise
+              </span>
+            </Link>
+          </div>
+
+          {/* Pay card, rectangular hairline */}
+          <div className="bp-card px-6 py-7 text-center">
+            {/* Label chip */}
+            <span className="inline-block rounded-[6px] border border-[var(--color-line)] bg-[var(--color-accent-soft)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)]">
+              {amountLabel ? "Payment request" : "Pay"}
             </span>
-          </Link>
-        </div>
 
-        {/* Pay card — light bento */}
-        <div
-          className="rounded-[28px] bg-[#f7fcf2] px-6 py-7 text-center"
-          style={{ boxShadow: "10px 10px 0 #15300c" }}
-        >
-          {/* Label chip */}
-          <span className="inline-block rounded-full border border-[#15300c]/15 bg-white/60 px-3 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[#3d7a29] backdrop-blur-sm">
-            {amountLabel ? "Payment request" : "Pay"}
-          </span>
+            {/* Amount or handle */}
+            {amountLabel ? (
+              <div
+                className="mt-4 tabular-nums text-[var(--color-fg)]"
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontSize: 44, letterSpacing: "-0.02em", lineHeight: 1, fontWeight: 500 }}
+              >
+                {amountLabel}
+              </div>
+            ) : (
+              <div
+                className="mt-4 text-[26px] text-[var(--color-fg)]"
+                style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', letterSpacing: "-0.03em", fontWeight: 500 }}
+              >
+                {displayName(slug)}
+              </div>
+            )}
 
-          {/* Amount or handle */}
-          {amountLabel ? (
-            <div
-              className="mt-4 font-[800] tabular-nums text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)", fontSize: 44, letterSpacing: "-0.04em", lineHeight: 1 }}
+            {/* Recipient sublabel when amount is shown */}
+            {amountLabel && (
+              <p className="mt-2 text-[14px] text-[var(--color-fg-muted)]">
+                to <span className="font-medium text-[var(--color-fg)]">{displayName(slug)}</span>
+              </p>
+            )}
+
+            {/* Memo */}
+            {memo && (
+              <p className="mx-auto mt-2 max-w-[15rem] text-[13px] text-[var(--color-fg-muted)]">
+                &ldquo;{memo}&rdquo;
+              </p>
+            )}
+
+            {/* Token sublabel */}
+            {amountLabel && (
+              <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--color-accent)]">
+                {amountUsd!.toFixed(2)} USDsui · digital dollars, 1:1
+              </p>
+            )}
+
+            {/* Divider */}
+            <div className="my-5 border-t border-[var(--color-line)]" />
+
+            {/* Primary CTA */}
+            <Link
+              href={target}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-[var(--color-accent-deep)] px-6 py-3.5 font-mono text-[13px] uppercase tracking-[0.1em] text-white transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              {amountLabel}
-            </div>
-          ) : (
-            <div
-              className="mt-4 text-[26px] font-[800] text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)", letterSpacing: "-0.02em" }}
+              Pay with Talise
+              <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2.4} color="#ffffff" />
+            </Link>
+
+            <button
+              type="button"
+              onClick={copyLink}
+              className="mt-3 inline-flex items-center justify-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--color-fg-dim)] transition-colors hover:text-[var(--color-fg)]"
             >
-              {displayName(slug)}
-            </div>
-          )}
+              <HugeiconsIcon
+                icon={copied ? Tick02Icon : Copy01Icon}
+                size={13}
+                strokeWidth={2}
+                color={copied ? "currentColor" : undefined}
+              />
+              {copied ? "Link copied" : "Copy link"}
+            </button>
+          </div>
 
-          {/* Recipient sublabel when amount is shown */}
-          {amountLabel && (
-            <p className="mt-2 text-[14px] text-[#3a5230]">
-              to <span className="font-medium text-[#15300c]">{displayName(slug)}</span>
-            </p>
-          )}
-
-          {/* Memo */}
-          {memo && (
-            <p className="mx-auto mt-2 max-w-[15rem] text-[13px] text-[#3d7a29]">
-              &ldquo;{memo}&rdquo;
-            </p>
-          )}
-
-          {/* Token sublabel */}
-          {amountLabel && (
-            <p className="mt-1.5 font-mono text-[11px] text-[#3d7a29]">
-              {amountUsd!.toFixed(2)} USDsui · digital dollars, 1:1
-            </p>
-          )}
-
-          {/* Divider */}
-          <div className="my-5 border-t border-[#15300c]/10" />
-
-          {/* Primary CTA */}
-          <Link
-            href={target}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#15300c] px-6 py-3.5 text-[15px] font-semibold text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
-          >
-            Pay with Talise
-            <HugeiconsIcon icon={ArrowRight01Icon} size={18} strokeWidth={2.4} color="#f7fcf2" />
-          </Link>
-
-          <button
-            type="button"
-            onClick={copyLink}
-            className="mt-3 inline-flex items-center justify-center gap-1.5 text-[13px] font-medium text-[#3d7a29] transition-colors hover:text-[#15300c]"
-          >
+          {/* Trust footnote */}
+          <div className="mt-5 flex items-center justify-center gap-1.5">
             <HugeiconsIcon
-              icon={copied ? Tick02Icon : Copy01Icon}
-              size={14}
+              icon={CheckmarkBadge01Icon}
+              size={13}
+              color="var(--color-accent)"
               strokeWidth={2}
-              color={copied ? "#3d7a29" : undefined}
             />
-            {copied ? "Link copied" : "Copy link"}
-          </button>
-        </div>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-accent)]">
+              Gasless · settles on Sui in seconds
+            </span>
+          </div>
 
-        {/* Trust footnote */}
-        <div className="mt-5 flex items-center justify-center gap-1.5">
-          <HugeiconsIcon
-            icon={CheckmarkBadge01Icon}
-            size={13}
-            color="#3d7a29"
-            strokeWidth={2}
-          />
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#3d7a29]">
-            Gasless · settles on Sui in seconds
-          </span>
+          <p className="mt-4 text-center font-mono text-[11px] text-[var(--color-fg-dim)]">
+            New to Talise?{" "}
+            <Link href="/" className="text-[var(--color-accent)] underline-offset-2 hover:underline">
+              See how it works
+            </Link>
+          </p>
         </div>
-
-        <p className="mt-4 text-center text-[12px] text-[#3d7a29]">
-          New to Talise?{" "}
-          <Link href="/" className="text-[#3a5230] underline-offset-2 hover:underline">
-            See how it works
-          </Link>
-        </p>
       </div>
     </main>
   );

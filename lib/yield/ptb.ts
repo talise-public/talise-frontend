@@ -6,7 +6,7 @@ import { USDSUI_TYPE } from "../usdsui";
 /**
  * On-chain PTB builders for supplying / redeeming USDsui across the 4 router
  * venues. ALL FOUR list USDsui directly (verified on mainnet 2026-06-16), so
- * there is NO USDsui→USDC swap — we route the Sui Dollar straight in.
+ * there is NO USDsui→USDC swap, we route the Sui Dollar straight in.
  *
  * Each builder APPENDS move calls onto a caller-provided Transaction (the
  * sponsored-send / keeper path owns signing + gas) and returns the venue
@@ -20,7 +20,7 @@ import { USDSUI_TYPE } from "../usdsui";
  *   • AlphaLend→ `PositionCap` (collateral in shared Position)    (cap receipt)
  *
  * VERIFY-BEFORE-MAINNET: the upgradeable package targets (NAVI / Suilend /
- * Scallop) move on upgrades — resolve the live id via each SDK or a devInspect
+ * Scallop) move on upgrades, resolve the live id via each SDK or a devInspect
  * before a real-fund tx. The shared object ids below are stable. Per the
  * standing rule, dry-run every builder with `devInspect` first.
  */
@@ -139,7 +139,7 @@ export function buildScallopRedeem(
 }
 
 // ── Suilend ─────────────────────────────────────────────────────────────
-// USDsui = reserveArrayIndex 44. Supply mints cTokens (the receipt) — for
+// USDsui = reserveArrayIndex 44. Supply mints cTokens (the receipt), for
 // pure supply-to-earn we hold the cToken; collateral/obligation is optional.
 const SUILEND = {
   pkg: "0xf95b06141ed4a174f239417323bde3f209b972f5930d8521ea38a52aff3a6ddf", // resolve PUBLISHED_AT via SDK
@@ -184,7 +184,7 @@ export function buildSuilendRedeem(
 }
 
 // ── AlphaLend ───────────────────────────────────────────────────────────
-// USDsui = marketId 33. Needs a PositionCap (create once) and — on withdraw —
+// USDsui = marketId 33. Needs a PositionCap (create once) and, on withdraw -
 // a Pyth price update + promise settlement. Supply is straightforward.
 const ALPHALEND = {
   pkg: "0xe48b33ef41d56e04fc42bf558e4d54d7cae8a363da9054a6c24bafc2c53a4f33",

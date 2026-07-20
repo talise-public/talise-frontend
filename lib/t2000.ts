@@ -9,7 +9,7 @@
  * Public surface:
  *   - `getT2000(opts)` returns a configured `T2000` instance bound to the
  *     caller's user (via their zkLogin ephemeral key + proof). The signer is
- *     constructed inside the SDK via `T2000.fromZkLogin()` — we never hold
+ *     constructed inside the SDK via `T2000.fromZkLogin()`, we never hold
  *     long-lived keys here.
  *   - `getT2000FromSigner(signer)` is the typed escape hatch for callers who
  *     already have a `TransactionSigner` (e.g. a hot-wallet adapter for
@@ -21,7 +21,7 @@
  * SDK initializes its own SuiJsonRpcClient internally based on the rpcUrl we
  * pass (derived from network).
  *
- * This module is server-only — the SDK's main entry pulls in Node-only
+ * This module is server-only, the SDK's main entry pulls in Node-only
  * dependencies (eventemitter3 + Cetus aggregator SDK) that don't tree-shake
  * cleanly for the browser bundle.
  */
@@ -51,7 +51,7 @@ function resolveRpcUrl(): string {
 /**
  * Build a T2000 client bound to the caller's zkLogin identity.
  *
- * The SDK constructs the `ZkLoginSigner` internally from the proof bundle —
+ * The SDK constructs the `ZkLoginSigner` internally from the proof bundle -
  * we never serialize or persist the ephemeral key. This is the documented
  * signer-based factory for the published SDK (v2.11.0).
  */

@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/username/check?u=<input>
  *
- * Availability comes from SuiNS on chain — `getNameRecord` returns null if
+ * Availability comes from SuiNS on chain, `getNameRecord` returns null if
  * `<name>.talise.sui` hasn't been minted yet. Source of truth is chain;
  * no DB.
  */
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ available: true });
   } catch (e) {
     // SuinsClient throws when the dynamic field for the name doesn't
-    // exist on chain — that means the name is unclaimed AND available.
+    // exist on chain, that means the name is unclaimed AND available.
     // The error message comes through in two shapes depending on
     // transport / SDK version: "does not exist", "not exist", or
     // "Object 0x… not found". All three signal the same thing: free.

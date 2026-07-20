@@ -21,7 +21,7 @@ export const runtime = "nodejs";
  *
  * If they don't match, every subsequent proof mint fails with
  * `-32602 Invalid params`. The previous version of this route used
- * `nonce: rawState` (random bytes), which guaranteed a mismatch —
+ * `nonce: rawState` (random bytes), which guaranteed a mismatch -
  * sign-in completed but every Send + Earn supply 500'd at the
  * proof-mint step.
  *
@@ -29,11 +29,11 @@ export const runtime = "nodejs";
  * canonical zkLogin nonce, send THAT to Google as the OAuth nonce,
  * and stash the same triple in a signed cookie so the callback
  * route can persist them into mobile_sessions. The proof mint
- * later then reuses the exact same values that bound the JWT —
+ * later then reuses the exact same values that bound the JWT -
  * the prover accepts because the equation holds.
  */
 const STATE_BINDING_COOKIE = "talise_m1_binding";
-const MAX_EPOCH_HORIZON = 2; // current_epoch + 2 → ~48h window
+const MAX_EPOCH_HORIZON = 3; // current_epoch + 3 → ~72h (3-day) signing window
 
 export async function GET(req: Request) {
   // Rate-limit: 10 starts per 60s per IP. Looser than /exchange because
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
   }
 
   // Fetch the live Sui epoch; add the standard horizon so the proof
-  // is valid for ~48h. If the RPC blips we cannot proceed — Shinami
+  // is valid for ~48h. If the RPC blips we cannot proceed, Shinami
   // requires a real epoch value.
   let maxEpoch: number;
   try {
@@ -97,7 +97,7 @@ export async function GET(req: Request) {
     );
   }
 
-  // Randomness as a decimal bigint string — the format Shinami's
+  // Randomness as a decimal bigint string, the format Shinami's
   // prover expects. We use 16 random bytes for the same field-size
   // headroom the client-side generator uses.
   const randomness = BigInt("0x" + randomBytes(16).toString("hex")).toString();
@@ -107,7 +107,7 @@ export async function GET(req: Request) {
   //    bit-for-bit.
   const zkNonce = generateNonce(ephPubKey, maxEpoch, randomness);
 
-  // 3. Signed binding cookie — the callback reads it to persist
+  // 3. Signed binding cookie, the callback reads it to persist
   //    the (ephPubKey, maxEpoch, randomness) triple into
   //    mobile_sessions alongside (jwt, salt).
   const rawState = randomBytes(24).toString("base64url");
@@ -122,7 +122,7 @@ export async function GET(req: Request) {
   // the cookie carries the `.talise.io` Domain (COOKIE_DOMAIN) exactly like
   // `readStateCookie`/`clearStateCookie` expect. Setting it host-only here (the
   // old bug) let a stale domain-scoped `talise_oauth_state` from a prior web
-  // attempt coexist and shadow the fresh one — the callback would read the
+  // attempt coexist and shadow the fresh one, the callback would read the
   // wrong value and reject the sign-in with `bad_state`. One scope, one cookie.
   await setStateCookie(state);
   const jar = await cookies();
@@ -151,7 +151,7 @@ export async function GET(req: Request) {
     response_type: "code",
     scope: "openid email profile",
     state,
-    // The critical line — Google embeds this verbatim into the
+    // The critical line, Google embeds this verbatim into the
     // id_token's `nonce` claim. The prover later checks it against
     // poseidonHash(extEphPubKey, maxEpoch, randomness).
     nonce: zkNonce,

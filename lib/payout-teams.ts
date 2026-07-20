@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { db, ensureSchema, schemaVersionGate } from "@/lib/db";
 
 /**
- * Payout Teams — saved groups of recipients a user can re-pay in one tap.
+ * Payout Teams, saved groups of recipients a user can re-pay in one tap.
  *
  * A team is just a named snapshot of recipient legs (handle/address + an
  * optional default amount + optional label). It carries NO money and is NEVER
@@ -13,7 +13,7 @@ import { db, ensureSchema, schemaVersionGate } from "@/lib/db";
  * any hand-typed recipient. This table is pure UI convenience.
  *
  * Schema is self-bootstrapping + memoized once-per-process, gated by a one-SELECT
- * schema-version check — mirroring lib/cheques.ts:ensureChequesSchema exactly.
+ * schema-version check, mirroring lib/cheques.ts:ensureChequesSchema exactly.
  * Postgres DDL only.
  */
 
@@ -36,7 +36,7 @@ export function ensurePayoutTeamsSchema(): Promise<void> {
     if (gate.upToDate) return;
 
     // One row per saved team. `members` is a JSON array of
-    // {recipient, amount, label} — a display-only snapshot, re-resolved at pay
+    // {recipient, amount, label}, a display-only snapshot, re-resolved at pay
     // time. Names are unique per user so "Save as team" upserts by name.
     await c.execute(`
       CREATE TABLE IF NOT EXISTS payout_teams (
@@ -50,7 +50,7 @@ export function ensurePayoutTeamsSchema(): Promise<void> {
     `);
     // On-chain teams: the `talise_payroll::payroll::Team` shared-object id this
     // roster mirrors. NULL for legacy DB-only teams (and whenever the on-chain
-    // path is disabled). Display + index only — pay still re-resolves the
+    // path is disabled). Display + index only, pay still re-resolves the
     // recipient strings in `members`.
     await c.execute(
       `ALTER TABLE payout_teams ADD COLUMN IF NOT EXISTS chain_object_id TEXT`
@@ -59,7 +59,7 @@ export function ensurePayoutTeamsSchema(): Promise<void> {
     await c.execute(
       `CREATE INDEX IF NOT EXISTS idx_payout_teams_user ON payout_teams(user_id, updated_at DESC)`
     );
-    // One team per (user, name) — "Save as team" upserts by name via this index.
+    // One team per (user, name), "Save as team" upserts by name via this index.
     await c.execute(
       `CREATE UNIQUE INDEX IF NOT EXISTS uniq_payout_teams_user_name ON payout_teams(user_id, name)`
     );
@@ -120,7 +120,7 @@ function projectTeam(row: PayoutTeamRow): PayoutTeam {
     const parsed = JSON.parse(row.members || "[]");
     if (Array.isArray(parsed)) members = parsed as PayoutTeamMember[];
   } catch {
-    /* tolerate a corrupt blob — render an empty roster rather than 500 */
+    /* tolerate a corrupt blob, render an empty roster rather than 500 */
   }
   return {
     id: row.id,
@@ -177,7 +177,7 @@ export async function payoutTeamsFor(userId: number): Promise<PayoutTeam[]> {
   return (r.rows as unknown as PayoutTeamRow[]).map(projectTeam);
 }
 
-/** Look up one of the caller's teams by name (for the on-chain edit path —
+/** Look up one of the caller's teams by name (for the on-chain edit path -
  * an existing name with a `chainObjectId` means "edit", else "create"). */
 export async function payoutTeamByName(
   userId: number,
@@ -225,7 +225,7 @@ export async function upsertPayoutTeam(input: {
   const now = Date.now();
   const c = db();
 
-  // Cap total teams per user — only enforced on a genuinely NEW name.
+  // Cap total teams per user, only enforced on a genuinely NEW name.
   const existing = await c.execute({
     sql: "SELECT id FROM payout_teams WHERE user_id = ? AND name = ? LIMIT 1",
     args: [input.userId, name],
@@ -259,7 +259,7 @@ export async function upsertPayoutTeam(input: {
   return projectTeam(r.rows[0] as unknown as PayoutTeamRow);
 }
 
-/** Delete a team (owner-only — the route enforces ownership via the WHERE clause). */
+/** Delete a team (owner-only, the route enforces ownership via the WHERE clause). */
 export async function deletePayoutTeam(id: string, userId: number): Promise<boolean> {
   await ensurePayoutTeamsSchema();
   const r = await db().execute({

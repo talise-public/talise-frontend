@@ -1,5 +1,5 @@
 /**
- * Send-limit enforcement — hard, API-layer transaction caps.
+ * Send-limit enforcement, hard, API-layer transaction caps.
  *
  * Closes the documented compliance gap (master plan §7 "no API-layer
  * daily-limit enforcement", §11 item 2 "Enforce a hard daily-limit +
@@ -17,7 +17,7 @@
  *
  * ── Defensive by design (a P0 control must NEVER 500) ───────────────
  * This module is additive and runs alongside infra that may only be
- * partially deployed (the KYC branch hasn't merged — `users.kyc_tier`
+ * partially deployed (the KYC branch hasn't merged, `users.kyc_tier`
  * may not exist yet). Every path is hardened so a limits-infra fault
  * degrades gracefully instead of blocking sends:
  *   • `kyc_tier` column absent / NULL  → treat as Tier 0.
@@ -42,14 +42,14 @@ import { db } from "@/lib/db";
 
 // ── Tier → cap table ─────────────────────────────────────────────────
 // Keyed by the integer `kyc_tier` (master plan §7 risk-tier model):
-//   Tier 0 — email only (Google OAuth): the floor every user starts at.
-//   Tier 1 — basic ID + liveness.
-//   Tier 2 — full ID + address + sanctions clear.
-//   Tier 3 — source-of-funds / EDD (high value, PEP, business).
+//   Tier 0, email only (Google OAuth): the floor every user starts at.
+//   Tier 1, basic ID + liveness.
+//   Tier 2, full ID + address + sanctions clear.
+//   Tier 3, source-of-funds / EDD (high value, PEP, business).
 // Amounts are USD (USDsui is 1:1 USD). `Infinity` = no cap at this tier.
 //
 // These are conservative placeholders aligned with §7's stated bands
-// (Tier 1 ≈ $1,000/mo). They are intentionally a simple constant map —
+// (Tier 1 ≈ $1,000/mo). They are intentionally a simple constant map -
 // the master plan calls for per-corridor / per-license tuning later;
 // this is the enforcement primitive, not the final policy table.
 export interface TierCap {
@@ -184,7 +184,7 @@ export type LimitDecision =
  * comparison (used + amount > limit ⇒ breach) so a single oversized
  * send can't slip under a fresh window.
  *
- * Never throws — on any internal fault it returns `{ allowed: true }`
+ * Never throws, on any internal fault it returns `{ allowed: true }`
  * (fail-open). The caller can treat a thrown error as "allow" too, but
  * this contract means callers don't need a try/catch.
  */
@@ -192,7 +192,7 @@ export async function checkSendAllowed(
   userId: number,
   amountUsd: number
 ): Promise<LimitDecision> {
-  // A non-positive or non-finite amount is not ours to police — the
+  // A non-positive or non-finite amount is not ours to police, the
   // caller already validates amount bounds. Don't block, don't record.
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
     return { allowed: true, tier: DEFAULT_TIER };
@@ -237,7 +237,7 @@ export async function checkSendAllowed(
 
     return { allowed: true, tier };
   } catch (err) {
-    // FAIL OPEN — a limits-infra fault must never block a legitimate
+    // FAIL OPEN, a limits-infra fault must never block a legitimate
     // send. Logged so the gap is visible in prod logs.
     console.error(
       `[send-limits] checkSendAllowed faulted for user=${userId}; failing open:`,
@@ -249,7 +249,7 @@ export async function checkSendAllowed(
 
 /**
  * Append a committed send to the ledger so it counts toward future
- * window checks. Best-effort — never throws. A dropped row only
+ * window checks. Best-effort, never throws. A dropped row only
  * under-counts (lets a user send slightly more), which is the safe
  * direction for a guard that must not break sends.
  *

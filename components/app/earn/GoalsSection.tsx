@@ -7,7 +7,7 @@
  * (name, target, colour, optional deadline).
  *
  * A tracking deposit records the goal contribution server-side (and awards
- * points) — it doesn't move on-chain funds, so it doesn't need the signer.
+ * points), it doesn't move on-chain funds, so it doesn't need the signer.
  */
 
 import { useMemo, useState } from "react";
@@ -29,7 +29,7 @@ import { useGoals, type Goal } from "./earn-data";
 import { GoalActionSheet } from "./GoalActionSheet";
 
 // Decorative ring/swatch palette. These are FILL colours (progress-ring
-// strokes), so they must read against the white goal card — the leading swatch
+// strokes), so they must read against the white goal card, the leading swatch
 // is the Talise forest, not the pale mint (#caffb8 is invisible on white).
 const GOAL_COLORS = ["#3d7a29", "#3a93d6", "#d99a2a", "#9a5cd6", "#d6618f", "#2faf8a"];
 
@@ -44,7 +44,7 @@ export function GoalsSection() {
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <Eyebrow>Goals</Eyebrow>
-        {/* Styled glass CTA — a compact ghost pill matching the design system,
+        {/* Styled glass CTA, a compact ghost pill matching the design system,
             replacing the old bare mono-text button. */}
         <button
           type="button"
@@ -66,7 +66,7 @@ export function GoalsSection() {
           <EmptyState
             icon={<HugeiconsIcon icon={Target02Icon} size={24} strokeWidth={1.6} />}
             title="No goals yet"
-            subtitle="Set a target — a trip, a rainy-day fund — and track every contribution."
+            subtitle="Set a target, a trip, a rainy-day fund, and track every contribution."
             action={
               <PrimaryButton onClick={() => setCreating(true)}>Create a goal</PrimaryButton>
             }
@@ -144,7 +144,7 @@ function GoalCard({
       >
         <ProgressRing pct={pct} color={color} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-[#15300c]">
+          <span className="block truncate text-[14px] font-semibold tracking-[-0.05em] text-[#15300c]">
             {goal.name}
           </span>
           <span className="block truncate font-mono text-[11px] text-[#3d7a29]">
@@ -239,7 +239,7 @@ function NewGoalSheet({
     return Number.isFinite(local) && local > 0 ? local / (rate || 1) : 0;
   }, [target, rate]);
 
-  // Today (local) as the min for the date picker — a deadline in the past is
+  // Today (local) as the min for the date picker, a deadline in the past is
   // meaningless. The route already accepts/stores deadlineMs.
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * RequestPanel — the Receive / Request experience for /app/pay/request.
+ * RequestPanel, the Receive / Request experience for /app/pay/request.
  *
  * Two modes selected by a glass segmented control:
  *
@@ -16,7 +16,7 @@
  * amount, white-panel QR.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { publicOrigin } from "@/lib/public-origin";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -54,6 +54,9 @@ export function RequestPanel() {
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [copied, setCopied] = useState<"addr" | "link" | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
   const address = me?.suiAddress ?? "";
   const handle = me?.taliseHandle ?? null;
@@ -87,9 +90,10 @@ export function RequestPanel() {
       await navigator.clipboard.writeText(text);
       setCopied(which);
       toast(which === "addr" ? "Address copied" : "Payment link copied", "success");
-      setTimeout(() => setCopied(null), 1600);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(null), 1600);
     } catch {
-      toast("Couldn't copy — try selecting manually", "danger");
+      toast("Couldn't copy, try selecting manually", "danger");
     }
   };
 
@@ -109,7 +113,7 @@ export function RequestPanel() {
         });
         return;
       } catch {
-        /* user cancelled or unsupported — fall through to copy */
+        /* user cancelled or unsupported, fall through to copy */
       }
     }
     await copy(text, mode === "receive" ? "addr" : "link");
@@ -123,15 +127,15 @@ export function RequestPanel() {
       <div>
         <Eyebrow>Receive</Eyebrow>
         <h1
-          className="mt-1 text-[26px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="mt-1 text-[26px] font-[500] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Get paid
         </h1>
       </div>
 
       {/* Mode segmented control */}
-      <div className="flex gap-1 rounded-full border border-[#15300c]/15 bg-white/60 p-1 backdrop-blur-sm">
+      <div className="flex gap-1 rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-2)] p-1">
         <SegButton active={mode === "receive"} onClick={() => setMode("receive")} icon={QrCode01Icon}>
           Receive
         </SegButton>
@@ -150,7 +154,7 @@ export function RequestPanel() {
             </label>
             <p className="mt-0.5 font-mono text-[10px] text-[#3d7a29]">Leave blank for an open request.</p>
             <div className="mt-2 flex items-center gap-1.5">
-              <span className="text-[22px] text-[#3a5230]" style={{ fontFamily: "var(--font-display-v2)" }}>$</span>
+              <span className="text-[22px] text-[#3a5230]" style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}>$</span>
               <input
                 value={amount}
                 onChange={(e) => {
@@ -160,7 +164,7 @@ export function RequestPanel() {
                 inputMode="decimal"
                 placeholder="0.00"
                 className="w-full bg-transparent text-[28px] font-[800] text-[#15300c] tabular-nums outline-none placeholder:text-[#3d7a29]"
-                style={{ fontFamily: "var(--font-display-v2)", letterSpacing: "-0.03em" }}
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', letterSpacing: "-0.02em" }}
               />
               {amount && (
                 <button
@@ -194,13 +198,13 @@ export function RequestPanel() {
       <GlassCard radius={28} className="flex flex-col items-center px-6 py-6 text-center">
         <span
           className="text-[17px] font-[800] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)", letterSpacing: "-0.02em" }}
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', letterSpacing: "-0.05em" }}
         >
-          {loading ? "—" : identity}
+          {loading ? "-" : identity}
         </span>
 
         {mode === "request" && amountUsd != null && (
-          <span className="mt-2 text-[15px] font-[800] tabular-nums text-[#3d7a29]" style={{ fontFamily: "var(--font-display-v2)", letterSpacing: "-0.02em" }}>
+          <span className="mt-2 text-[15px] font-[800] tabular-nums text-[#3d7a29]" style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', letterSpacing: "-0.02em" }}>
             Requesting {symbol}
             {toLocal(amountUsd).toLocaleString("en-US", {
               minimumFractionDigits: 2,
@@ -232,7 +236,7 @@ export function RequestPanel() {
           onClick={() =>
             mode === "receive" ? copy(address, "addr") : copy(paymentLink, "link")
           }
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#15300c] px-5 py-3 text-[14px] font-medium text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-[6px] border border-[#15300c] px-5 py-3 text-[12px] uppercase tracking-[0.06em] font-mono text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
         >
           <HugeiconsIcon
             icon={copied ? Tick02Icon : Copy01Icon}
@@ -278,8 +282,8 @@ function SegButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-[13px] font-medium transition-colors ${
-        active ? "bg-[#CAFFB8] text-[#15300c]" : "text-[#3d7a29] hover:text-[#3a5230]"
+      className={`flex flex-1 items-center justify-center gap-2 rounded-[3px] py-2 text-[12px] font-mono transition-colors ${
+        active ? "bg-[#CAFFB8] text-[#15300c]" : "text-[#2f6a1f] hover:text-[#15300c]"
       }`}
     >
       <HugeiconsIcon

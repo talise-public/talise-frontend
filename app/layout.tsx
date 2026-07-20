@@ -4,7 +4,7 @@ import { JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import { ReferralCapture } from "@/components/ReferralCapture";
 // Google Sans Variable, self-hosted via @fontsource. Google's marketing
 // font isn't on the public Google Fonts API, but Fontsource ships an
-// OFL-1.1 build — same weights, same shapes, distributable.
+// OFL-1.1 build, same weights, same shapes, distributable.
 import "@fontsource-variable/google-sans/index.css";
 import "./globals.css";
 
@@ -15,7 +15,7 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-// Instrument Serif (italic) — used sparingly for emphasis inside headlines.
+// Instrument Serif (italic), used sparingly for emphasis inside headlines.
 // e.g. "Send money home. Almost <em>free</em>." The italic style is what
 // gives Reflect-style hero copy its premium feel.
 const serif = Instrument_Serif({
@@ -26,9 +26,9 @@ const serif = Instrument_Serif({
   display: "swap",
 });
 
-const OG_TITLE = "Talise — money that moves like a message";
+const OG_TITLE = "Talise, money that moves like a message";
 const OG_DESC =
-  "A gasless dollar wallet on Sui. Send digital dollars as easily as a text — no gas, no seed phrases, no bank. Sign in with Google.";
+  "A gasless dollar wallet on Sui. Send digital dollars as easily as a text, no gas, no seed phrases, no bank. Sign in with Google.";
 const OG_IMAGE = {
   url: "/og.png",
   width: 1200,
@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             attributed to the inviter on the new user's first sign-in. */}
         <ReferralCapture />
         {children}
-        {/* Vercel Web Analytics — privacy-friendly route/pageview metrics
+        {/* Vercel Web Analytics, privacy-friendly route/pageview metrics
             (no cookies, no PII). Surfaces at the project's /analytics tab. */}
         <Analytics />
       </body>

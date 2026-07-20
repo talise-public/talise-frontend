@@ -81,7 +81,7 @@ export function SlideToConfirm({
         /* unsupported */
       }
     } catch {
-      // Failed — spring back so the user can retry. The caller surfaces the
+      // Failed, spring back so the user can retry. The caller surfaces the
       // error message separately.
       setX(0);
     } finally {
@@ -134,7 +134,7 @@ export function SlideToConfirm({
       }}
       aria-disabled={disabled}
     >
-      {/* Progress fill — soft-mint wash that deepens toward the forest knob. */}
+      {/* Progress fill, soft-mint wash that deepens toward the forest knob. */}
       <div
         className="pointer-events-none absolute inset-y-0 left-0"
         style={{
@@ -147,7 +147,7 @@ export function SlideToConfirm({
       {/* Label */}
       <span
         className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] font-semibold text-[#3a5230]"
-        style={{ opacity: 1 - progress * 0.9, letterSpacing: "-0.01em" }}
+        style={{ opacity: 1 - progress * 0.9, letterSpacing: "-0.05em" }}
       >
         {done ? "Confirmed" : pending ? "Sending…" : label}
       </span>

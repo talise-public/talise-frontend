@@ -16,7 +16,7 @@ import type { KycTier } from "@/lib/kyc";
  * from the input so the rest of the system (the /api/kyc POST route,
  * the kyc_upgrade_intents log) can be wired up and tested end-to-end
  * before a real Sumsub/Persona key is plumbed in. Swap the body of
- * `MockEkycProvider.verifyIdentity` for a real `fetch` to go live — the
+ * `MockEkycProvider.verifyIdentity` for a real `fetch` to go live, the
  * interface is the contract the route depends on, not the implementation.
  */
 
@@ -31,7 +31,7 @@ export type EkycProviderName = "sumsub" | "persona" | "mock";
  * less than tier 3.
  */
 export type VerifyIdentityInput = {
-  /** Internal Talise user id — becomes the provider's externalUserId. */
+  /** Internal Talise user id, becomes the provider's externalUserId. */
   userId: number;
   /** Tier the user is trying to reach; selects the screening level. */
   targetTier: KycTier;
@@ -91,7 +91,7 @@ export class MockEkycProvider implements EkycProvider {
       return { status: "rejected", ref, provider: this.name };
     }
 
-    // Everything else lands in manual review — the realistic default.
+    // Everything else lands in manual review, the realistic default.
     return { status: "pending", ref, provider: this.name };
   }
 }

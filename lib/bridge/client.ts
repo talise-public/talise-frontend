@@ -3,21 +3,21 @@ import "server-only";
 import crypto from "node:crypto";
 
 /**
- * Bridge.xyz API client — the shared HTTP core for Talise's on-ramp
+ * Bridge.xyz API client, the shared HTTP core for Talise's on-ramp
  * (fiat → USDsui on Sui) and off-ramp (USDsui on Sui → fiat) rails.
  *
  * Bridge (a Stripe company) issues USDsui, the "Sui Dollar," so it delivers
- * USDsui DIRECTLY on Sui — no swap. See lib/bridge/onramp.ts (virtual
+ * USDsui DIRECTLY on Sui, no swap. See lib/bridge/onramp.ts (virtual
  * accounts) and lib/bridge/offramp.ts (liquidation addresses).
  *
  * ENV-GATED, like every Talise ramp partner: with `BRIDGE_API_KEY` unset,
  * `bridgeConfigured()` is false and callers fall back to their stub/dormant
- * path — no network, no money. Nothing here touches the send/balance/limit
+ * path, no network, no money. Nothing here touches the send/balance/limit
  * paths.
  *
- *   BRIDGE_API_KEY         — Api-Key header value (dashboard-issued)
- *   BRIDGE_API_BASE        — override base URL (default production)
- *   BRIDGE_WEBHOOK_PUBKEY  — PEM public key for webhook RSA verification
+ *   BRIDGE_API_KEY       , Api-Key header value (dashboard-issued)
+ *   BRIDGE_API_BASE      , override base URL (default production)
+ *   BRIDGE_WEBHOOK_PUBKEY, PEM public key for webhook RSA verification
  *
  * Auth: a custom `Api-Key` header (NOT Bearer). POSTs carry a unique
  * `Idempotency-Key` (24h replay window). Docs: https://apidocs.bridge.xyz
@@ -28,7 +28,7 @@ const DEFAULT_BASE = "https://api.bridge.xyz/v0";
 /**
  * Sui rail + currency identifiers, CENTRALIZED here. Per Bridge's USDC-on-Sui
  * integration, ALL Sui transactions use `payment_rail: "sui"` +
- * `currency: "usdc"` (Bridge delivers USDC on Sui — NOT "usdsui"). Talise's
+ * `currency: "usdc"` (Bridge delivers USDC on Sui, NOT "usdsui"). Talise's
  * existing USDC→USDsui swap (AutoConvertBanner) finishes money-in; cash-out
  * swaps USDsui→USDC before sending to Bridge.
  */
@@ -57,7 +57,7 @@ function baseUrl(): string {
   return (process.env.BRIDGE_API_BASE || DEFAULT_BASE).replace(/\/+$/, "");
 }
 
-/** A typed Bridge API error — carries the HTTP status + Bridge's error body. */
+/** A typed Bridge API error, carries the HTTP status + Bridge's error body. */
 export class BridgeError extends Error {
   constructor(
     public readonly code: string,
@@ -75,7 +75,7 @@ type BridgeRequest = {
   /** JSON body (POST/PUT). */
   body?: unknown;
   /**
-   * Idempotency key for POSTs — REQUIRED by Bridge on writes. Pass a stable,
+   * Idempotency key for POSTs, REQUIRED by Bridge on writes. Pass a stable,
    * caller-owned key (e.g. the Talise row id) so a retried create never
    * double-acts. Omitted on GET. A random uuid is generated when a POST omits
    * one, but prefer passing a deterministic key.

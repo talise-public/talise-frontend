@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/cheques/mine
  *
- * The signed-in user's cheques (newest first) for the "My cheques" list —
+ * The signed-in user's cheques (newest first) for the "My cheques" list -
  * each with a `reclaimable` flag (funded + unclaimed + not expired) so the
  * client can show a "Claim it back" action.
  */

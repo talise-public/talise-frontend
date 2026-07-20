@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * AgentChat — the Talise Agent chat surface for the web app (the web twin of
+ * AgentChat, the Talise Agent chat surface for the web app (the web twin of
  * iOS `ChatTabView` + `ChatViewModel`), styled to feel like ChatGPT mobile.
  *
  * Layout (top → bottom):
- *   1. Header — mascot badge + greeting + a New-chat button. (No history
+ *   1. Header, mascot badge + greeting + a New-chat button. (No history
  *      sidebar: the app already has a left nav, so a second drawer just fought
  *      it. Each chat still persists; "New chat" starts a fresh one.)
- *   2. Scrollable transcript — assistant turns render as clean, full-width
+ *   2. Scrollable transcript, assistant turns render as clean, full-width
  *      LEFT-aligned prose (no bubble); user turns are a compact right-aligned
  *      accent-green pill. A "thinking" indicator stands in where the assistant
  *      reply will appear while we await the first token. Each completed
@@ -20,7 +20,7 @@
  * Streaming: we POST the running transcript to `/api/chat/stream` and read its
  * Server-Sent-Events body. Each frame is `data: <json>\n\n` where json is
  * `{"type":"text","value":"…"}` (an incremental token) or `{"type":"done"}`
- * (terminal). We buffer the FULL raw stream — fence included — and derive the
+ * (terminal). We buffer the FULL raw stream, fence included, and derive the
  * displayed prose each delta by stripping any `---INTENT---{…}---END---` block,
  * so a fence split across chunks never flashes half-rendered JSON. When the
  * stream closes we run `parseAssistantMessage` on the raw text; any intent it
@@ -28,7 +28,7 @@
  *
  * History: each completed turn is persisted to localStorage via
  * `conversationsStore` so a refresh restores the current thread; "New chat"
- * starts fresh. (We dropped the slide-out history drawer — it overlapped the
+ * starts fresh. (We dropped the slide-out history drawer, it overlapped the
  * app's own left nav.)
  */
 
@@ -82,7 +82,12 @@ export function AgentChat() {
   const abortRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Whether the user is following the tail. Updated on scroll; when true we
+  // keep pinning to the bottom as tokens stream, when false (they scrolled up
+  // to read) we leave their scroll position alone instead of fighting it.
+  const pinnedRef = useRef(true);
 
   // Mirror the latest transcript so finalize/persist always read fresh state
   // without threading it through every functional setState.
@@ -90,9 +95,12 @@ export function AgentChat() {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Keep the tail pinned as new messages land / tokens trickle in.
+  // Keep the tail pinned as new messages land / tokens trickle in — but only
+  // if the user hasn't scrolled up (don't yank them back down mid-read).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (pinnedRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
   }, [messages]);
 
   // Cancel any in-flight stream on unmount.
@@ -181,7 +189,7 @@ export function AgentChat() {
     void runStream(history, newAssistantId, id);
   }
 
-  // Finished turns + this prompt — never the streaming placeholder.
+  // Finished turns + this prompt, never the streaming placeholder.
   function historyFor(msgs: ChatMessage[]) {
     return msgs
       .filter((m) => m.role === "user" || !m.streaming)
@@ -240,7 +248,7 @@ export function AgentChat() {
               prev.map((m) => (m.id === assistantId ? { ...m, content: display, raw } : m))
             );
           }
-          // `done` is a no-op — we finalize once the body ends.
+          // `done` is a no-op, we finalize once the body ends.
         }
       }
       // Flush a trailing frame with no closing blank line.
@@ -257,7 +265,7 @@ export function AgentChat() {
     }
   }
 
-  // Stream closed cleanly — parse the prose + any intent block from the raw.
+  // Stream closed cleanly, parse the prose + any intent block from the raw.
   function finalize(assistantId: string, raw: string, convoId: string) {
     const { text, intent } = parseAssistantMessage(raw);
     const updated = messagesRef.current.map((m) =>
@@ -290,7 +298,7 @@ export function AgentChat() {
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] flex-col lg:h-[calc(100vh-8rem)]">
+    <div className="flex h-[calc(100dvh-9rem)] flex-col pb-24 lg:h-[calc(100vh-8rem)] lg:pb-0">
       {/* Header */}
       <div className="flex shrink-0 items-start gap-3 pb-3">
         <div className="min-w-0 flex-1">
@@ -299,8 +307,8 @@ export function AgentChat() {
               <HugeiconsIcon icon={AiMagicIcon} size={17} color="#15300c" strokeWidth={1.9} />
             </span>
             <h1
-              className="truncate text-[24px] font-[800] tracking-[-0.02em] text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="truncate text-[24px] font-[800] tracking-[-0.05em] text-[#15300c]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
             >
               {greeting}
             </h1>
@@ -321,16 +329,26 @@ export function AgentChat() {
         </button>
       </div>
 
-      {/* Transcript */}
-      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+      {/* Transcript — data-lenis-prevent so it scrolls natively on touch under
+          the app's Lenis smooth scroll (otherwise touch-drag scrolls the window
+          instead of the message list). */}
+      <div
+        ref={scrollRef}
+        data-lenis-prevent
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}
+        className="min-h-0 flex-1 overflow-y-auto pb-6"
+      >
         {empty ? (
           <div className="flex h-full flex-col items-center justify-center py-12 text-center">
             <span className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[#CAFFB8]">
               <HugeiconsIcon icon={AiMagicIcon} size={28} color="#15300c" strokeWidth={1.8} />
             </span>
             <p
-              className="text-[20px] font-[800] tracking-[-0.02em] text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="text-[20px] font-[800] tracking-[-0.05em] text-[#15300c]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
             >
               Ask anything about your money
             </p>
@@ -439,7 +457,7 @@ function Row({
     );
   }
 
-  // Assistant — clean left-aligned prose, no bubble.
+  // Assistant, clean left-aligned prose, no bubble.
   const awaitingFirstToken = msg.streaming === true && msg.content.length === 0;
   const showActions = !msg.streaming && msg.content.trim().length > 0;
 

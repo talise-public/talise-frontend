@@ -31,7 +31,6 @@ import {
   UserGroupIcon,
   BarcodeScanIcon,
   MoneyReceive01Icon,
-  SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { CurrencyProvider, useCurrency } from "./data/currency";
 import { Flag } from "./ui";
@@ -49,6 +48,7 @@ import { api } from "./data/api";
 import { forceFreshSignIn, signingSessionExpired } from "@/lib/session-expiry";
 import { Diamond } from "@/components/Diamond";
 import { ScanSheet } from "./scan/ScanSheet";
+import { AgentMascot } from "./AgentMascot";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
@@ -85,7 +85,6 @@ const PRIMARY: NavItem[] = [
       { label: "Stream", href: "/app/pay/stream" },
     ],
   },
-  { label: "Copilot", href: "/app/agent", icon: SparklesIcon as IconSvgElement },
   { label: "Earn", href: "/app/earn", icon: Plant02Icon as IconSvgElement },
   { label: "Work", href: "/app/work", icon: Briefcase01Icon as IconSvgElement },
   { label: "Activity", href: "/app/activity", icon: Analytics01Icon as IconSvgElement },
@@ -109,7 +108,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 /**
- * Nav configuration — lets one shell drive two surfaces: the consumer wallet
+ * Nav configuration, lets one shell drive two surfaces: the consumer wallet
  * (/app) and the business workspace (/business). Everything route-specific
  * (brand target, primary nav, ramps/settings links, page titles, sign-in
  * return) lives here so the chrome stays identical and in sync.
@@ -164,19 +163,19 @@ function isActive(pathname: string, href: string, brandHref: string): boolean {
 
 function Logo({ compact = false, homeHref = "/app" }: { compact?: boolean; homeHref?: string }) {
   // The real Talise brand mark (the pinwheel from public/symbol.svg), forest-
-  // tinted via --color-accent — identical to the landing TopBar wordmark.
+  // tinted via --color-accent, identical to the landing TopBar wordmark.
   return (
     <Link href={homeHref} className="inline-flex items-center gap-2">
       <Diamond />
       {!compact && (
         <span
-          className="text-[19px] font-[800] lowercase tracking-[-0.03em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[19px] font-[500] lowercase tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           talise
         </span>
       )}
-      {/* Private-beta marker — a small chip so testers always know
+      {/* Private-beta marker, a small chip so testers always know
           they're on the beta surface. */}
       <span className="rounded-[6px] bg-[#CAFFB8] px-1.5 py-[3px] font-mono text-[9px] font-semibold uppercase leading-none tracking-[0.18em] text-[#15300c]">
         Beta
@@ -196,8 +195,8 @@ function BalanceChip({ homeHref = "/app" }: { homeHref?: string }) {
       className="inline-flex items-center gap-2 rounded-full border border-[#15300c]/15 bg-white/60 px-3 py-1.5 backdrop-blur-sm transition-colors hover:border-[#15300c]/30"
     >
       <span className="size-1.5 rounded-full" style={{ background: "#3d7a29" }} />
-      <span className="text-[13px] font-semibold tabular-nums text-[#15300c]" style={{ letterSpacing: "-0.01em" }}>
-        {!data && (loading || error) ? "—" : formatUsd(data?.totalUsd ?? 0)}
+      <span className="text-[13px] font-semibold tabular-nums text-[#15300c]" style={{ letterSpacing: "-0.05em" }}>
+        {!data && (loading || error) ? "-" : formatUsd(data?.totalUsd ?? 0)}
       </span>
     </Link>
   );
@@ -234,7 +233,7 @@ function CurrencySelect() {
 
 function Avatar({ me, size = 28 }: { me: Me; size?: number }) {
   const initial = (me.name ?? me.email ?? "?").trim().charAt(0).toUpperCase();
-  // Google avatar URLs (lh3.googleusercontent.com) regularly 403/expire —
+  // Google avatar URLs (lh3.googleusercontent.com) regularly 403/expire -
   // without an error fallback the chip rendered as a broken-image glyph.
   const [imgFailed, setImgFailed] = useState(false);
   if (me.picture && !imgFailed) {
@@ -305,32 +304,77 @@ function SidebarItem({ item, active, dimmed, badge }: { item: NavItem; active: b
   );
 }
 
+// ── Navbar nav item (lg+, horizontal) ──────────────────────────────────────────
+
+function NavbarItem({ item, active, pathname }: { item: NavItem; active: boolean; pathname: string }) {
+  const base = `flex items-center gap-2 rounded-[4px] px-3 py-2 text-[13px] font-mono transition-colors ${
+    active ? "bg-[#2f6a1f] text-[#f4fbef]" : "text-[#55634e] hover:bg-[rgba(18,26,15,0.06)]"
+  }`;
+  const inner = (
+    <>
+      <HugeiconsIcon icon={item.icon} size={17} strokeWidth={active ? 2.2 : 1.8} color={active ? "#f4fbef" : "#55634e"} />
+      <span>{item.label}</span>
+    </>
+  );
+  if (!item.children) {
+    return <Link href={item.href} className={base}>{inner}</Link>;
+  }
+  return (
+    <div className="group relative">
+      <Link href={item.href} className={base}>
+        {inner}
+        <span className="text-[9px] opacity-60">▾</span>
+      </Link>
+      <div className="invisible absolute left-0 top-full z-40 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100">
+        <div className="w-48 rounded-2xl border border-[#15300c]/10 bg-[#f7fcf2] p-1.5 shadow-[0_16px_44px_-16px_rgba(21,48,12,0.45)]">
+          {item.children.map((child) => {
+            const childActive = child.href === item.href ? pathname === child.href : pathname === child.href || pathname.startsWith(child.href + "/");
+            return (
+              <Link
+                key={child.href}
+                href={child.href}
+                className={`block rounded-xl px-3 py-2 text-[13px] transition-colors ${childActive ? "bg-[#CAFFB8] font-semibold text-[#15300c]" : "font-medium text-[#3a5230] hover:bg-[#CAFFB8]/50 hover:text-[#15300c]"}`}
+              >
+                {child.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Sign-in screen ─────────────────────────────────────────────────────────────
 
 function SignInScreen({ returnTo = "/app" }: { returnTo?: string }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
       <div
-        className="w-full max-w-sm rounded-[28px] bg-[#f7fcf2] p-8 text-center"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        className="relative w-full max-w-sm rounded-[16px] border border-[rgba(18,26,15,0.12)] bg-white p-8 text-center"
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 24px 50px -26px rgba(18,26,15,0.3)" }}
       >
+        <span aria-hidden className="bp-tick bp-tick-tl" />
+        <span aria-hidden className="bp-tick bp-tick-tr" />
+        <span aria-hidden className="bp-tick bp-tick-bl" />
+        <span aria-hidden className="bp-tick bp-tick-br" />
         <div className="mx-auto mb-6 flex scale-[1.4] justify-center">
           <Logo compact />
         </div>
         <h1
-          className="text-[26px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[28px] tracking-[-0.05em] text-[#121a0f]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Talise
         </h1>
-        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.28em] text-[#3d7a29]">Beta</p>
-        <p className="mx-auto mt-4 max-w-[16rem] text-[14px] leading-relaxed text-[#3a5230]">
+        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.28em] text-[#2f6a1f]">Beta</p>
+        <p className="mx-auto mt-4 max-w-[16rem] text-[14px] leading-relaxed text-[#55634e]">
           A gasless dollar wallet on Sui. Sign in to send, save, and get paid, no gas, no seed phrase.
         </p>
         <button
           type="button"
           onClick={() => triggerOauthSignIn({ returnTo })}
-          className="mt-7 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#15300c] px-5 py-3 text-[15px] font-semibold text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
+          className="bp-btn bp-btn-solid bp-btn-full mt-7"
         >
             {/* Real Google "G" (official brand colors) on a white disc so the
                 multicolor mark reads on the green button. */}
@@ -371,12 +415,14 @@ function AccountMenu({
   size = 32,
   activityHref = "/app/activity",
   rampsHref = "/app/ramps",
+  settingsHref,
   showMoneyTools = false,
 }: {
   me: Me;
   size?: number;
   activityHref?: string;
   rampsHref?: string;
+  settingsHref?: string;
   /** Consumer-only: surface Requests + Automations (no sidebar on mobile). */
   showMoneyTools?: boolean;
 }) {
@@ -418,6 +464,13 @@ function AccountMenu({
             </DropdownMenuItem>
           </>
         )}
+        {settingsHref && (
+          <DropdownMenuItem asChild>
+            <Link href={settingsHref}>
+              <HugeiconsIcon icon={Settings01Icon} size={18} strokeWidth={1.8} /> Settings
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           {/* Wipe the tab's ephemeral key + cross-tab expiry marker BEFORE the
@@ -440,99 +493,76 @@ function ShellBody({ me, nav, children }: { me: Me; nav: NavConfig; children: Re
 
   return (
     <div className="relative min-h-screen text-[#15300c]">
-      {/* ── Desktop sidebar (lg+) ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-[#15300c]/10 px-4 py-5 lg:flex">
-        <div className="px-2">
+      {/* ── Desktop top navbar (lg+) ── */}
+      <header className="fixed inset-x-0 top-0 z-30 hidden h-16 border-b border-[var(--color-line)] bg-[#edf0ea]/85 backdrop-blur-md lg:block">
+        <div className="mx-auto flex h-full w-full max-w-[1180px] items-center gap-4 px-6 lg:px-10">
+        <div className="flex-none">
           <Logo homeHref={nav.brandHref} />
         </div>
-        <nav className="mt-7 flex flex-1 flex-col gap-1">
-          {nav.primary.map((item) => {
-            const active = isActive(pathname, item.href, nav.brandHref);
-            return (
-              <div key={item.href}>
-                <SidebarItem item={item} active={active} />
-                {/* Reveal sub-entries (e.g. Pay → Cheques/Stream/Request)
-                    only while this section is active, so the sidebar stays
-                    calm elsewhere but those routes are reachable here. */}
-                {item.children && active && (
-                  <div className="mb-1.5 ml-[26px] mt-1 flex flex-col gap-0.5 border-l border-[#15300c]/15 pl-2">
-                    {item.children.map((child) => {
-                      const childActive =
-                        child.href === item.href
-                          ? pathname === child.href
-                          : pathname === child.href ||
-                            pathname.startsWith(child.href + "/");
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          aria-current={childActive ? "page" : undefined}
-                          className={`rounded-xl px-2.5 py-1.5 text-[13px] transition-colors ${
-                            childActive
-                              ? "bg-[#CAFFB8] font-semibold text-[#15300c]"
-                              : "font-medium text-[#3a5230] hover:bg-[#CAFFB8]/50 hover:text-[#15300c]"
-                          }`}
-                        >
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          <div className="my-3 h-px bg-[#15300c]/10" />
-          {/* Secondary money tools — Requests (track who owes you). Consumer
-              surface only; the business nav has its own primary set so these
-              stay out of it. (Automations hidden for now.) */}
+        <nav className="flex flex-1 items-center justify-center gap-1">
+          {nav.primary.map((item) => (
+            <NavbarItem
+              key={item.href}
+              item={item}
+              active={isActive(pathname, item.href, nav.brandHref)}
+              pathname={pathname}
+            />
+          ))}
           {nav === CONSUMER_NAV && (
-            <>
-              <SidebarItem
-                item={{ label: "Requests", href: "/app/requests", icon: MoneyReceive01Icon as IconSvgElement }}
-                active={isActive(pathname, "/app/requests", nav.brandHref)}
-              />
-            </>
+            <NavbarItem
+              item={{ label: "Requests", href: "/app/requests", icon: MoneyReceive01Icon as IconSvgElement }}
+              active={isActive(pathname, "/app/requests", nav.brandHref)}
+              pathname={pathname}
+            />
           )}
-          <SidebarItem
+          <NavbarItem
             item={{ label: "Ramps", href: nav.rampsHref, icon: CreditCardIcon as IconSvgElement }}
             active={isActive(pathname, nav.rampsHref, nav.brandHref)}
-          />
-          <SidebarItem
-            item={{ label: "Settings", href: nav.settingsHref, icon: Settings01Icon as IconSvgElement }}
-            active={isActive(pathname, nav.settingsHref, nav.brandHref)}
+            pathname={pathname}
           />
         </nav>
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-none items-center gap-3">
+          {nav === CONSUMER_NAV && (
+            <Link
+              href="/app/agent"
+              aria-label="Talise Copilot"
+              className="flex size-9 items-center justify-center rounded-full transition-transform hover:scale-105 active:scale-95"
+            >
+              <AgentMascot size={34} />
+            </Link>
+          )}
           <CurrencySelect />
-          <Link
-            href={nav.settingsHref}
-            className="flex items-center gap-2.5 rounded-2xl border border-[#15300c]/15 bg-white/60 px-3 py-2.5 backdrop-blur-sm transition-colors hover:border-[#15300c]/30"
-          >
-            <Avatar me={me} size={30} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-medium text-[#15300c]">{accountLabel(me)}</div>
-              <div className="truncate font-mono text-[10px] text-[#3d7a29]">
-                {me.suiAddress.slice(0, 6)}…{me.suiAddress.slice(-4)}
-              </div>
-            </div>
-          </Link>
+          <AccountMenu
+            me={me}
+            size={34}
+            activityHref={nav.primary.find((i) => i.label === "Activity")?.href ?? "/app/activity"}
+            rampsHref={nav.rampsHref}
+            settingsHref={nav.settingsHref}
+            showMoneyTools={nav === CONSUMER_NAV}
+          />
         </div>
-      </aside>
+        </div>
+      </header>
 
-      {/* ── Main area ── (no desktop topbar — the sidebar shows the active
-          page; content leads, Wise-style) */}
-      <div className="relative z-10 lg:pl-60">
-        {/* Mobile mini-bar — transparent, sits on the mint gradient and scrolls
+      {/* ── Main area ── (content sits below the fixed top navbar) */}
+      <div className="relative z-10">
+        {/* Mobile mini-bar, transparent, sits on the mint gradient and scrolls
             away with the content (no bar background / border). */}
-        {/* Wordmark + a single profile chip (Avatar with initials fallback —
+        {/* Wordmark + a single profile chip (Avatar with initials fallback -
             the dropdown carries Ramps, Settings, and sign-out, which is how
             those surfaces stay reachable on mobile). The balance chip stays
-            removed — the balance lives on the page itself. */}
+            removed, the balance lives on the page itself. */}
         <header className="relative z-30 flex items-center justify-between px-4 pb-1 pt-3 lg:hidden">
           <Logo homeHref={nav.brandHref} />
           <div className="flex items-center gap-2.5">
-            {/* Scan-to-pay — camera QR reader routing into Send with the
+            {/* Talise Copilot, the 3D mascot is the agent's top-bar entry
+                point (mirrors the iOS Home header). Consumer surface only. */}
+            {nav === CONSUMER_NAV && (
+              <Link href="/app/agent" aria-label="Talise Copilot" className="flex items-center justify-center active:scale-95">
+                <AgentMascot size={36} />
+              </Link>
+            )}
+            {/* Scan-to-pay, camera QR reader routing into Send with the
                 recipient prefilled (mobile-only entry; desktop has no camera
                 ergonomics worth the chrome). */}
             <button
@@ -555,23 +585,39 @@ function ShellBody({ me, nav, children }: { me: Me; nav: NavConfig; children: Re
         </header>
         <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} />
 
-        {/* Content column. overflow-x-clip: belt-and-braces — no child (wide
+        {/* Content column. overflow-x-clip: belt-and-braces, no child (wide
             grid item, unbreakable number, slider) can ever drag the page into
             horizontal scroll on mobile. */}
         {/* pt-7 on mobile: a deliberate, consistent breath between the mini
             header and every page's first element (Earn/Work/Settings sat too
             tight at pt-4). Desktop keeps its taller lg:pt-16. */}
-        <main className="mx-auto w-full min-w-0 max-w-[1040px] overflow-x-clip px-4 pb-32 pt-7 sm:px-6 lg:px-8 lg:pb-12 lg:pt-16">
-          {children}
-        </main>
-      </div>
+        {/* Construction frame, vertical hairline rails + `+` corner ticks
+            down the content column, mirroring the /v3 landing's blueprint. */}
+        <div className="relative mx-auto flex min-h-screen w-full max-w-[1180px] flex-col lg:mt-16 lg:min-h-[calc(100vh-4rem)]">
+          <span aria-hidden className="bp-tick bp-tick-tl" />
+          <span aria-hidden className="bp-tick bp-tick-tr" />
+          <span aria-hidden className="bp-tick bp-tick-bl" />
+          <span aria-hidden className="bp-tick bp-tick-br" />
+          <main className="w-full min-w-0 flex-1 overflow-x-clip border-x border-[var(--color-line)] px-4 pb-32 pt-7 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">
+            {children}
+          </main>
+        </div>
 
       {/* ── Mobile bottom nav ── */}
+      {/* Lives INSIDE the `relative z-10` wrapper (not a root sibling) so that
+          page-level modals/sheets/pickers can stack above it, otherwise their
+          z-index is trapped in this context and the nav paints over them. */}
       {/* Activity ⇄ Settings swap (mobile only): Settings takes Activity's
           tab slot here; Activity moves into the avatar dropdown (AccountMenu).
           The desktop sidebar keeps Activity in the primary list. */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 lg:hidden">
-        <div className="flex items-center gap-1 rounded-full border border-[#15300c]/10 bg-white/85 px-2 py-2 shadow-[0_10px_40px_-12px_rgba(21,48,12,0.35)] backdrop-blur-md" style={{ borderRadius: 999 }}>
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-4 lg:hidden">
+        {/* Fits the pill to the viewport and scrolls horizontally on narrow
+            phones so items are never clipped; secondary items (Activity,
+            Ramps, Settings) live in the header account menu. */}
+        <div
+          className="no-scrollbar flex max-w-full items-center gap-1.5 overflow-x-auto rounded-full border border-[#15300c]/10 bg-white/85 px-2.5 py-2 shadow-[0_10px_40px_-12px_rgba(21,48,12,0.35)] backdrop-blur-md"
+          style={{ borderRadius: 999, scrollbarWidth: "none" }}
+        >
           {nav.primary
             .map((item) =>
               item.label === "Activity"
@@ -586,7 +632,7 @@ function ShellBody({ me, nav, children }: { me: Me; nav: NavConfig; children: Re
                 href={item.href}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 rounded-full px-3.5 py-1.5 transition-colors ${
+                className={`flex shrink-0 flex-col items-center gap-0.5 rounded-full px-3.5 py-1.5 transition-colors ${
                   active ? "bg-[#CAFFB8]" : ""
                 }`}
               >
@@ -604,6 +650,7 @@ function ShellBody({ me, nav, children }: { me: Me; nav: NavConfig; children: Re
           })}
         </div>
       </nav>
+      </div>
     </div>
   );
 }
@@ -646,33 +693,52 @@ export function AppShell({ me, initialBalances, nav = CONSUMER_NAV, children }: 
   }, [signedIn]);
 
   // ── Send-path warmers (launch-day perf, 2026-06-11) ────────────────
-  // iOS hits /api/zk/warmup at dashboard load; the web never did — so a
+  // iOS hits /api/zk/warmup at dashboard load; the web never did, so a
   // web user's FIRST send paid the full cold path inline: Onara status,
   // gas price, NAVI pools, payment registry, epoch/chain memos, AND the
   // 2–4s Shinami proof mint. Warm all of it once per app mount:
-  //   1. /api/zk/warmup — server-side caches (fire-and-forget).
-  //   2. /api/zk/proof — pre-mints the zkLogin proof and stores it next
+  //   1. /api/zk/warmup, server-side caches (fire-and-forget).
+  //   2. /api/zk/proof, pre-mints the zkLogin proof and stores it next
   //      to the ephemeral key, so sponsor-execute skips the prover hop.
   useEffect(() => {
     if (!signedIn) return;
-    void fetch("/api/zk/warmup", { method: "POST" }).catch(() => {});
-    const eph = readEphemeralForT2000();
-    if (eph && !eph.cachedProof) {
-      void api<{ proof: StoredZkProof }>("/api/zk/proof", {
-        method: "POST",
-        body: {
-          ephemeralPubKeyB64: eph.ephemeralPubKeyB64,
-          maxEpoch: eph.maxEpoch,
-          randomness: eph.randomness,
-        },
-      })
-        .then((r) => {
-          if (r?.proof) writeCachedProof(r.proof);
+    // Defer the warmup + proof pre-mint until the browser is idle (or ~1.2s)
+    // so these fire-and-forget POSTs don't compete with the critical
+    // balances/activity/me fetches for the per-host connection pool during
+    // first paint. The proof still mints well before the user taps Send.
+    const run = () => {
+      void fetch("/api/zk/warmup", { method: "POST" }).catch(() => {});
+      const eph = readEphemeralForT2000();
+      if (eph && !eph.cachedProof) {
+        void api<{ proof: StoredZkProof }>("/api/zk/proof", {
+          method: "POST",
+          body: {
+            ephemeralPubKeyB64: eph.ephemeralPubKeyB64,
+            maxEpoch: eph.maxEpoch,
+            randomness: eph.randomness,
+          },
         })
-        .catch(() => {
-          /* best-effort — the send path mints inline as before */
-        });
-    }
+          .then((r) => {
+            if (r?.proof) writeCachedProof(r.proof);
+          })
+          .catch(() => {
+            /* best-effort, the send path mints inline as before */
+          });
+      }
+    };
+    const ric = (window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+    let idleId: number | undefined;
+    let toId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof ric === "function") idleId = ric(run, { timeout: 2000 });
+    else toId = setTimeout(run, 1200);
+    return () => {
+      const cic = (window as typeof window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      if (idleId !== undefined && typeof cic === "function") cic(idleId);
+      if (toId !== undefined) clearTimeout(toId);
+    };
   }, [signedIn]);
 
   if (!me) {

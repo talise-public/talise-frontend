@@ -24,7 +24,7 @@ export const runtime = "nodejs";
  * `digest` is treated opaquely: it's the user's personal-message
  * signature in the chosen (personal-message) attestation approach, but
  * the column would equally hold an executed-attestation tx digest if a
- * future on-chain approach is wired — confirm doesn't care which.
+ * future on-chain approach is wired, confirm doesn't care which.
  *
  * Body:
  *   {

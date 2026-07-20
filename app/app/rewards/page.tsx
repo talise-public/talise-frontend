@@ -20,14 +20,14 @@ import {
 } from "@/components/app/rewards";
 
 /**
- * /app/rewards — the points hub. Web counterpart of the iOS Rewards page.
+ * /app/rewards, the points hub. Web counterpart of the iOS Rewards page.
  *
  * Structure mirrors iOS (2026-06 points-hub refresh):
- *   1. HERO — points balance + tier progress (TierCard).
- *   2. REFERRAL — code, copy, share.
- *   3. REDEMPTIONS — the perk catalogue.
- *   4. EARNING HISTORY — 5 most recent point events + "See all".
- * ("How you earn" rate rules deliberately omitted, matching iOS — the
+ *   1. HERO, points balance + tier progress (TierCard).
+ *   2. REFERRAL, code, copy, share.
+ *   3. REDEMPTIONS, the perk catalogue.
+ *   4. EARNING HISTORY, 5 most recent point events + "See all".
+ * ("How you earn" rate rules deliberately omitted, matching iOS, the
  * page stays action-first.)
  *
  * Two live reads:
@@ -82,8 +82,8 @@ export default function RewardsPage() {
           Rewards
         </p>
         <h1
-          className="text-[clamp(26px,5vw,32px)] font-[800] uppercase leading-[1.0] tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[clamp(26px,5vw,32px)] font-[500] leading-[1.0] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Points &amp; perks
         </h1>
@@ -97,7 +97,7 @@ export default function RewardsPage() {
       ) : error ? (
         <div
           className="rounded-[28px] bg-[#f7fcf2] p-2"
-          style={{ boxShadow: "10px 10px 0 #15300c" }}
+          style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
         >
           <EmptyState
             icon={<HugeiconsIcon icon={Coins01Icon} size={24} strokeWidth={1.6} />}
@@ -111,7 +111,7 @@ export default function RewardsPage() {
           {/* 1. Points balance + tier progress */}
           <TierCard tier={summary.tier} points={summary.pointsTotal} />
 
-          {/* 2. Referral — the one big action */}
+          {/* 2. Referral, the one big action */}
           <ReferralCard code={summary.code} referralCount={summary.referralCount} />
 
           {/* 3. Redemption catalogue */}
@@ -121,7 +121,7 @@ export default function RewardsPage() {
             onRedeemed={refresh}
           />
 
-          {/* 4. Earning history — 5 most recent + "See all" */}
+          {/* 4. Earning history, 5 most recent + "See all" */}
           <EarningHistory events={summary.recentEvents} />
         </>
       ) : null}
@@ -132,7 +132,7 @@ export default function RewardsPage() {
 /** Flat placeholders matching the loaded layout, so the page doesn't jump. */
 function RewardsSkeleton() {
   const card = "rounded-[28px] bg-[#f7fcf2]";
-  const shadow = { boxShadow: "10px 10px 0 #15300c" } as const;
+  const shadow = { boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" } as const;
   const bar = "animate-pulse rounded-full bg-[#15300c]/10";
   return (
     <div className="space-y-6">

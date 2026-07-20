@@ -160,16 +160,16 @@ function parseDelimited(text: string): {
 }
 
 /**
- * PayoutsTab — pay your whole team USDsui in ONE atomic sponsored
+ * PayoutsTab, pay your whole team USDsui in ONE atomic sponsored
  * transaction. Three stages in a single sheet:
  *
- *   1) Add recipients — manual person cards (the PRIMARY path) with a [+] Add
+ *   1) Add recipients, manual person cards (the PRIMARY path) with a [+] Add
  *      person button; OR upload a .csv / drag-drop a list; OR paste a list
  *      (quieter disclosure). Save the current roster as a reusable team, and
  *      one-tap load a saved team. Each recipient live-resolves via
  *      /api/recipient/resolve.
- *   2) Review — resolved recipients, per-amount, running total + count.
- *   3) Pay — SlideToConfirm → prepare (build one sponsored PTB) → sign with
+ *   2) Review, resolved recipients, per-amount, running total + count.
+ *   3) Pay, SlideToConfirm → prepare (build one sponsored PTB) → sign with
  *      the zkLogin ephemeral key + sponsor-execute → record the digest.
  *
  * Everyone or no one: the PTB is atomic on chain.
@@ -192,7 +192,7 @@ export function PayoutsTab() {
         <EmptyState
           icon={<HugeiconsIcon icon={UserMultipleIcon} size={26} strokeWidth={1.6} />}
           title="Pay your whole team in one signature"
-          subtitle="Add everyone — type them in, upload a CSV, or load a saved team — and send USDsui to all of them in one atomic transaction. Everyone gets paid, or no one does. Gas is on us."
+          subtitle="Add everyone, type them in, upload a CSV, or load a saved team, and send USDsui to all of them in one atomic transaction. Everyone gets paid, or no one does. Gas is on us."
           action={
             <PrimaryButton onClick={() => setCreateOpen(true)}>
               <HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={2} />
@@ -263,7 +263,7 @@ function BatchPayoutSheet({
       const r = await api<{ teams: SavedTeam[] }>("/api/payouts/teams");
       setTeams(Array.isArray(r.teams) ? r.teams : []);
     } catch {
-      /* private-beta gate / network — just show no teams */
+      /* private-beta gate / network, just show no teams */
     }
   }, []);
   useEffect(() => {
@@ -311,7 +311,7 @@ function BatchPayoutSheet({
     const { rows: parsed, skipped } = parseDelimited(pasteText);
     const added = mergeParsed(parsed);
     if (added === 0 && skipped === 0) {
-      toast("Nothing to add — check the format.", "neutral");
+      toast("Nothing to add, check the format.", "neutral");
       return;
     }
     toast(
@@ -458,7 +458,7 @@ function BatchPayoutSheet({
         setTeamNameOpen(true);
         toast(`Editing "${team.name}"`, "neutral");
       } else {
-        // A plain load (to re-pay) is not an edit — clear any edit context.
+        // A plain load (to re-pay) is not an edit, clear any edit context.
         setEditingTeam(null);
         toast(`Loaded "${team.name}"`, "success");
       }
@@ -480,7 +480,7 @@ function BatchPayoutSheet({
     [loadTeams, toast]
   );
 
-  // Members snapshot for "save as team" — uses what the user typed (NOT the
+  // Members snapshot for "save as team", uses what the user typed (NOT the
   // resolved address), so the team re-resolves cleanly next time.
   const teamMembers = useMemo(
     () =>
@@ -578,7 +578,7 @@ function BatchPayoutSheet({
       throw new Error("no recipients");
     }
 
-    // 1) Prepare — server resolves again (authoritative), screens, gates the
+    // 1) Prepare, server resolves again (authoritative), screens, gates the
     //    limit, builds ONE sponsored PTB, persists the batch.
     const prep = await api<{
       batchId: string;
@@ -605,7 +605,7 @@ function BatchPayoutSheet({
       amountUsd: prep.totalUsd,
     });
 
-    // 3) Record — mark the batch broadcast with the confirmed digest.
+    // 3) Record, mark the batch broadcast with the confirmed digest.
     await api(`/api/payouts/batch/${prep.batchId}/record`, {
       method: "POST",
       body: { digest },
@@ -616,7 +616,7 @@ function BatchPayoutSheet({
       window.dispatchEvent(new CustomEvent("talise:tx", { detail: { digest } }));
     }
     toast(
-      `Paid ${prep.recipientCount} ${prep.recipientCount === 1 ? "person" : "people"} — ${formatUsd(prep.totalUsd, { fixed: true })}`,
+      `Paid ${prep.recipientCount} ${prep.recipientCount === 1 ? "person" : "people"}, ${formatUsd(prep.totalUsd, { fixed: true })}`,
       "success"
     );
     setDone({ count: prep.recipientCount, total: prep.totalUsd });
@@ -672,7 +672,7 @@ function BatchPayoutSheet({
                       {t.name}
                       <span className="text-[#3d7a29]">· {t.members.length}</span>
                     </button>
-                    {/* Edit — load roster + name back in to update it in place. */}
+                    {/* Edit, load roster + name back in to update it in place. */}
                     <button
                       type="button"
                       onClick={() => loadTeam(t, { editing: true })}
@@ -695,7 +695,7 @@ function BatchPayoutSheet({
             </div>
           )}
 
-          {/* CSV upload — drag-drop target + file picker */}
+          {/* CSV upload, drag-drop target + file picker */}
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -738,7 +738,7 @@ function BatchPayoutSheet({
             </button>
           </div>
 
-          {/* Manual person cards — the primary path */}
+          {/* Manual person cards, the primary path */}
           <div>
             <Eyebrow className="mb-2.5 block">Recipients</Eyebrow>
             <div className="space-y-2.5">
@@ -778,7 +778,7 @@ function BatchPayoutSheet({
             )}
           </div>
 
-          {/* Paste a list — quieter disclosure */}
+          {/* Paste a list, quieter disclosure */}
           <div className="rounded-2xl border border-[#15300c]/10 bg-white/60 backdrop-blur-sm">
             <button
               type="button"
@@ -801,7 +801,7 @@ function BatchPayoutSheet({
                   className="w-full resize-y rounded-xl border border-[#15300c]/15 bg-white/60 px-3.5 py-2.5 font-mono text-[13px] text-[#15300c] outline-none backdrop-blur-sm placeholder:text-[#3d7a29] focus:ring-2 focus:ring-[#3d7a29]/45"
                 />
                 <p className="text-[12px] text-[#3d7a29]">
-                  One per line: handle,amount,label — e.g. @alice,500,Design · label optional
+                  One per line: handle,amount,label, e.g. @alice,500,Design · label optional
                 </p>
                 {pasteText.trim() && (
                   <GlassPill
@@ -877,7 +877,7 @@ function BatchPayoutSheet({
             </span>
             <span
               className="text-[22px] font-semibold text-[#15300c]"
-              style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
             >
               {formatUsd(total, { fixed: true })}
             </span>
@@ -917,7 +917,7 @@ function BatchPayoutSheet({
                   </span>
                   <span
                     className="shrink-0 text-[14px] font-semibold text-[#15300c]"
-                    style={{ fontVariantNumeric: "tabular-nums" }}
+                    style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                   >
                     {formatUsd(l.amount, { fixed: true })}
                   </span>
@@ -932,13 +932,13 @@ function BatchPayoutSheet({
               <MicroLabel>Total to {validLegs.length} {validLegs.length === 1 ? "person" : "people"}</MicroLabel>
               <span
                 className="text-[22px] font-semibold text-[#15300c]"
-                style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
               >
                 {formatUsd(total, { fixed: true })}
               </span>
             </div>
             <p className="mt-1.5 text-[12px] text-[#3d7a29]">
-              One atomic transaction — everyone gets paid, or no one does. Gas is
+              One atomic transaction, everyone gets paid, or no one does. Gas is
               sponsored by Talise.
             </p>
           </div>
@@ -1004,7 +1004,7 @@ function RecipientCard({
             placeholder="0.00"
             aria-label="Amount"
             className="w-full bg-transparent pl-1 text-right text-[14px] text-[#15300c] outline-none placeholder:text-[#3d7a29]"
-            style={{ fontVariantNumeric: "tabular-nums" }}
+            style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
           />
         </div>
       </div>

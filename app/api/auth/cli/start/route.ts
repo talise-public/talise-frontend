@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 /**
  * Kick off the CLI OAuth flow (`talise login`).
  *
- * Identical zkLogin binding to `/api/auth/mobile/start` — generate maxEpoch +
+ * Identical zkLogin binding to `/api/auth/mobile/start`, generate maxEpoch +
  * randomness, compute the canonical zkLogin nonce from the CLI's ephemeral
  * pubkey, send THAT to Google as the OIDC nonce, and stash the (pubkey,
  * maxEpoch, randomness) triple in a signed binding cookie so the callback can
@@ -24,7 +24,7 @@ export const runtime = "nodejs";
  * `http://127.0.0.1:<port>` instead of the `talise://` app scheme.
  *
  * The CLI holds the ephemeral PRIVATE key (never sent here); it signs sends
- * locally and the server assembles the zkLogin proof — same non-custodial model
+ * locally and the server assembles the zkLogin proof, same non-custodial model
  * as the apps.
  */
 const STATE_BINDING_COOKIE = "talise_m1_binding";
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   if (ephemeralPubKeyRaw.length < 8 || ephemeralPubKeyRaw.length > 256) {
     return NextResponse.json({ error: "bad ephemeralPubKey" }, { status: 400 });
   }
-  // Loopback port only — the callback will redirect the bearer to 127.0.0.1:<port>.
+  // Loopback port only, the callback will redirect the bearer to 127.0.0.1:<port>.
   const port = Number(portRaw);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) {
     return NextResponse.json({ error: "bad port" }, { status: 400 });

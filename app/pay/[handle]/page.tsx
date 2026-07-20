@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { PublicPay } from "@/components/app/pay/PublicPay";
 
 /**
- * /pay/<handle> — the PUBLIC, ungated payment page.
+ * /pay/<handle>, the PUBLIC, ungated payment page.
  *
  * The shareable target of a Talise payment link. It deliberately does NOT
  * resolve the recipient server-side (the resolve endpoint is authed and we
  * don't leak the handle table to crawlers). It renders the handle + optional
  * amount/memo from the URL and routes the visitor into the in-app send flow
- * with the recipient prefilled — sign-in is handled there.
+ * with the recipient prefilled, sign-in is handled there.
  *
  * In Next 15, `params` and `searchParams` are async.
  */
@@ -49,7 +49,7 @@ export async function generateMetadata({
   const name = prettyName(slug);
   const title = amt != null ? `Pay ${name} $${amt.toFixed(2)} · Talise` : `Pay ${name} · Talise`;
   const description =
-    "Pay on Talise — a gasless dollar wallet on Sui. Settles in seconds, no gas, no seed phrase.";
+    "Pay on Talise, a gasless dollar wallet on Sui. Settles in seconds, no gas, no seed phrase.";
   return {
     title,
     description,

@@ -6,7 +6,7 @@ import { ensureShieldSchema, maxLeafIndex, type ShieldMerkleCacheRow } from "@/l
 import { memoTtl } from "@/lib/perf-cache";
 
 /**
- * Talise shielded-pool — incremental height-26 Merkle tree + path service
+ * Talise shielded-pool, incremental height-26 Merkle tree + path service
  * (Workstream C).
  *
  * Pure-TS port of `move/talise-privacy/sources/merkle.move`. The two MUST agree
@@ -15,7 +15,7 @@ import { memoTtl } from "@/lib/perf-cache";
  *
  * THE Poseidon (the make-or-break detail): `poseidon2(a,b)` here is
  * `@mysten/sui/zklogin`'s `poseidonHash([a,b])`, which is the circomlib /
- * `poseidon-lite` BN254 Poseidon — byte-identical to `sui::poseidon_bn254`.
+ * `poseidon-lite` BN254 Poseidon, byte-identical to `sui::poseidon_bn254`.
  * This is VERIFIED, not stubbed: the on-chain `empty_subtree_hashes` recurrence
  * `H[i] = poseidon2(H[i-1], H[i-1])` reproduces the committed constants exactly
  * (see EMPTY_SUBTREE_HASHES below + the constants.move source). `@mysten/sui` is
@@ -34,14 +34,14 @@ export const HEIGHT = 26;
 /**
  * The all-ZERO leaf value. This is the Tornado-Nova / Vortex ZERO_VALUE
  * (keccak("tornado") mod p), which is exactly `empty_subtree_hashes[0]` in
- * constants.move — the leaf-level entry of the empty-subtree series. A dummy
+ * constants.move, the leaf-level entry of the empty-subtree series. A dummy
  * (unused) input note uses this as its leaf and an all-ZERO path.
  */
 export const ZERO_VALUE =
   18688842432741139442778047327644092677418528270738216181718229581494125774932n;
 
 /**
- * BN254 scalar field modulus — every leaf / node must be a field element.
+ * BN254 scalar field modulus, every leaf / node must be a field element.
  * Mirrors `constants::bn254_field_modulus!()`.
  */
 export const BN254_FIELD_MODULUS =
@@ -53,7 +53,7 @@ export const BN254_FIELD_MODULUS =
  * index i = poseidon2(H[i-1], H[i-1]); index 26 = the empty-tree root.
  *
  * These are DERIVED, not arbitrary: `rederiveEmptySubtreeHashes()` recomputes
- * them from ZERO_VALUE via this module's poseidon2 and asserts equality — the
+ * them from ZERO_VALUE via this module's poseidon2 and asserts equality, the
  * TS-side half of the Poseidon byte-match gate.
  */
 export const EMPTY_SUBTREE_HASHES: readonly bigint[] = [
@@ -90,7 +90,7 @@ export const EMPTY_SUBTREE_HASHES: readonly bigint[] = [
  * poseidon2(a, b) == `sui::poseidon::poseidon_bn254(&vector[a, b])`.
  *
  * Backed by `@mysten/sui/zklogin`'s `poseidonHash`, which wraps the
- * `poseidon-lite` circomlib BN254 Poseidon. NOT a stub — verified
+ * `poseidon-lite` circomlib BN254 Poseidon. NOT a stub, verified
  * byte-identical to the on-chain hash (see module doc + `selfTest()`).
  */
 export function poseidon2(a: bigint, b: bigint): bigint {
@@ -141,7 +141,7 @@ export function selfTest(): boolean {
 /**
  * Serializable frontier state. `subtrees[i]` is the cached left-sibling hash
  * at level i (exactly `MerkleTree.subtrees` on chain); `nextIndex` is the next
- * leaf slot (always even — leaves go in pairs). `root` is the current root.
+ * leaf slot (always even, leaves go in pairs). `root` is the current root.
  */
 export interface TreeState {
   nextIndex: number;
@@ -149,7 +149,7 @@ export interface TreeState {
   root: string; // u256 decimal string
 }
 
-/** Fresh empty tree — seeds the frontier from EMPTY_SUBTREE_HASHES, root at top. */
+/** Fresh empty tree, seeds the frontier from EMPTY_SUBTREE_HASHES, root at top. */
 export function emptyTree(): TreeState {
   const subtrees: string[] = [];
   for (let i = 0; i < HEIGHT; i++) subtrees.push(EMPTY_SUBTREE_HASHES[i].toString());
@@ -161,7 +161,7 @@ export function emptyTree(): TreeState {
 }
 
 /**
- * Append two commitments — line-for-line the same frontier walk as
+ * Append two commitments, line-for-line the same frontier walk as
  * `merkle.move::append_pair`. Mutates and returns `state`.
  */
 export function appendPair(state: TreeState, commitment0: bigint, commitment1: bigint): TreeState {
@@ -207,7 +207,7 @@ export function appendPair(state: TreeState, commitment0: bigint, commitment1: b
  * hash for that level, exactly as the on-chain tree implies. Returns
  * `{ levels, root }` where `levels[0]` are the leaves (padded to even).
  *
- * O(n) in the number of populated leaves — fine for the path service, which
+ * O(n) in the number of populated leaves, fine for the path service, which
  * runs off the hot money path and is memoized.
  */
 export function buildLevels(leaves: bigint[]): { levels: bigint[][]; root: bigint } {
@@ -386,7 +386,7 @@ export async function refreshMerkleCache(coinType: string): Promise<string> {
  * lets the prover validate the indexer agrees on its placement. Memoized
  * (`memoTtl`, 10s) keyed by (coinType, leafIndex) since the tree only grows.
  *
- * Throws when the commitment doesn't match the leaf at that index — a
+ * Throws when the commitment doesn't match the leaf at that index, a
  * load-bearing validation: a wrong leaf yields an unspendable proof.
  */
 export async function merklePathForLeaf(
@@ -419,13 +419,13 @@ export async function merklePathForLeaf(
 
   // Pair-partner guard: on-chain `append_pair` writes BOTH leaves of a pair, and
   // a real commitment is NEVER ZERO_VALUE. If the partner is missing/gap-filled,
-  // the deposit's odd leaf hasn't indexed yet — serving a path now would fold the
+  // the deposit's odd leaf hasn't indexed yet, serving a path now would fold the
   // even leaf against a ZERO_VALUE sibling, yielding a root that never existed
   // on-chain → an unspendable proof that aborts the withdraw. Make the caller
   // keep polling until the whole pair is indexed.
   const partner = leafIndex ^ 1;
   if (partner >= leaves.length || leaves[partner] === ZERO_VALUE) {
-    throw new Error("pair-partner not indexed yet — still indexing");
+    throw new Error("pair-partner not indexed yet, still indexing");
   }
 
   return memoTtl(`shield-path:${coinType}:${leafIndex}:${leaves.length}`, 10_000, async () =>

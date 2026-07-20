@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  * bank/ACH must be the default and card a surcharged convenience tier).
  *
  * Static metadata is always returned. When `?amount=` is a positive USD value,
- * each method also carries a `quote` with the exact fee for that amount — card
+ * each method also carries a `quote` with the exact fee for that amount, card
  * shows ~2.9% + $0.30 passed through explicitly, bank rails show $0.
  *
  * Returns the methods in display order (bank first, card last) plus the

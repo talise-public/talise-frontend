@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/me/country  { country: "NG" }
  *
- * Set ONLY the signed-in user's country (ISO alpha-2). Additive + idempotent —
+ * Set ONLY the signed-in user's country (ISO alpha-2). Additive + idempotent -
  * used by the onboarding "Where are you?" step and a profile edit. Deliberately
  * does NOT set account_type (that's /api/onboarding's job, which 409s once set),
  * so this never interferes with account completion / the sign-up flow.

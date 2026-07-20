@@ -55,7 +55,7 @@ export function HistoryRow({
         data-direction="sent"
         className="talise-history-row group relative flex w-full items-center gap-3 px-3 py-3 text-left transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.995]"
       >
-        {/* Bank/withdraw chip — coral disc (money out) */}
+        {/* Bank/withdraw chip, coral disc (money out) */}
         <span
           className="flex size-9 shrink-0 items-center justify-center rounded-full"
           style={{ background: "#FF9E7A" }}
@@ -66,7 +66,7 @@ export function HistoryRow({
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span
             className="truncate text-[14px] font-medium text-[#15300c]"
-            style={{ letterSpacing: "-0.01em" }}
+            style={{ letterSpacing: "-0.05em" }}
           >
             {bank ? `Cash out → ${bank}` : "Cash out"}
           </span>
@@ -80,7 +80,7 @@ export function HistoryRow({
         <span className="flex shrink-0 flex-col items-end gap-1 pl-2">
           <span
             className="whitespace-nowrap text-[15px] font-semibold tabular-nums"
-            style={{ color: "#c0532f", letterSpacing: "-0.02em" }}
+            style={{ color: "#c0532f", letterSpacing: "-0.05em" }}
           >
             −{hidden ? MASK_AMOUNT : formatNgn(offramp.amountNgn)}
           </span>
@@ -113,14 +113,14 @@ export function HistoryRow({
       data-direction={directionAttr(category)}
       className="talise-history-row group relative flex w-full items-center gap-3 px-3 py-3 text-left transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.995]"
     >
-      {/* Direction chip — circular, size-9 (36px) */}
+      {/* Direction chip, circular, size-9 (36px) */}
       <DirectionBadge category={category} />
 
       {/* Title + sublabel */}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
           className="truncate text-[14px] font-medium text-[#15300c]"
-          style={{ letterSpacing: "-0.01em" }}
+          style={{ letterSpacing: "-0.05em" }}
         >
           {titleOf(row)}
         </span>
@@ -131,7 +131,7 @@ export function HistoryRow({
         </span>
       </span>
 
-      {/* Amount — tabular, semibold for inflow (forest), medium for outflow (ink) */}
+      {/* Amount, tabular, semibold for inflow (forest), medium for outflow (ink) */}
       <span className="relative shrink-0 pl-2">
         <Amount row={row} formatLocal={formatLocal} hidden={hidden} />
       </span>
@@ -186,7 +186,7 @@ function Amount({
     return (
       <span
         className={`whitespace-nowrap text-[15px] font-semibold tabular-nums ${inflow ? "text-[#3d7a29]" : "text-[#15300c]"}`}
-        style={{ letterSpacing: "-0.02em" }}
+        style={{ letterSpacing: "-0.05em" }}
       >
         {inflow ? "+" : "−"}
         {MASK_AMOUNT}
@@ -207,7 +207,7 @@ function Amount({
     }
     const text =
       legs.length === 0
-        ? "—"
+        ? "-"
         : legs.length === 1
           ? `→ ${legs[0]}`
           : `${legs[0]} → ${legs[1]}`;
@@ -232,13 +232,13 @@ function Amount({
   } else if (row.amountSui != null) {
     text = `${prefix}${Math.abs(row.amountSui).toFixed(4).replace(/\.?0+$/, "")} SUI`;
   } else {
-    text = `${prefix}—`;
+    text = `${prefix}-`;
   }
 
   return (
     <span
       className={`whitespace-nowrap text-[15px] tabular-nums ${weight} ${color}`}
-      style={{ letterSpacing: "-0.02em" }}
+      style={{ letterSpacing: "-0.05em" }}
     >
       {text}
     </span>

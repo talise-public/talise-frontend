@@ -6,7 +6,7 @@ import { suiscanTxUrl } from "@/lib/sui";
 export const runtime = "nodejs";
 
 /**
- * POST /api/requests/[id]/pay — settle a payment request by on-chain digest.
+ * POST /api/requests/[id]/pay, settle a payment request by on-chain digest.
  *
  * Body: { digest, payerAddress? }. Can be called WITHOUT auth (a public payer
  * who paid the requester directly) OR authed right after an in-app pay. The
@@ -47,7 +47,7 @@ export async function POST(
       ? body.payerAddress.trim()
       : null;
 
-  // Per-request rate limit — settlement does an RPC round-trip, so cap retries.
+  // Per-request rate limit, settlement does an RPC round-trip, so cap retries.
   const rl = await rateLimitAsync({
     key: `request-pay:${id}`,
     limit: 30,

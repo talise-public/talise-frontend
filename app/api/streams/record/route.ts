@@ -20,14 +20,14 @@ export const runtime = "nodejs";
  * picks it up.
  *
  *   • ESCROW path (STREAM_PACKAGE_ID unset): the funding tx is a plain USDsui
- *     send into the escrow address — there's no on-chain Stream object, so we
+ *     send into the escrow address, there's no on-chain Stream object, so we
  *     mint a server-side `str_…` id and trust the client-forwarded funding
  *     digest + plan (which the server itself produced in create-prepare and
  *     the limits ledger already reserved).
  *   • ON-CHAIN path (streamOnchainEnabled): the funding tx was a SPONSORED
  *     `stream::create<USDSUI>` that shared a real Stream<USDSUI> object. We
  *     parse the created object id from the confirmed funding digest (via the
- *     gRPC tx read) and store THAT as the stream's id — the cron then releases
+ *     gRPC tx read) and store THAT as the stream's id, the cron then releases
  *     tranches against the real on-chain object. If the object can't be parsed
  *     (tx not yet indexed / failed), we reject so we never persist a synthetic
  *     id for an on-chain stream.
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Streaming is on-chain only now (escrow rail retired) — gate on the same
+  // Streaming is on-chain only now (escrow rail retired), gate on the same
   // condition as create-prepare so funding + record agree. Requiring the escrow
   // key here would 503 every on-chain stream right after a successful funding.
   if (!streamOnchainEnabled()) {

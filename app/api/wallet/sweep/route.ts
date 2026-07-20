@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/wallet/sweep
  *
- * "Convert all to USDsui" — bulk swap of plain-wallet (NOT vault) coins
+ * "Convert all to USDsui", bulk swap of plain-wallet (NOT vault) coins
  * into USDsui via the Cetus aggregator. The PTB is built by Onara's
  * `/wallet-sweep` route (which carries the aggregator SDK + gRPC
  * client); this proxy just authenticates the caller, attaches the
@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  * Body:
  *   { coins: [{ coinType: string, amount: string (u64 raw) }] }
  *
- * Returns: { bytesB64, sender } — same shape as the vault PTB endpoints,
+ * Returns: { bytesB64, sender }, same shape as the vault PTB endpoints,
  * intended to be fed into `ZkLoginCoordinator.signAndSubmit`.
  */
 export async function POST(req: Request) {

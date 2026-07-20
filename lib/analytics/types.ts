@@ -40,6 +40,26 @@ export type RecentTx = {
   counterpartyName: string | null;
 };
 
+/**
+ * One public, append-only metrics checkpoint. Written when a full index pass
+ * completes and the numbers changed, so /analytics can show a verifiable
+ * timeline of how the network grew. Aggregate-only, never any PII.
+ */
+export type AnalyticsSnapshot = {
+  id: number;
+  createdAt: number;        // epoch ms
+  accounts: number;         // total accounts
+  activeAccounts: number;   // distinct addresses that transacted
+  txCount: number;          // settled on-chain txs
+  volumeUsd: number;        // value moved (sent+swap+withdraw+invest)
+  privateNotes: number;     // shielded commitments
+  privateSpent: number;     // shielded nullifiers
+  cheques: number;
+  streams: number;
+  goals: number;
+  waitlist: number;
+};
+
 export type AnalyticsSummary = {
   totals: {
     users: number;            // total Talise accounts (COUNT users, excl deleted)

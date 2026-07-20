@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 /**
- * /app/activity — full transaction history. The AppShell (from the /app
+ * /app/activity, full transaction history. The AppShell (from the /app
  * layout) provides the responsive chrome; this page renders the activity
  * feature screen inside it.
  */

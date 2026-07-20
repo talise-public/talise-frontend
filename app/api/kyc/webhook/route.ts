@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * THIS CLOSES THE VERIFICATION LOOP. The POST /api/kyc route records an
  * upgrade INTENT and kicks off the (mock today, Sumsub/Persona later)
  * eKYC check, which resolves asynchronously and almost always lands in
- * `pending`. Nothing promoted `users.kyc_tier` until now — this endpoint
+ * `pending`. Nothing promoted `users.kyc_tier` until now, this endpoint
  * is the only path that does, and only on a provider-signed `approved`
  * verdict tied to a real intent row.
  *
@@ -21,9 +21,9 @@ export const dynamic = "force-dynamic";
  *   `ref` is the opaque provider reference we persisted on the intent.
  *
  * Auth: HMAC-SHA256 over the raw body, hex, in `x-ekyc-signature`, keyed
- * by EKYC_WEBHOOK_SECRET (constant-time compare — same pattern as
+ * by EKYC_WEBHOOK_SECRET (constant-time compare, same pattern as
  * /api/onramp/webhook). When the secret is unset we FAIL CLOSED in
- * production (a tier promotion is a privilege escalation — never accept
+ * production (a tier promotion is a privilege escalation, never accept
  * it unsigned in prod) but allow in dev with a loud warning so the loop
  * is testable locally.
  *
@@ -37,7 +37,7 @@ function verifySignature(rawBody: string, sigHeader: string | null): "ok" | "mis
   if (!secret) {
     if (process.env.NODE_ENV === "production") return "bad";
     console.warn(
-      "[kyc/webhook] EKYC_WEBHOOK_SECRET unset — accepting UNSIGNED webhook in dev only. Set it before production; tier promotion must be signed."
+      "[kyc/webhook] EKYC_WEBHOOK_SECRET unset, accepting UNSIGNED webhook in dev only. Set it before production; tier promotion must be signed."
     );
     return "missing-secret-dev";
   }
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   });
   const intent = intentRes.rows[0];
   if (!intent) {
-    // Unknown ref — don't leak whether it ever existed; 404 so the
+    // Unknown ref, don't leak whether it ever existed; 404 so the
     // provider stops retrying against a bad reference.
     return NextResponse.json({ error: "unknown ref" }, { status: 404 });
   }
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
   // Promotion happens ONLY on approval and ONLY as a RAISE. Guard against
   // a stale/out-of-order approval for a lower tier demoting a user who has
   // since cleared a higher one (setUserTier itself is an unconditional
-  // write, reserved for admin use — the raise-only policy lives here).
+  // write, reserved for admin use, the raise-only policy lives here).
   if (status === "approved" && isKycTier(requestedTier) && requestedTier > 0) {
     const current = await getUserTier(userId);
     if (requestedTier > current) {

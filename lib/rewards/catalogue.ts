@@ -1,23 +1,23 @@
 /**
- * Talise Rewards — redemption catalogue (Phase 4).
+ * Talise Rewards, redemption catalogue (Phase 4).
  *
- * Pure constants. No DB, no fetch, no `server-only` pragma — safe to
+ * Pure constants. No DB, no fetch, no `server-only` pragma, safe to
  * import from anywhere on the server (the iOS app reads the filtered
  * catalogue via `/api/rewards/catalogue`, so client code never imports
  * this file directly, but keeping it pure means future-flagging this
  * for a web view is a copy-paste away).
  *
- * v1 inventory is hardcoded. There's no admin UI yet — when the user
+ * v1 inventory is hardcoded. There's no admin UI yet, when the user
  * wants to tune cost / description / availability they edit this file.
  *
  * Fulfillment kinds:
- *   `instant`  — auto-fulfilled at redeem time (no manual work)
- *   `flagged`  — stored as metadata on the redemption row; a future
+ *   `instant`, auto-fulfilled at redeem time (no manual work)
+ *   `flagged`, stored as metadata on the redemption row; a future
  *                policy check reads it (e.g. fx_boost_until_ms). The
  *                redemption row's `status` flips to `fulfilled` at
  *                redeem time but the *effect* is deferred to other
  *                code paths that honor the metadata.
- *   `pending`  — requires manual outbound action (e.g. payout). The
+ *   `pending`, requires manual outbound action (e.g. payout). The
  *                redemption row sits at `pending` until an operator
  *                flips it.
  */
@@ -25,7 +25,7 @@
 export type RedeemKind = "instant" | "flagged" | "pending";
 
 export interface RedeemSKU {
-  /** Stable id — never reuse for a different perk. */
+  /** Stable id, never reuse for a different perk. */
   sku: string;
   /** Card title shown on iOS. */
   label: string;
@@ -33,14 +33,14 @@ export interface RedeemSKU {
   description: string;
   /** Cost in points (positive integer). */
   pointsCost: number;
-  /** Fulfillment kind — drives status assignment on redeem. */
+  /** Fulfillment kind, drives status assignment on redeem. */
   kind: RedeemKind;
   /** False = hidden from the API response (kill switch). */
   enabled: boolean;
   /** Optional SF Symbol used by the iOS card. */
   icon?: string;
   /**
-   * Optional tier gate — when set, the SKU is hidden / locked for users
+   * Optional tier gate, when set, the SKU is hidden / locked for users
    * below this tier. Phase 4 ships without any tier gates, but the
    * field is here so future entries can use it.
    */
@@ -49,7 +49,7 @@ export interface RedeemSKU {
    * True = the user can hold multiple active copies (e.g. donations).
    * Default false: re-redeeming the same SKU while one is still active
    * is rejected by lib/rewards/redeem.ts. (The 5-minute debounce is a
-   * separate concern — that one fires regardless of stackability.)
+   * separate concern, that one fires regardless of stackability.)
    */
   stackable?: boolean;
   /**
@@ -66,7 +66,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * v1 catalogue. Stripped to a single redeemable: airtime credit.
  *
  * The earlier multi-SKU set (fee waiver, FX boost, tier skip, early
- * access, UNICEF donation) felt aspirational — none of them tied to
+ * access, UNICEF donation) felt aspirational, none of them tied to
  * something the African-corridor user wakes up wanting. Airtime is
  * universally desired in the target market and concrete enough that
  * users immediately understand the points-→-perk loop.

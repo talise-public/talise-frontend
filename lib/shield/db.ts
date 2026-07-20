@@ -3,7 +3,7 @@ import "server-only";
 import { db, ensureSchema, schemaVersionGate } from "@/lib/db";
 
 /**
- * Talise shielded-pool — Postgres schema (Workstream C).
+ * Talise shielded-pool, Postgres schema (Workstream C).
  *
  * Self-bootstrapping feature schema, mirroring the cheques / streams
  * precedent (lib/streams.ts ensureStreamsSchema): a once-per-process promise
@@ -48,7 +48,7 @@ export function ensureShieldSchema(): Promise<void> {
     // `encrypted_output` are stored as TEXT: the commitment is a u256
     // decimal string (out of JS-number range), the ciphertext a 0x-hex
     // blob the recipient trial-decrypts. `event_seq` is the global event
-    // ordering key (UNIQUE) — the indexer's idempotency guard so a replayed
+    // ordering key (UNIQUE), the indexer's idempotency guard so a replayed
     // poll page is a no-op via ON CONFLICT.
     await c.execute(
       `CREATE TABLE IF NOT EXISTS shield_commitments (
@@ -64,7 +64,7 @@ export function ensureShieldSchema(): Promise<void> {
         PRIMARY KEY (coin_type, leaf_index)
       )`
     );
-    // BUGFIX: a UNIQUE index on event_seq ALONE was wrong — event_seq is the
+    // BUGFIX: a UNIQUE index on event_seq ALONE was wrong, event_seq is the
     // PER-TX event index ("0","1",…), NOT globally unique, so every commitment
     // after the first tx collided and was silently dropped (only 2 leaves ever
     // persisted while 20 sat on-chain). Idempotency is the PK (coin_type,
@@ -91,7 +91,7 @@ export function ensureShieldSchema(): Promise<void> {
         PRIMARY KEY (coin_type, nullifier)
       )`
     );
-    // Same bug as commitments — event_seq is not globally unique. Idempotency
+    // Same bug as commitments, event_seq is not globally unique. Idempotency
     // is the PK (coin_type, nullifier). Drop the broken index.
     await c.execute(`DROP INDEX IF EXISTS uniq_shield_nullifiers_event_seq`);
 
@@ -141,13 +141,13 @@ export function ensureShieldSchema(): Promise<void> {
     );
 
     // ── shield_identity ──────────────────────────────────────────────
-    // Per-user shield-identity directory — the off-chain lookup rail for
+    // Per-user shield-identity directory, the off-chain lookup rail for
     // hidden-amount transfers. A sender resolves a recipient by their public
     // `sui_address` to get the recipient's shield SPENDING pubkey + enc pubkey
     // (both PUBLIC keys, never on-chain). PK (user_id) keeps re-publish an
     // idempotent UPSERT; the sui_address index serves the recipient lookup.
-    //   pubkey     — Poseidon1(spendingKey) as a u256 decimal string.
-    //   enc_pubkey — 0x04-prefixed uncompressed P-256 point (0x04 + 128 hex).
+    //   pubkey   , Poseidon1(spendingKey) as a u256 decimal string.
+    //   enc_pubkey, 0x04-prefixed uncompressed P-256 point (0x04 + 128 hex).
     await c.execute(
       `CREATE TABLE IF NOT EXISTS shield_identity (
         user_id     TEXT PRIMARY KEY,

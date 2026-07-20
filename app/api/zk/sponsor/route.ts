@@ -16,13 +16,13 @@ export const runtime = "nodejs";
  * POST /api/zk/sponsor
  *
  * Trip 1 of the sponsored flow. Our gas station is Onara
- * (https://github.com/unconfirmedlabs/onara) — a Cloudflare-Workers policy
+ * (https://github.com/unconfirmedlabs/onara), a Cloudflare-Workers policy
  * server that signs as gasOwner. Client sends the transaction-kind bytes;
  * we ask Onara for the sponsor address, build the full TransactionData with
  * the sponsor as gasOwner, and return the bytes for the user to sign.
  *
  * The actual sponsor signing happens server-side in Onara when we POST the
- * user-signed bytes to /sponsor — Onara enforces policy, signs, broadcasts.
+ * user-signed bytes to /sponsor, Onara enforces policy, signs, broadcasts.
  */
 export async function POST(req: Request) {
   const onaraUrl = process.env.ONARA_URL;
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const client = sui();
     const net = network();
 
-    // Make sure the Payment Kit registry exists on chain — otherwise the
+    // Make sure the Payment Kit registry exists on chain, otherwise the
     // user's tx would abort the moment it calls processRegistryPayment.
     // Idempotent + memoized: after the first successful call this is a
     // <1ms cache hit. Fired alongside the warmup checks so we don't pay
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
       );
     });
 
-    // Parallelize the two cold round-trips. Both are cached for 60s — the
+    // Parallelize the two cold round-trips. Both are cached for 60s, the
     // sponsor address rarely changes and reference gas price is
     // epoch-scoped (~24h). On cache hits each resolves in <1ms.
     const [{ address: sponsor }, gasPrice] = await Promise.all([
@@ -105,10 +105,10 @@ export async function POST(req: Request) {
     tx.setSender(user.sui_address);
     tx.setGasOwner(sponsor);
     // Pre-set gas price so `tx.build()` skips the `getReferenceGasPrice`
-    // RPC. Sponsor's gas coin lookup still happens — Onara doesn't expose
+    // RPC. Sponsor's gas coin lookup still happens, Onara doesn't expose
     // its coin objectRefs, so we can't skip that part.
     tx.setGasPrice(BigInt(gasPrice));
-    // Explicit gas budget — see web/app/api/send/sponsor-prepare/route.ts for
+    // Explicit gas budget, see web/app/api/send/sponsor-prepare/route.ts for
     // the full rationale. Without it the SDK can auto-select only the sponsor's
     // dust Coin<SUI> and bake a budget it can't cover → Onara simulate rejects
     // with "Insufficient gas". A generous fixed cap forces selection to pull in
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     console.log(
       `[zk/sponsor] status+price(par)=${tStatus - t0}ms · tx.build=${tBuild - tStatus}ms · total=${tBuild - t0}ms`
     );
-    // Verification log — uniform shape across every sponsored leg so
+    // Verification log, uniform shape across every sponsored leg so
     // production routing (earn supply / withdraw / withdraw-earned, plus
     // any future sponsored consumer of this endpoint) is greppable as
     // `mode=sponsored sponsor=<addr> gasPrice=<n>`. Per the

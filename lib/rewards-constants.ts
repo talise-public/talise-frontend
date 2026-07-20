@@ -1,5 +1,5 @@
 /**
- * Talise rewards policy — pure constants + presentation helpers.
+ * Talise rewards policy, pure constants + presentation helpers.
  *
  * No DB, no fetch, no `server-only` directive. Safe to import from client
  * components (RewardsPanel, OnboardingFlow). The server-side helpers
@@ -21,9 +21,9 @@ export const POINTS = {
   FIRST_SEND: 500,
   /** Personal first `name@talise` claim. */
   FIRST_CLAIM: 250,
-  /** Per $100 USDsui sent — fired by the volume hook. */
+  /** Per $100 USDsui sent, fired by the volume hook. */
   VOLUME_PER_100_USDSUI: 100,
-  /** Daily activity streak — placeholder, not yet wired. */
+  /** Daily activity streak, placeholder, not yet wired. */
   STREAK_DAILY: 50,
 } as const;
 

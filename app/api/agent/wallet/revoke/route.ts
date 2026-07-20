@@ -4,7 +4,7 @@ import { agentWalletsEnabled, revokeAgentWallet } from "@/lib/agent-wallets";
 
 export const runtime = "nodejs";
 
-/** POST /api/agent/wallet/revoke — revoke one of the caller's agent wallets. Body: { id }. */
+/** POST /api/agent/wallet/revoke, revoke one of the caller's agent wallets. Body: { id }. */
 export async function POST(req: Request) {
   if (!agentWalletsEnabled()) {
     return NextResponse.json({ error: "Agent wallets are not enabled.", code: "AGENT_WALLETS_OFF" }, { status: 503 });

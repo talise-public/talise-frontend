@@ -30,7 +30,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * SUI/USD spot is a global value — every user sees the same number, so
+ * SUI/USD spot is a global value, every user sees the same number, so
  * cache it process-wide. DeepBook level-2 quotes cost 800-2000ms; serving
  * a 45s-old price is fine for a balance display (the headline number is
  * USDsui anyway, and the SUI side is sweep-banner UX). With this cache,
@@ -50,18 +50,18 @@ function cachedSuiUsdcPrice(): Promise<number> {
 // `balances` field is a `Bag<vector<u8>, Balance<T>>`. Coin types written
 // by Move's `type_name::get<T>()` arrive in the FULL canonical form
 //   "0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
-// (no `0x`, address left-padded to 64 hex chars). Wallet RPC calls — and
-// our `USDSUI_TYPE` constant — use the SHORT form
+// (no `0x`, address left-padded to 64 hex chars). Wallet RPC calls, and
+// our `USDSUI_TYPE` constant, use the SHORT form
 //   "0x44f838…::usdsui::USDSUI"
 // So we canonicalize both sides before comparing. We keep the SHORT form
 // (matches `USDSUI_TYPE`, `0x2::sui::SUI`, the Sui SDK default, and what
-// the iOS app would see if it ever asked for the breakdown — which it
+// the iOS app would see if it ever asked for the breakdown, which it
 // currently doesn't, but the response shape stays consistent).
 
 /**
  * Normalize a Move type tag to short form: lowercase, drop the `0x`
  * prefix on the address half, strip leading zeros (keeping one), then
- * re-add `0x`. `<addr>::module::Name` shape only — anything else returns
+ * re-add `0x`. `<addr>::module::Name` shape only, anything else returns
  * unchanged.
  */
 function canonicalizeTypeTag(t: string): string {
@@ -113,7 +113,7 @@ function extractBalanceValue(json: unknown): bigint {
  * Read the vault's Bag<vector<u8>, Balance<T>> and fold SUI/USDsui
  * entries into wallet-equivalent totals. Other coin types are ignored
  * for `totalUsd` because the wallet path doesn't price arbitrary coins
- * either — keeping symmetry.
+ * either, keeping symmetry.
  *
  * 10s memo matches `/api/vault/state` (the bag is also re-read there;
  * underlying GraphQL responses share a process-wide cache anyway, so
@@ -123,7 +123,7 @@ async function readVaultTotals(vaultId: string): Promise<VaultTotals> {
   return memoTtl(`vault-balances:${vaultId}`, 10_000, async () => {
     const totals: VaultTotals = { usdsui: 0, sui: 0 };
 
-    // Step 1 — vault contents to discover the bag UID. Reuses the
+    // Step 1, vault contents to discover the bag UID. Reuses the
     // existing query so the GraphQL cache is shared with /api/vault/state.
     const headData = await gql<GraphQLVaultAndCapsResponse>(
       VAULT_AND_CAPS_QUERY,
@@ -141,7 +141,7 @@ async function readVaultTotals(vaultId: string): Promise<VaultTotals> {
     const bagId = extractBagId(headData.vault?.asMoveObject?.contents?.json);
     if (!bagId) return totals;
 
-    // Step 2 — walk the bag's dynamic fields, fold matching coin types.
+    // Step 2, walk the bag's dynamic fields, fold matching coin types.
     let cursor: string | null = null;
     do {
       const data: GraphQLBagDynamicFieldsResponse =
@@ -180,10 +180,10 @@ async function readVaultTotals(vaultId: string): Promise<VaultTotals> {
 }
 
 /**
- * GET /api/balances — wallet + vault balance snapshot for the authed user.
+ * GET /api/balances, wallet + vault balance snapshot for the authed user.
  *
  * Critical path is USDsui (the only unit iOS displays). SUI balance +
- * spot price are returned alongside but populated in the background —
+ * spot price are returned alongside but populated in the background -
  * the sweep banner / future flows use them, but they shouldn't gate
  * the headline number.
  *
@@ -194,7 +194,7 @@ async function readVaultTotals(vaultId: string): Promise<VaultTotals> {
  *   readVaultTotals:    ~300-800ms  (2 GraphQL hits, 10s memo)
  *
  * The vault read runs alongside the wallet reads. If the vault read
- * fails for any reason we log and return wallet-only totals — a vault
+ * fails for any reason we log and return wallet-only totals, a vault
  * hiccup should never 500 the headline-balance endpoint.
  */
 // ───────────────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ type BalancesPayload = {
 };
 
 /**
- * SUI/USDC spot — a GLOBAL value (same for every user). Prefer the shared
+ * SUI/USDC spot, a GLOBAL value (same for every user). Prefer the shared
  * Postgres row so cold instances never pay the 800-2000ms DeepBook quote;
  * fall back to the (capped) live quote only when the row is missing, and
  * warm the row in the background when it's stale.
@@ -236,7 +236,7 @@ async function resolveSuiPrice(): Promise<number> {
     }
     return g.value;
   }
-  // No usable row yet — pay the capped live quote once, then persist.
+  // No usable row yet, pay the capped live quote once, then persist.
   const live = await withTimeout(cachedSuiUsdcPrice(), 600, 0);
   if (live > 0) refreshInBackground(async () => setGlobalNum("sui_usdc_price", live));
   return live;
@@ -248,11 +248,11 @@ async function resolveSuiPrice(): Promise<number> {
  * and displayed as ₦0 to a user holding $22.84):
  *
  *   1. FAILURE THROWS. A failed read must never be mistaken for "the chain
- *      says zero" — the caller skips the snapshot write-through and serves
+ *      says zero", the caller skips the snapshot write-through and serves
  *      the freshest prior snapshot instead.
  *   2. ZERO-CONFIRMATION. If the read says 0 but the previous snapshot was
  *      meaningfully nonzero, re-verify against a DIRECT fullnode before
- *      believing it (the primary read rides Hayabusa, a caching proxy —
+ *      believing it (the primary read rides Hayabusa, a caching proxy -
  *      a stale cached zero must not zero out a funded account).
  */
 async function readHeadlineUsdsui(
@@ -278,7 +278,7 @@ async function readHeadlineUsdsui(
  * The live wallet+vault balance read (the slow path). Folds the vault and
  * resolves the global price, then write-throughs the snapshot so the next
  * load is instant. THROWS when the headline USDsui read fails (secondary
- * slots — SUI, price, vault — still soft-fail to 0).
+ * slots, SUI, price, vault, still soft-fail to 0).
  */
 async function computeLiveBalances(user: {
   id: number;
@@ -396,9 +396,9 @@ export async function GET(req: Request) {
   // No usable snapshot (or ?fresh=1): BOUNDED live chain read. The headline
   // balance is display-only (sends are validated on-chain at build/broadcast,
   // not by this number), so we never let a slow/unhealthy RPC make the user
-  // wait — cap the live read and fall back to the freshest snapshot. The live
+  // wait, cap the live read and fall back to the freshest snapshot. The live
   // promise keeps running and write-throughs the snapshot, so it self-heals.
-  // A FAILED live read (rejection) also falls back to the snapshot — a stale
+  // A FAILED live read (rejection) also falls back to the snapshot, a stale
   // honest number always beats a fabricated $0.
   const LIVE_BUDGET_MS = 4500;
   const livePromise = computeLiveBalances({
@@ -420,7 +420,7 @@ export async function GET(req: Request) {
       { headers: { "Cache-Control": "private, no-store" } }
     );
   }
-  // Live read blew the budget or failed — serve the freshest snapshot we have
+  // Live read blew the budget or failed, serve the freshest snapshot we have
   // (ANY age beats a 40s spinner or a fake zero). A still-in-flight live read
   // will write the snapshot through when it lands.
   if (snap) {
@@ -438,7 +438,7 @@ export async function GET(req: Request) {
       { headers: { "Cache-Control": "private, no-store" } }
     );
   }
-  // Brand-new user with no snapshot at all — wait for the live read. If even
+  // Brand-new user with no snapshot at all, wait for the live read. If even
   // that fails, return zeros explicitly marked source="chain-error" (NOT
   // snapshotted) so the client can treat it as unknown rather than gospel.
   const payload = await liveGuarded;

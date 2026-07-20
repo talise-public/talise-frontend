@@ -1,5 +1,5 @@
 /**
- * Resumable batch indexer — the engine that walks Talise users on-chain a chunk
+ * Resumable batch indexer, the engine that walks Talise users on-chain a chunk
  * at a time.
  *
  * Indexing ~2,000 users' full on-chain tx history is far too much for one HTTP
@@ -12,7 +12,7 @@
  *   4. upserts each user's aggregate + their txs into the recent-tx feed,
  *   5. advances the cursor by however many users were paged; when the cursor
  *      reaches/passes the total it WRAPS to 0 and stamps `full_pass_at`
- *      (done:true — a full pass over every user just completed),
+ *      (done:true, a full pass over every user just completed),
  *   6. trims the recent-tx feed to its bound.
  *
  * Resilient per user: one user's indexing/persistence failure is swallowed so the
@@ -27,13 +27,14 @@ import {
   ensureAnalyticsSchema,
   getCursor,
   recordRecentTxs,
+  recordSnapshotIfChanged,
   setCursor,
   trimRecentTxs,
   upsertUserStat,
 } from "@/lib/analytics/store";
 import type { RecentTx } from "@/lib/analytics/types";
 
-/** Outcome of one batch pass — drives the cron loop + dashboard progress. */
+/** Outcome of one batch pass, drives the cron loop + dashboard progress. */
 export type BatchResult = {
   processed: number; // users paged + attempted this batch
   cursor: number; // cursor AFTER this batch (next offset; 0 if it wrapped)
@@ -53,7 +54,7 @@ const RECENT_TX_KEEP = 2000;
  * Run a concurrency-limited pool over `items`, invoking `worker` for each. Caps
  * in-flight work at `concurrency`; resolves once every item has been processed.
  * The worker is expected to be self-contained and never reject (callers wrap
- * per-item failures), but a rejection here would still surface — so callers pass
+ * per-item failures), but a rejection here would still surface, so callers pass
  * a worker that swallows its own errors.
  */
 async function runPool<T>(
@@ -82,7 +83,7 @@ async function runPool<T>(
 /**
  * Index one user and persist their aggregate + recent txs. Fully self-contained
  * and resilient: any failure (source read, aggregate, or write) is swallowed so
- * the pool — and the batch's cursor advance — is never derailed by a single user.
+ * the pool, and the batch's cursor advance, is never derailed by a single user.
  */
 async function indexAndPersist(
   user: PagedUser,
@@ -156,7 +157,7 @@ export async function runIndexBatch(opts?: {
       ? Math.min(Math.floor(state.cursor), total)
       : 0;
 
-  // Nothing to index (no users at all) — record an empty completed pass.
+  // Nothing to index (no users at all), record an empty completed pass.
   if (total <= 0) {
     await setCursor({
       cursor: 0,
@@ -165,6 +166,7 @@ export async function runIndexBatch(opts?: {
       fullPassAt: indexedAt,
     });
     await trimRecentTxs(RECENT_TX_KEEP);
+    await recordSnapshotIfChanged(indexedAt);
     return { processed: 0, cursor: 0, total, done: true, indexedAt };
   }
 
@@ -176,8 +178,8 @@ export async function runIndexBatch(opts?: {
     await runPool(users, concurrency, (u) => indexAndPersist(u, indexedAt));
   }
 
-  // Advance the cursor. A full page that lands us at/past total — or an empty
-  // page (we were already at the end) — completes a pass and wraps to 0.
+  // Advance the cursor. A full page that lands us at/past total, or an empty
+  // page (we were already at the end), completes a pass and wraps to 0.
   const advanced = startCursor + processed;
   const done = advanced >= total || processed === 0;
   const nextCursor = done ? 0 : advanced;
@@ -191,6 +193,12 @@ export async function runIndexBatch(opts?: {
   });
 
   await trimRecentTxs(RECENT_TX_KEEP);
+
+  // A completed full pass is a checkpoint boundary: snapshot the public metrics
+  // if they moved since the last one, so /analytics gets a fresh timeline step.
+  if (done) {
+    await recordSnapshotIfChanged(indexedAt);
+  }
 
   return { processed, cursor: nextCursor, total, done, indexedAt };
 }

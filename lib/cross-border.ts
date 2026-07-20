@@ -22,7 +22,7 @@ import {
 } from "@/lib/transfers";
 
 /**
- * Cross-border send orchestration — the brain that composes the on-main
+ * Cross-border send orchestration, the brain that composes the on-main
  * primitives (corridor registry, FX feed, KYC tiers, transfers state
  * machine) into a single, real money-movement flow.
  *
@@ -142,7 +142,7 @@ const COUNTED_STATES: ReadonlySet<TransferState> = new Set<TransferState>([
  * Convert a SOURCE-currency amount to USD using the live FX rate table.
  * The table is `units-per-USD`, so `usd = amount / ratesPerUsd[ccy]`. USD
  * itself is 1:1. Returns null if the currency isn't in the live table (the
- * caller maps that to an FX error — we never price money off a missing
+ * caller maps that to an FX error, we never price money off a missing
  * rate). We read the table directly (rather than `getQuote(ccy, USD, …)`)
  * because this is a pure unit conversion for the cap check; the actual
  * priced quote (with corridor spread) comes from `corridorQuote` below.
@@ -270,7 +270,7 @@ export async function quoteCrossBorder(
     };
   }
 
-  // (3) KYC gate — corridor access first (TIER_BLOCKED), then the inline
+  // (3) KYC gate, corridor access first (TIER_BLOCKED), then the inline
   // per-tx / monthly cap (LIMIT_EXCEEDED).
   //
   // Admin bypass: allowlisted accounts (web/lib/admin.ts) are treated as
@@ -359,11 +359,11 @@ export async function quoteCrossBorder(
  *   quoted → debited → onchain_settling
  *
  * From there the destination fiat-out differs by corridor:
- *   • LIVE NG corridor — routes via the Linq off-ramp. The actual Linq
+ *   • LIVE NG corridor, routes via the Linq off-ramp. The actual Linq
  *     payout fires from the broadcast-confirm hook after finality; here we
  *     mark the intent to route via Linq and leave the transfer at
  *     `onchain_settling`. See the clearly-marked integration point.
- *   • PARTNER corridors — advance to `fiat_out_pending` as a documented
+ *   • PARTNER corridors, advance to `fiat_out_pending` as a documented
  *     stub (no live PSP wired yet).
  *
  * Commit-point semantics (transfers.ts): nothing here crosses the on-chain
@@ -385,7 +385,7 @@ export async function confirmCrossBorder(
   if (!transfer) {
     return { ok: false, code: "NOT_FOUND", message: "Transfer not found." };
   }
-  // Ownership check — a transfer can only be confirmed by its owner.
+  // Ownership check, a transfer can only be confirmed by its owner.
   if (transfer.userId !== String(userId)) {
     return { ok: false, code: "FORBIDDEN", message: "You don't own this transfer." };
   }
@@ -427,7 +427,7 @@ export async function confirmCrossBorder(
     // INTEGRATION POINT (LIVE NG corridor → Linq):
     //   The NGN fiat-out is the Linq off-ramp (web/lib/linq.ts +
     //   web/app/api/offramp/linq/*). The route contract here is kept STABLE
-    //   for iOS — the swap is internal-only. We leave the transfer at
+    //   for iOS, the swap is internal-only. We leave the transfer at
     //   `onchain_settling` and let the on-chain-confirm hook advance it.
     //
     //   TODO(linq): wire the Linq payout into the `confirm_onchain` handler.
@@ -440,7 +440,7 @@ export async function confirmCrossBorder(
     return { ok: true, state: settling.transfer.state, transferId: id };
   }
 
-  // PARTNER corridors — documented stub. No live PSP payout is wired, so we
+  // PARTNER corridors, documented stub. No live PSP payout is wired, so we
   // advance the machine through the on-chain commit to `fiat_out_pending`
   // to model the intended terminal-adjacent state. In production the same
   // broadcast-confirm hook gates `confirm_onchain` on real finality; the

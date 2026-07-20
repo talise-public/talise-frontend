@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { publicOrigin } from "@/lib/public-origin";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -30,6 +30,9 @@ export function ReferralCard({
 }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
   if (!code) return null;
   const url = inviteUrl(code);
@@ -39,16 +42,17 @@ export function ReferralCard({
       await navigator.clipboard.writeText(url);
       setCopied(true);
       toast("Invite link copied", "success");
-      setTimeout(() => setCopied(false), 1600);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 1600);
     } catch {
-      toast("Couldn't copy — long-press the code to copy it", "danger");
+      toast("Couldn't copy, long-press the code to copy it", "danger");
     }
   }
 
   async function share() {
     const data = {
       title: "Talise",
-      text: "Join me on Talise — send and save money across borders.",
+      text: "Join me on Talise, send and save money across borders.",
       url,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -56,7 +60,7 @@ export function ReferralCard({
         await navigator.share(data);
         return;
       } catch {
-        // User dismissed the share sheet, or it's unsupported — fall through
+        // User dismissed the share sheet, or it's unsupported, fall through
         // to copy so the action always does *something*.
       }
     }
@@ -67,7 +71,7 @@ export function ReferralCard({
     <GlassCard className="space-y-4 p-7 md:p-9">
       <MicroLabel>Your referral code</MicroLabel>
 
-      {/* Code pill — glass chip with copy action */}
+      {/* Code pill, glass chip with copy action */}
       <button
         type="button"
         onClick={copy}

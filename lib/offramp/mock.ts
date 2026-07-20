@@ -26,7 +26,7 @@ export const DEFAULT_SPREAD_BPS = 25;
 /**
  * Hardcoded fiat-per-USD snapshot for the corridors not yet in
  * `web/lib/fx.ts`. This is a stand-in for the live FX feed the master plan
- * (§2 P0, FX-off-snapshot) calls for — the FX workstream will replace it.
+ * (§2 P0, FX-off-snapshot) calls for, the FX workstream will replace it.
  * Values are an approximate Q2 2026 snapshot and are NOT exported as the
  * app's display rates.
  */
@@ -43,7 +43,7 @@ const MOCK_FX: Record<PayoutCurrency, number> = {
   USD: 1,
 };
 
-/** USDSUI on-chain decimals — mirrors `web/lib/sui.ts`' USDSUI_DECIMALS. */
+/** USDSUI on-chain decimals, mirrors `web/lib/sui.ts`' USDSUI_DECIMALS. */
 const USDSUI_DECIMALS = 6;
 
 /**

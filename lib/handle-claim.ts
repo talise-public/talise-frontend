@@ -11,7 +11,7 @@
  * The label charset is `[a-z0-9-]` (SuiNS subname rules) which is a
  * deliberate divergence from the legacy `lib/handle.ts` USERNAME_RE that
  * also allows `_`. Underscores are reserved on the SuiNS root level so
- * we don't mint them as subnames — the waitlist handle pool is a strict
+ * we don't mint them as subnames, the waitlist handle pool is a strict
  * subset of valid SuiNS labels.
  */
 import "server-only";
@@ -38,7 +38,7 @@ const EXTRA_RESERVED: ReadonlySet<string> = new Set([
   "self",
   "owner",
   "operator",
-  // Admin allowlist handles (lib/admin.ts ADMIN_HANDLES) — MUST stay reserved
+  // Admin allowlist handles (lib/admin.ts ADMIN_HANDLES), MUST stay reserved
   // so claiming one can't escalate to admin (F5). Keep in sync with admin.ts.
   "eromonsele",
   "admin",
@@ -88,7 +88,7 @@ export function normalizeWaitlistHandle(raw: unknown): NormalizeResult {
   let s = raw.trim().toLowerCase();
   if (!s) return { ok: false, reason: "empty" };
   if (s.startsWith("@")) s = s.slice(1);
-  // Be forgiving about common pasted forms — strip the parent suffix
+  // Be forgiving about common pasted forms, strip the parent suffix
   // if the user typed "alice.talise.sui" or "alice@talise" verbatim.
   if (s.endsWith(".talise.sui")) s = s.slice(0, -".talise.sui".length);
   if (s.endsWith("@talise.sui")) s = s.slice(0, -"@talise.sui".length);
@@ -135,8 +135,8 @@ async function isReservedInDb(handle: string): Promise<boolean> {
  * `getNameRecord` RPC is the dominant cost in the live-availability
  * path (each debounced keystroke costs 1–2s). We cache aggressively:
  *
- *   • positive (minted=true)  — 24h. Minted names don't unmint.
- *   • negative (minted=false) — 60s. A free name can flip to taken
+ *   • positive (minted=true), 24h. Minted names don't unmint.
+ *   • negative (minted=false), 60s. A free name can flip to taken
  *     any moment (someone else claims or mints directly), so we
  *     keep the negative window short.
  *
@@ -168,7 +168,7 @@ async function isMintedOnChain(handle: string): Promise<boolean> {
   try {
     const rec = await suins().getNameRecord(`${handle}.talise.sui`);
     // A record exists. Even if targetAddress is null (broken/partial
-    // mint) the name slot is taken — we won't mint again.
+    // mint) the name slot is taken, we won't mint again.
     minted = !!rec;
   } catch {
     minted = false;
@@ -209,7 +209,7 @@ export async function isWaitlistHandleAvailable(
  * existing handle, we skip the claim flow and show a "you already have
  * @<handle>" card pointing them at iOS sign-in.
  *
- * Source of truth is `users.talise_username` — populated by the
+ * Source of truth is `users.talise_username`, populated by the
  * sign-in path's reverse SuiNS lookup. We do NOT live-query the chain
  * here; the column is good enough for the UX gate and DB-fast.
  */
@@ -242,7 +242,7 @@ export async function getExistingUserHandle(
  * LEGACY: Sign-in hook for waitlist rows that were claimed BEFORE the
  * sign-in-required claim rework. New post-rework claims mint
  * synchronously inside `/api/waitlist/handle/claim` and write
- * `handle_bound_user_id` at the same time — for those rows this
+ * `handle_bound_user_id` at the same time, for those rows this
  * function short-circuits to `{ bound: false }` and is a no-op.
  *
  * We keep the hook wired into both `/auth/callback` (web) and
@@ -295,7 +295,7 @@ export async function bindWaitlistHandleIfAny(opts: {
     const handle = row.rows[0]?.claimed_handle as string | undefined;
     if (!handle) return { bound: false };
 
-    // Lazy-import the on-chain mint — keeps the sign-in path cold-start
+    // Lazy-import the on-chain mint, keeps the sign-in path cold-start
     // small for users who never claimed a handle.
     const { mintSubname, suinsOperatorEnabled } = await import("./suins-operator");
     if (!suinsOperatorEnabled()) {
@@ -336,14 +336,14 @@ export async function bindWaitlistHandleIfAny(opts: {
     });
 
     // Also write the canonical bare handle into `users.talise_username`
-    // — the column the existing handle plumbing already reads from.
+    //, the column the existing handle plumbing already reads from.
     try {
       await c.execute({
         sql: "UPDATE users SET talise_username = ? WHERE id = ?",
         args: [handle, Number(opts.userId)],
       });
     } catch (e) {
-      // UNIQUE collision — user already has a different talise_username
+      // UNIQUE collision, user already has a different talise_username
       // (extremely unlikely on first sign-in). Don't roll back the on-
       // chain mint; just log.
       console.warn(
@@ -356,7 +356,7 @@ export async function bindWaitlistHandleIfAny(opts: {
     );
     return { bound: true, handle, digest };
   } catch (err) {
-    // Sign-in MUST NOT block. Log and walk away — the row is still
+    // Sign-in MUST NOT block. Log and walk away, the row is still
     // claimed in DB and will be replayed next sign-in.
     console.warn(
       `[handle-bind] failed for ${email}: ${(err as Error).message}`

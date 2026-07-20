@@ -4,12 +4,12 @@ import { sui } from "./sui";
 import { memoTtl } from "./perf-cache";
 
 /**
- * Reverse SuiNS lookup — given a Sui address, find any `*.talise.sui`
+ * Reverse SuiNS lookup, given a Sui address, find any `*.talise.sui`
  * subname NFTs that address owns. Pure on-chain; no DB.
  *
  * We page the user's owned objects, filter for any whose `display.name`
  * field ends with `.talise.sui`, and return the first match. This
- * deliberately doesn't hardcode the SubDomainRegistration package id —
+ * deliberately doesn't hardcode the SubDomainRegistration package id -
  * SuiNS has shipped multiple subdomain packages over time and the type
  * can vary. The `display.name` is set by the SuiNS Move package's
  * display metadata and is stable across versions.
@@ -34,7 +34,7 @@ export type OwnedSubname = {
  * the SuiNS resolver currently points the name to. Used by the "fix
  * resolution" flow: when a subname was minted before we wired
  * `setTargetAddress` into the mint PTB, the NFT exists but has a null
- * target — these are surfaced here so the user can repair them in one tap.
+ * target, these are surfaced here so the user can repair them in one tap.
  */
 export type OwnedSubnameWithTarget = OwnedSubname & {
   targetAddress: string | null;
@@ -78,7 +78,7 @@ export async function findAllTaliseSubnamesForOwner(
           nftId: o.objectId ?? "",
         });
       }
-      // gRPC: no `hasNextPage` flag — stop when cursor is null.
+      // gRPC: no `hasNextPage` flag, stop when cursor is null.
       if (!r.cursor) break;
       cursor = r.cursor;
     }
@@ -114,7 +114,7 @@ export async function findAllTaliseSubnamesForOwner(
  * SuinsClient.getNameRecord each) costs a few RPC round-trips only on
  * the cold first request, then nothing for the next 5 minutes.
  *
- * The cache lives at module scope and is keyed by lowercased address —
+ * The cache lives at module scope and is keyed by lowercased address -
  * Sui addresses are case-insensitive on the wire but callers normalize
  * inconsistently; lowering here keeps hit-rate high.
  */
@@ -140,7 +140,7 @@ async function _findTaliseSubnameForOwnerUncached(
   // Why: early mints (and any mint where `setTargetAddress` failed) leave
   // a SubDomainRegistration NFT in the wallet with a null SuiNS target.
   // The previous version returned the *first owned* NFT regardless of
-  // whether the name actually resolved on chain — which made Home show
+  // whether the name actually resolved on chain, which made Home show
   // "alice@talise.sui" but Send return "couldn't find" for the same
   // name. We refuse to surface broken handles so Home shows the
   // "Claim your name" CTA and the user can re-claim cleanly.
@@ -196,11 +196,11 @@ async function _findTaliseSubnameForOwnerUncached(
         const rec = await suins.getNameRecord(cand.fullName);
         if (rec?.targetAddress) return cand;
       } catch {
-        // "Object does not exist" / RPC hiccup — keep trying others.
+        // "Object does not exist" / RPC hiccup, keep trying others.
       }
     }
   } catch {
-    // SuinsClient init failed (rare) — be conservative and report none
+    // SuinsClient init failed (rare), be conservative and report none
     // rather than risk surfacing a non-resolvable handle.
   }
   return null;

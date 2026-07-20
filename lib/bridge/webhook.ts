@@ -56,7 +56,7 @@ export type BridgeWebhookVerification =
 
 /**
  * Verify the signature over the RAW body. `maxSkewMs` rejects stale/replayed
- * events (default 10 min) — pass `nowMs` so callers can keep this pure/testable.
+ * events (default 10 min), pass `nowMs` so callers can keep this pure/testable.
  */
 export function verifyBridgeWebhook(
   rawBody: string,
@@ -92,7 +92,7 @@ export function verifyBridgeWebhook(
  *
  * Bridge's OFFICIAL sample is nonstandard: it SHA-256-hashes the signed
  * payload and feeds that DIGEST into an RSA-SHA256 verifier (which hashes
- * again) — i.e. it effectively signs `SHA256(SHA256(payload))`. We try that
+ * again), i.e. it effectively signs `SHA256(SHA256(payload))`. We try that
  * exact form FIRST (it's what their docs show), then fall back to the
  * conventional single-hash form, so verification succeeds whichever Bridge
  * actually uses. Both are constant-work and only run on inbound webhooks.

@@ -5,17 +5,17 @@ import { ensureWorkSchema } from "@/lib/invoices";
 import { streamById, projectStream } from "@/lib/streams";
 
 /**
- * Work contracts — the Work hub's "pay your team" backend.
+ * Work contracts, the Work hub's "pay your team" backend.
  *
  * A contract is an employment/freelance arrangement that pays out via an
  * underlying STREAM (web/lib/streams.ts). The stream does the money movement
  * (escrow-funded, cron-released tranches); this row holds the human-facing
- * arrangement metadata — role title, rate per period, cadence — and links the
+ * arrangement metadata, role title, rate per period, cadence, and links the
  * `stream_id` so the list view can render "pays @alice $X every week for N
  * weeks" without re-deriving it from raw tranche micros.
  *
  * The contract table itself is created by `ensureWorkSchema()` (in
- * web/lib/invoices.ts) — both Work tables share one bootstrap so we never run
+ * web/lib/invoices.ts), both Work tables share one bootstrap so we never run
  * two competing migrations. This module only reads/writes it.
  */
 
@@ -181,7 +181,7 @@ export async function setContractStatus(
  * Merge a contract row with the live state of its underlying stream so the UI
  * gets one object with both the arrangement metadata AND the paid/remaining
  * progress. The stream is the source of truth for money moved; when its row is
- * missing (rare — e.g. a contract recorded before the stream insert landed) we
+ * missing (rare, e.g. a contract recorded before the stream insert landed) we
  * fall back to the contract's own static totals.
  */
 export async function projectContract(
@@ -205,7 +205,7 @@ export async function projectContract(
       streamState = p.state;
     }
   } catch {
-    /* stream read failed — fall back to static contract totals */
+    /* stream read failed, fall back to static contract totals */
   }
 
   return {

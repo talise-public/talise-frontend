@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { LegalPage, LegalSection, LegalList } from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Talise",
+  title: "Terms of Service, Talise",
   description:
     "The terms that apply when you use Talise during the invite-only beta.",
 };
 
 /**
- * /terms — the Talise terms of service for the invite-only beta.
+ * /terms, the Talise terms of service for the invite-only beta.
  *
  * Plain-English and deliberately conservative: no fee promises, no rate
  * claims, honest about self-custody (the user's Google account controls
@@ -24,7 +24,7 @@ export default function TermsOfService() {
     >
       <LegalSection title="Agreeing to these terms">
         <p>
-          These terms apply when you use Talise — the iOS app and the
+          These terms apply when you use Talise, the iOS app and the
           websites at talise.io and app.talise.io. By creating an account or
           using the service, you agree to them. If you don&apos;t agree,
           please don&apos;t use Talise.
@@ -41,7 +41,7 @@ export default function TermsOfService() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Self-custody — your keys, your responsibility">
+      <LegalSection title="Self-custody, your keys, your responsibility">
         <p>
           Talise is a self-custodial wallet. Your wallet keys are derived on
           your device from your Google sign-in using Sui zkLogin.{" "}
@@ -51,7 +51,7 @@ export default function TermsOfService() {
         </p>
         <p>
           Because your Google account controls your wallet, you are
-          responsible for keeping it secure — use a strong password and
+          responsible for keeping it secure, use a strong password and
           two-factor authentication. If you lose access to your Google
           account, or someone else gains access to it, Talise cannot restore
           your wallet or reverse transactions made with it. Blockchain
@@ -61,7 +61,7 @@ export default function TermsOfService() {
 
       <LegalSection title="No financial advice">
         <p>
-          Nothing in Talise — the app, the website, or anything we publish —
+          Nothing in Talise, the app, the website, or anything we publish -
           is financial, investment, legal, or tax advice. You alone decide
           how to use your money.
         </p>
@@ -107,7 +107,7 @@ export default function TermsOfService() {
             </>,
             <>Fraud, scams, money laundering, or financing illegal activity.</>,
             <>
-              Interfering with the service — probing, attacking, or abusing
+              Interfering with the service, probing, attacking, or abusing
               Talise&apos;s systems or other users.
             </>,
           ]}
@@ -122,7 +122,7 @@ export default function TermsOfService() {
         <p>
           During the beta, Talise is provided <strong>as-is</strong> and{" "}
           <strong>as available</strong>, without warranties of any kind,
-          express or implied — including availability, fitness for a
+          express or implied, including availability, fitness for a
           particular purpose, or error-free operation.
         </p>
       </LegalSection>
@@ -132,7 +132,7 @@ export default function TermsOfService() {
           To the maximum extent permitted by law, Talise and its team are not
           liable for indirect, incidental, special, or consequential damages,
           or for loss of funds, profits, or data arising from your use of the
-          service — including losses caused by blockchain networks,
+          service, including losses caused by blockchain networks,
           third-party protocols, payment partners, or loss of access to your
           Google account.
         </p>

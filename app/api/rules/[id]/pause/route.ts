@@ -6,7 +6,7 @@ import { moneyRulesEnabled, pauseRule } from "@/lib/money-rules";
 
 export const runtime = "nodejs";
 
-/** POST /api/rules/[id]/pause — stop a rule from firing. Idempotent + ownership-gated. */
+/** POST /api/rules/[id]/pause, stop a rule from firing. Idempotent + ownership-gated. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ruleId = (id ?? "").trim();

@@ -5,7 +5,7 @@ import { requireAdminApi } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/admin/compliance — read-only window into the compliance &
+ * GET /api/admin/compliance, read-only window into the compliance &
  * treasury tables. `tab` selects which dataset; everything is paginated
  * (pageSize 50) and resilient: a missing/empty table yields an empty
  * page rather than a 500.

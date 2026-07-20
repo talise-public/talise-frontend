@@ -8,11 +8,11 @@ import { SHIELD_RPC } from "./onchain";
  * The relayer/sponsor builds a CLIENT-assembled `transact` PTB whose inputs are
  * `UnresolvedObject`s (the shared `ShieldedPool` + the relayer's zero-coin source,
  * referenced by id only). The gRPC client's built-in resolution is unreliable for
- * these here — in particular it does not reliably mark the SHARED pool object with
+ * these here, in particular it does not reliably mark the SHARED pool object with
  * its `initialSharedVersion` + `mutable`, so `tx.build({ client })` throws and the
  * relayer never submits (the withdraw silently fails and the recipient is never
  * paid). This plugin resolves every `UnresolvedObject` via `sui_multiGetObjects`
- * over JSON-RPC and pins it correctly — SharedObject vs ImmOrOwnedObject — exactly
+ * over JSON-RPC and pins it correctly, SharedObject vs ImmOrOwnedObject, exactly
  * as the proven CLI lifecycle harness does.
  *
  * Usage: `tx.addBuildPlugin(jsonRpcResolutionPlugin()); await tx.build({ client })`.

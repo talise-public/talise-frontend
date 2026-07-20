@@ -37,7 +37,7 @@ export async function GET() {
       const kp = Ed25519Keypair.fromSecretKey(key);
       operatorAddress = kp.getPublicKey().toSuiAddress();
       // gRPC `listBalances` returns every coin the address holds in one
-      // round-trip. Find the SUI row (default to "0" if absent — e.g. a
+      // round-trip. Find the SUI row (default to "0" if absent, e.g. a
       // freshly-derived operator that's never been funded).
       const list = await client.listBalances({ owner: operatorAddress });
       const suiRow = list.balances?.find(

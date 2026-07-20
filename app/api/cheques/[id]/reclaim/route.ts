@@ -18,13 +18,13 @@ export const runtime = "nodejs";
  * POST /api/cheques/:id/reclaim
  *
  * CREATOR-only. Pulls an UNCLAIMED (funded) cheque back to its creator. The
- * creator can reclaim any time the cheque is unclaimed — no expiry wait — and
+ * creator can reclaim any time the cheque is unclaimed, no expiry wait, and
  * the on-chain `cheque::reclaim` asserts `!claimed`, so a claim and a reclaim
  * can never both succeed.
  *
  * TWO rails (picked by `CHEQUE_PACKAGE_ID`):
  *
- *   • ON-CHAIN — a TWO-STEP sponsored flow mirroring create:
+ *   • ON-CHAIN, a TWO-STEP sponsored flow mirroring create:
  *       1. POST with NO `digest` → returns the Onara-SPONSORED
  *          `cheque::reclaim` PTB bytes. The CREATOR signs them (the contract
  *          asserts `ctx.sender() == cheque.creator`) and POSTs to
@@ -34,10 +34,10 @@ export const runtime = "nodejs";
  *          ownership and atomically flips funded→reclaimed (records
  *          `reclaim_digest`).
  *
- *   • ESCROW (fallback) — performs the escrow→creator transfer immediately
+ *   • ESCROW (fallback), performs the escrow→creator transfer immediately
  *     (the existing `voidCheque`) and flips funded→voided.
  *
- * Body: {} (build) | { digest } (confirm) — on-chain only.
+ * Body: {} (build) | { digest } (confirm), on-chain only.
  */
 export async function POST(
   req: Request,
@@ -49,7 +49,7 @@ export async function POST(
   const userId = await readEntryIdFromRequest(req);
   if (!userId) return NextResponse.json({ error: "not authenticated" }, { status: 401 });
 
-  // Money-moving route — per-user global rate limit (anti-abuse), same shape
+  // Money-moving route, per-user global rate limit (anti-abuse), same shape
   // as /api/cheques/create.
   const rl = await rateLimitAsync({
     key: `cheques-reclaim:user:${userId}`,
@@ -100,7 +100,7 @@ export async function POST(
       );
     }
 
-    // Step 2: confirm — a reclaim digest was provided. Record it CREATOR-only.
+    // Step 2: confirm, a reclaim digest was provided. Record it CREATOR-only.
     if (body.digest) {
       const r = await recordReclaim({
         chequeId: id,
@@ -113,7 +113,7 @@ export async function POST(
       return NextResponse.json({ ok: true, status: "reclaimed", digest: body.digest });
     }
 
-    // Step 1: build — return the sponsored `cheque::reclaim` PTB for the
+    // Step 1: build, return the sponsored `cheque::reclaim` PTB for the
     // creator to sign.
     try {
       const { bytes: reclaimBytes, sponsor } = await reclaimChequeBuilder({

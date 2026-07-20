@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 /**
- * Cron authentication — FAIL CLOSED.
+ * Cron authentication, FAIL CLOSED.
  *
  * Vercel injects `Authorization: Bearer $CRON_SECRET` on scheduled invocations.
  * The previous inline pattern (`if (secret) { check }`) failed OPEN: if

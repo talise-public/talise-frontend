@@ -21,7 +21,7 @@ export {
  * the send's USDsui amount. Awards `POINTS.VOLUME_PER_100_USDSUI` for every
  * full $100 in the transaction.
  *
- * Currently NOT wired to the route — left as a helper so the trigger
+ * Currently NOT wired to the route, left as a helper so the trigger
  * site can opt in once we settle on accounting (per-tx vs cumulative).
  */
 export async function awardVolumePoints(
@@ -43,7 +43,7 @@ export async function awardVolumePoints(
 /**
  * Award the one-time "first send" bonus. Caller should ensure this is the
  * user's actual first send (e.g. by checking `tx_history` count == 1) before
- * invoking — we don't re-query that here to keep the helper composable.
+ * invoking, we don't re-query that here to keep the helper composable.
  *
  * If the referee was referred, fires `referral_first_send` for both sides.
  */

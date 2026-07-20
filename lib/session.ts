@@ -4,7 +4,7 @@ import { sign, verify } from "./auth";
 
 /** Cookie Domain attribute. Set COOKIE_DOMAIN=.talise.io in production so the
  *  auth cookies (session / signing / oauth state / returnTo / referral) are
- *  shared across talise.io, www.talise.io AND app.talise.io — the OAuth
+ *  shared across talise.io, www.talise.io AND app.talise.io, the OAuth
  *  callback runs on www, the app lives on the app subdomain. Unset locally and
  *  on previews (a mismatched Domain gets the cookie silently rejected). */
 export function cookieDomain(): string | undefined {
@@ -39,12 +39,12 @@ export async function clearStateCookie() {
 }
 
 // Session lifetime. The old design signed JUST the user id with a 1-year
-// maxAge and NO server-side expiry — a copied cookie worked ~forever and
+// maxAge and NO server-side expiry, a copied cookie worked ~forever and
 // could not be revoked. Now the signed token carries an issued-at + expiry,
 // checked on every read:
-//   • IDLE     — the session slides forward while the user is active (each
+//   • IDLE   , the session slides forward while the user is active (each
 //                /api/me refresh re-issues it); idle past this → logged out.
-//   • ABSOLUTE — a hard ceiling from issue time; even an always-active session
+//   • ABSOLUTE, a hard ceiling from issue time; even an always-active session
 //                must re-authenticate past this. This caps "forever" sessions.
 const IDLE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -102,7 +102,7 @@ export async function readSessionEntryId(): Promise<number | null> {
  * current session is valid and past its half-life (avoids re-setting on every
  * poll), preserving `iat` so the absolute cap still bites. No-op if
  * expired/absent or already at the ceiling. Call from authenticated route
- * handlers (e.g. /api/me) — they can set cookies; RSC layouts cannot.
+ * handlers (e.g. /api/me), they can set cookies; RSC layouts cannot.
  */
 export async function refreshSessionCookie(): Promise<boolean> {
   const s = await readSession();
@@ -123,7 +123,7 @@ const REFERRAL_COOKIE = "talise_ref";
 
 /**
  * Persist a referral code captured from `?ref=` on the landing page. We sign
- * the value so a hostile client can't forge attribution. 30-day TTL — plenty
+ * the value so a hostile client can't forge attribution. 30-day TTL, plenty
  * of time for a slow-to-decide visitor to come back and sign up.
  */
 export async function setReferralCookie(code: string) {
@@ -155,13 +155,13 @@ const RETURN_TO_COOKIE = "talise_return_to";
 /**
  * Validate a `returnTo` value as a SAME-ORIGIN absolute path only.
  *
- * `path.startsWith("/")` alone is NOT enough — a protocol-relative URL
+ * `path.startsWith("/")` alone is NOT enough, a protocol-relative URL
  * like `//evil.com` (and the backslash variant `/\evil.com`, which
  * browsers normalize to `//evil.com`) also starts with `/`, and
  * `new URL("//evil.com", origin)` resolves to `https://evil.com`. That
  * turns the post-sign-in redirect into an open redirect: an attacker
  * seeds the cookie, the victim completes a real Google consent screen,
- * and the callback 302s them to the attacker's domain — phishing-grade.
+ * and the callback 302s them to the attacker's domain, phishing-grade.
  *
  * Accept only: starts with a single `/`, NOT followed by `/` or `\`,
  * no backslashes anywhere, no control chars, ≤256 chars. Returns the
@@ -199,7 +199,7 @@ export async function consumeReturnTo(): Promise<string | null> {
   if (!raw) return null;
   const v = verify(raw);
   jar.delete({ name: RETURN_TO_COOKIE, domain: cookieDomain(), path: "/" });
-  // Re-validate on read too — defence in depth against a cookie minted
+  // Re-validate on read too, defence in depth against a cookie minted
   // before this validation existed (or by any other writer).
   return safeReturnPath(v);
 }

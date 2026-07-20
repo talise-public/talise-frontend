@@ -53,7 +53,7 @@ export function InvoicesTab() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   // The invoice currently targeted by the void confirmation sheet. (There is
-  // no manual mark-paid — settlement is detected automatically: the public
+  // no manual mark-paid, settlement is detected automatically: the public
   // pay page settles trustlessly, and /api/invoices runs an on-chain-verified
   // auto-settle sweep for direct payments.)
   const [voidFor, setVoidFor] = useState<Invoice | null>(null);
@@ -105,7 +105,7 @@ export function InvoicesTab() {
           <EmptyState
             icon={<HugeiconsIcon icon={Invoice01Icon} size={26} strokeWidth={1.6} />}
             title="No invoices yet"
-            subtitle="Create your first invoice and share a pay link that works for anyone — gasless, no wallet needed."
+            subtitle="Create your first invoice and share a pay link that works for anyone, gasless, no wallet needed."
             action={
               <PrimaryButton onClick={() => setCreateOpen(true)}>
                 <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
@@ -262,7 +262,7 @@ function InvoiceRow({
         <span className="flex shrink-0 flex-col items-end gap-1.5">
           <span
             className="text-[15px] font-semibold text-[#15300c]"
-            style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}
+            style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
           >
             {formatUsd(inv.amountUsd, { fixed: true })}
           </span>
@@ -395,7 +395,7 @@ function CreateInvoiceSheet({
       .map((it) => ({
         description: it.description.trim(),
         qty: Math.max(1, Number(it.qty) || 1),
-        // The unit price is typed in the invoice's display currency — convert
+        // The unit price is typed in the invoice's display currency, convert
         // back to USD before it's stored (₦50 must become $0.036, not $50).
         unitUsd: toUsd(Number(it.unitUsd), currency),
       }));
@@ -426,7 +426,7 @@ function CreateInvoiceSheet({
       });
       try {
         await navigator.clipboard.writeText(r.payUrl);
-        toast("Invoice created — pay link copied", "success");
+        toast("Invoice created, pay link copied", "success");
       } catch {
         toast("Invoice created", "success");
       }
@@ -472,7 +472,7 @@ function CreateInvoiceSheet({
             >
               {currencies.map((c) => (
                 <option key={c.code} value={c.code} className="bg-[#f7fcf2] text-[#15300c]">
-                  {c.code} — {c.label}
+                  {c.code}, {c.label}
                 </option>
               ))}
             </select>
@@ -505,7 +505,7 @@ function CreateInvoiceSheet({
                   inputMode="decimal"
                   aria-label="Quantity"
                   className="w-14 rounded-xl border border-[#15300c]/15 bg-white/60 px-2.5 py-2.5 text-center text-[14px] text-[#15300c] outline-none backdrop-blur-sm focus:ring-2 focus:ring-[#3d7a29]/45"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
+                  style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                 />
                 <div className="flex w-24 items-center rounded-xl border border-[#15300c]/15 bg-white/60 px-2.5 py-2.5 backdrop-blur-sm focus-within:ring-2 focus-within:ring-[#3d7a29]/45">
                   <span className="text-[13px] text-[#3d7a29]">{symbol}</span>
@@ -518,7 +518,7 @@ function CreateInvoiceSheet({
                     placeholder="0.00"
                     aria-label="Unit price"
                     className="w-full bg-transparent pl-1 text-right text-[14px] text-[#15300c] outline-none placeholder:text-[#3d7a29]"
-                    style={{ fontVariantNumeric: "tabular-nums" }}
+                    style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                   />
                 </div>
                 <button
@@ -557,7 +557,7 @@ function CreateInvoiceSheet({
           <span className="text-[14px] text-[#3a5230]">Invoice total</span>
           <span
             className="text-[22px] font-semibold text-[#15300c]"
-            style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
+            style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
           >
             {money(total)}
           </span>

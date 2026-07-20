@@ -7,7 +7,7 @@ import { moneyRulesEnabled, deleteRule } from "@/lib/money-rules";
 export const runtime = "nodejs";
 
 /**
- * DELETE /api/rules/[id] — soft-delete a rule (the cron only reads
+ * DELETE /api/rules/[id], soft-delete a rule (the cron only reads
  * state='active' AND deleted_at IS NULL). Idempotent + ownership-gated.
  */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {

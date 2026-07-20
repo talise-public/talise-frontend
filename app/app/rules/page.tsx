@@ -1,7 +1,7 @@
 import { RulesView } from "@/components/app/rules/RulesView";
 
 /**
- * /app/rules — programmable money / automations.
+ * /app/rules, programmable money / automations.
  *
  * Scheduled sends drawn from a NON-CUSTODIAL on-chain pot the user owns (a
  * `standing_order` funded up front; refundable on cancel). Gated server-side

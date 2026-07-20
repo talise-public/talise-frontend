@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     payeeLabel?: string;
     memo?: string;
     signatureName?: string;
-    /** Optional private message — encrypted with the claim secret, stored on Walrus. */
+    /** Optional private message, encrypted with the claim secret, stored on Walrus. */
     note?: string;
     /** Optional ISO-3166 alpha-2 country allowlist. Empty/absent = any country.
      *  The captcha is always enforced at web claims regardless. */
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         // Talise cheques are shareable bearer links (recipient unknown at
         // create), so we commit the claim secret as an on-chain hashlock.
         // `sha256hex(secret)` == the DB `secret_hash` == the 32-byte digest the
-        // contract checks at claim — the link IS the on-chain claim condition.
+        // contract checks at claim, the link IS the on-chain claim condition.
         hashlockHex: sha256hex(secret),
       });
       return NextResponse.json({

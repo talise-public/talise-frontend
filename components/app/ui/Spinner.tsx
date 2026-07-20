@@ -1,6 +1,6 @@
 export type SpinnerProps = { size?: number };
 
-/** Minimal spinner — a forest arc on a faint ring. */
+/** Minimal spinner, a forest arc on a faint ring. */
 export function Spinner({ size = 18 }: SpinnerProps) {
   const stroke = Math.max(2, Math.round(size / 9));
   return (

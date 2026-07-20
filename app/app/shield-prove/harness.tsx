@@ -18,10 +18,10 @@ import { encPublicKeyFromScalar } from "@/lib/shield/sdk/encrypt";
 /**
  * Client harness for the native private-send bridge. Installs
  * `window.taliseShieldSend` and posts structured messages to the native host:
- *   { type: "progress", message }      — status line while working
- *   { type: "signDeposit", bytesB64 }  — ask native to zkLogin-sign the deposit
- *   { type: "result", digest }         — success (the withdraw digest)
- *   { type: "error", message }         — clean, user-facing failure
+ *   { type: "progress", message }    , status line while working
+ *   { type: "signDeposit", bytesB64 }, ask native to zkLogin-sign the deposit
+ *   { type: "result", digest }       , success (the withdraw digest)
+ *   { type: "error", message }       , clean, user-facing failure
  *
  * Native answers the signDeposit request by calling
  * `window.__taliseDepositSigned(digest, errorMessage)` (one is non-empty).
@@ -35,7 +35,7 @@ import { encPublicKeyFromScalar } from "@/lib/shield/sdk/encrypt";
  *   6. PROVE + relay the WITHDRAW to the recipient (relayer-signed → severs the link)
  *
  * If the in-app feature flag is off the prepare route 503s and we report the
- * honest "finalizing" status — never faking a success, never stranding funds.
+ * honest "finalizing" status, never faking a success, never stranding funds.
  */
 type Msg =
   | { type: "progress"; message: string }
@@ -96,7 +96,7 @@ export function ShieldProveHarness({
       console.log("[shield-prove]", m.type);
     };
 
-    // Warm the Groth16 prover NOW — on page mount, while the user is still on
+    // Warm the Groth16 prover NOW, on page mount, while the user is still on
     // the amount/recipient screens. Pre-fetches the ~3.8MB proving key and
     // instantiates the ~1.4MB WASM so the first proof (the deposit leg) skips
     // that cold-load cost. Best-effort; safe to fire-and-forget.
@@ -160,7 +160,7 @@ export function ShieldProveHarness({
         const encPubkeyHex = toHexBytes(encPublicKeyFromScalar(d));
         await postJson("/api/shield/identity", { pubkey: kp.publicKey.toString(), encPubkeyHex });
       } catch {
-        /* best-effort — never blocks a send */
+        /* best-effort, never blocks a send */
       }
     };
 
@@ -179,7 +179,7 @@ export function ShieldProveHarness({
           }
           // Require a CANONICAL full 32-byte address. Short/non-padded forms are
           // rejected (never auto-padded) so the unshielded funds can't land at an
-          // unintended address — the withdraw is relayer-signed + irreversible.
+          // unintended address, the withdraw is relayer-signed + irreversible.
           if (!/^0x[a-f0-9]{64}$/i.test(recipient)) throw new Error("Invalid recipient address.");
           const amount = BigInt(micros);
           if (amount <= 0n) throw new Error("Enter an amount.");
@@ -216,20 +216,20 @@ export function ShieldProveHarness({
 
           // 2b. SCAN-FIRST: a shielded note IS spendable balance. If an UNSPENT
           // note you already own covers this amount (e.g. a prior send whose
-          // withdraw didn't fire — the funds are already in the pool), spend THAT
+          // withdraw didn't fire, the funds are already in the pool), spend THAT
           // to the recipient and skip the deposit. Completes stranded sends + is
           // faster (no deposit/sign/index round-trip). Best-effort: any failure
           // falls through to the normal deposit flow.
           const relayerRes0 = await fetch("/api/shield/relayer", { credentials: "same-origin" });
           const relayer0 = (await relayerRes0.json().catch(() => ({}))) as { zeroCoinSourceId?: string };
           if (relayer0.zeroCoinSourceId) {
-            // PRIVATE TRANSFER (hidden amount) — the real privacy primitive. If
+            // PRIVATE TRANSFER (hidden amount), the real privacy primitive. If
             // the recipient has a published shield identity AND we hold a covering
             // unspent note, send it shielded→shielded: public_amount=0, so NO
             // amount and NO recipient land on-chain (only commitments/nullifiers).
             // Recipient receives a shielded note they later cash out themselves.
             if (recipientShield) {
-              post({ type: "progress", message: "Sending privately — amount hidden…" });
+              post({ type: "progress", message: "Sending privately, amount hidden…" });
               const transferred = await spendOrTransferToShield({
                 cfg,
                 keypair,
@@ -263,7 +263,7 @@ export function ShieldProveHarness({
             }
           }
 
-          // 3. PROVE the deposit in-page (Groth16, WASM) — note secrets stay here.
+          // 3. PROVE the deposit in-page (Groth16, WASM), note secrets stay here.
           post({ type: "progress", message: "Sealing your transfer…" });
           const prepared = await proveShieldDeposit({
             cfg,
@@ -281,16 +281,16 @@ export function ShieldProveHarness({
             enc1B64: prepared.enc1B64,
           });
           if (prep.status === 503 && prep.body.code === "SHIELD_INAPP_OFF") {
-            // Feature flag off — honest, non-lossy status. Funds untouched.
+            // Feature flag off, honest, non-lossy status. Funds untouched.
             post({
               type: "error",
               message:
-                "Your private key is set up on this device. One-tap private send is finalizing — your funds are untouched.",
+                "Your private key is set up on this device. One-tap private send is finalizing, your funds are untouched.",
             });
             return;
           }
           if (prep.status === 409 && prep.body.code === "ROOT_STALE") {
-            throw new Error("The pool just updated — please try again.");
+            throw new Error("The pool just updated, please try again.");
           }
           if (!prep.ok || typeof prep.body.bytes !== "string") {
             throw new Error((prep.body.error as string) || "Couldn’t prepare the private send.");
@@ -301,7 +301,7 @@ export function ShieldProveHarness({
 
           // 5. Wait for the deposit commitment to index (its leaf enters the tree
           //    so the withdraw can authenticate against it). Poll ~3 min.
-          post({ type: "progress", message: "Funds shielded — completing your transfer…" });
+          post({ type: "progress", message: "Funds shielded, completing your transfer…" });
           const commitment = prepared.outputNote.commitment;
           let leafIndex: number | null = null;
           let postDepositRoot: string | null = null;
@@ -325,7 +325,7 @@ export function ShieldProveHarness({
             post({
               type: "error",
               message:
-                "Your funds are shielded. The private transfer will complete after the next confirmation — your money is safe (deposit " +
+                "Your funds are shielded. The private transfer will complete after the next confirmation, your money is safe (deposit " +
                 depositDigest.slice(0, 10) +
                 "…).",
             });
@@ -339,7 +339,7 @@ export function ShieldProveHarness({
             post({
               type: "error",
               message:
-                "Your funds are shielded. The private transfer is queued and will complete shortly — your money is safe.",
+                "Your funds are shielded. The private transfer is queued and will complete shortly, your money is safe.",
             });
             return;
           }
@@ -369,7 +369,7 @@ export function ShieldProveHarness({
 
     // ── ONE-TAP RECOVERY SWEEP ────────────────────────────────────────────
     // Scan every UNSPENT shielded note the user owns and withdraw each back to
-    // their own wallet — reclaims a balance stranded by earlier failed withdraws.
+    // their own wallet, reclaims a balance stranded by earlier failed withdraws.
     window.taliseShieldRecover = (seedHex: string, destination: string) => {
       void (async () => {
         try {
@@ -398,7 +398,7 @@ export function ShieldProveHarness({
               type: "error",
               message:
                 res.failed > 0
-                  ? "Couldn’t recover right now — please try again shortly. Your funds are safe."
+                  ? "Couldn’t recover right now, please try again shortly. Your funds are safe."
                   : "No recoverable shielded balance found.",
             });
             return;
@@ -444,6 +444,6 @@ export function ShieldProveHarness({
     };
   }, [live, packageId, poolObjectId, coinType]);
 
-  // Invisible — the native side mounts this in a 0×0 web view.
+  // Invisible, the native side mounts this in a 0×0 web view.
   return <div data-shield-prove="ready" style={{ width: 1, height: 1, opacity: 0 }} />;
 }

@@ -30,23 +30,25 @@ export function GlassCard({
   as,
 }: GlassCardProps) {
   const Tag = (as ?? (onClick ? "button" : "div")) as "div" | "button";
-  // Cream by default; a solid brand fill when tinted (mint #CAFFB8, coral
-  // #FF9E7A, lilac #C9B8FF, butter #FFE59E). The hard offset shadow is the
-  // signature of the v2 bento look.
+  // Blueprint card: a white (or soft-tinted) surface with a crisp hairline and
+  // a whisper of lift, no hard-offset bento shadow. `radius` is honoured but
+  // capped tighter so cards read structured rather than pill-soft. `tint`
+  // fills with a muted brand pop (mint/coral/lilac/butter).
   const style: CSSProperties = {
-    borderRadius: radius,
-    background: tint ?? "#f7fcf2",
-    boxShadow: "10px 10px 0 #15300c",
+    borderRadius: Math.min(radius, 16),
+    background: tint ?? "var(--color-surface)",
+    border: "1px solid var(--color-line)",
+    boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)",
   };
   const interactiveCls =
     interactive || onClick
-      ? "transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#3d7a29]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7fcf2]"
+      ? "transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
       : "";
   return (
     <Tag
       onClick={onClick}
       style={style}
-      className={`relative text-[#15300c] ${Tag === "button" ? "block w-full text-left" : ""} ${interactiveCls} ${className}`}
+      className={`relative text-[var(--color-fg)] ${Tag === "button" ? "block w-full text-left" : ""} ${interactiveCls} ${className}`}
       {...(Tag === "button" ? { type: "button" as const } : {})}
     >
       {children}

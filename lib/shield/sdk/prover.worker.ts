@@ -1,5 +1,5 @@
 /**
- * Talise shielded-pool Groth16 prover — Web Worker.
+ * Talise shielded-pool Groth16 prover, Web Worker.
  *
  * Runs the arkworks BN254 Groth16 prover (compiled to WASM from
  * `move/talise-privacy/circuit`, exported as `prove`/`verify`/`build_deposit_input`)
@@ -96,7 +96,7 @@ self.onmessage = async (e: MessageEvent<InMsg>) => {
         result,
       });
     } else if (msg.type === "warm") {
-      // WASM is now instantiated (loadWasm above) — ack so the caller knows the
+      // WASM is now instantiated (loadWasm above), ack so the caller knows the
       // worker is hot. No proving work done.
       void wasm;
       (self as DedicatedWorkerGlobalScope).postMessage({

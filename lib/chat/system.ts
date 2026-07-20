@@ -1,5 +1,5 @@
 /**
- * Plan 12 — system prompt + tool definitions for the streaming AI chat
+ * Plan 12, system prompt + tool definitions for the streaming AI chat
  * (`/api/chat/stream`). Kept separate from the existing DeepSeek-backed
  * `/api/chat` route so the two endpoints can evolve independently.
  *
@@ -23,7 +23,7 @@ import { getYieldComparison } from "@/lib/yield";
 export const DEFAULT_CHAT_MODEL = "anthropic/claude-sonnet-4-6";
 
 export type ChatUserContext = {
-  /** Sui address — already lowercased + validated upstream. */
+  /** Sui address, already lowercased + validated upstream. */
   address: string;
   /** Optional Talise subname (`<handle>.talise`). */
   handle: string | null;
@@ -32,7 +32,7 @@ export type ChatUserContext = {
 };
 
 /**
- * Build the system prompt. Kept short on purpose — Claude is concise by
+ * Build the system prompt. Kept short on purpose, Claude is concise by
  * default when the system prompt is concise. The route attaches
  * `cache_control: ephemeral` to this string.
  */
@@ -40,7 +40,7 @@ export function buildSystemPrompt(ctx: ChatUserContext): string {
   const handleLine = ctx.handle ? `- handle: \`${ctx.handle}.talise\`` : "";
   return [
     "You are TALISE's in-app finance assistant. You answer questions about",
-    "the user's money in TALISE — balance, recent activity, and yield",
+    "the user's money in TALISE, balance, recent activity, and yield",
     "opportunities. You ground every numeric claim in tool output, never",
     "from memory.",
     "",
@@ -59,7 +59,7 @@ export function buildSystemPrompt(ctx: ChatUserContext): string {
     "Call `get_balance` for current balances, `list_recent_txs` for activity",
     "history, `get_yields` to compare APYs across NAVI and DeepBook, and",
     "`simulate_supply` to project earnings on a hypothetical supply (math",
-    "only — never a real transaction).",
+    "only, never a real transaction).",
     "",
     "## refusals",
     "- No tax or legal advice. Tell the user to talk to a qualified",
@@ -80,7 +80,7 @@ export function buildSystemPrompt(ctx: ChatUserContext): string {
  * block, our route invokes the handler against the live user, and the
  * result is streamed back as a `tool_result` for the next turn.
  *
- * All four tools are read-only — by design. We do not let the chat
+ * All four tools are read-only, by design. We do not let the chat
  * surface compose write txs; the iOS Send/Earn flows own that path.
  */
 export function buildChatTools(ctx: ChatUserContext): ToolSet {
@@ -114,7 +114,7 @@ export function buildChatTools(ctx: ChatUserContext): ToolSet {
         const rows = await getRecentActivity(ctx.address, n, {
           includeNonTalise: true,
         }).catch(() => []);
-        // Slim the rows down — the model only needs the essentials.
+        // Slim the rows down, the model only needs the essentials.
         return rows.slice(0, n).map((r) => ({
           digest: r.digest,
           direction: r.direction,
@@ -148,7 +148,7 @@ export function buildChatTools(ctx: ChatUserContext): ToolSet {
 
     simulate_supply: tool({
       description:
-        "Project earnings on a hypothetical USDsui supply at the current APY. Math only — does not move funds.",
+        "Project earnings on a hypothetical USDsui supply at the current APY. Math only, does not move funds.",
       inputSchema: z
         .object({
           amount_usdsui: z.number().positive(),

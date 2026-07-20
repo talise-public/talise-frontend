@@ -7,7 +7,7 @@ import { teamStreamsEnabled, cancelTeamStream } from "@/lib/team-streams";
 export const runtime = "nodejs";
 
 /**
- * POST /api/payouts/streams/[id]/cancel — stop a stream and refund the unspent
+ * POST /api/payouts/streams/[id]/cancel, stop a stream and refund the unspent
  * remainder to the sender (gasless escrow send). Idempotent + ownership-gated.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

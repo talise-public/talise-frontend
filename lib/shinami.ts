@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Shinami zkLogin REST wrappers — the path we use for mainnet.
+ * Shinami zkLogin REST wrappers, the path we use for mainnet.
  *
  * Why Shinami: Mysten's hosted mainnet prover whitelists OAuth audiences and
  * ours isn't on it. Shinami runs an open zkLogin Wallet service + zkProver
@@ -22,7 +22,7 @@ const PROVER_URL = "https://api.us1.shinami.com/sui/zkprover/v1";
 /**
  * Shinami's paid Sui-node JSON-RPC endpoint. Same host family as the
  * gRPC node URL in `lib/sui-endpoints.ts`, different path (`/sui/node/v1`
- * speaks BOTH gRPC-Web and JSON-RPC — Shinami picks the protocol from
+ * speaks BOTH gRPC-Web and JSON-RPC, Shinami picks the protocol from
  * the `Content-Type` and the body shape). Auth header is `X-Api-Key`,
  * matching the gRPC fallback chain.
  */
@@ -48,19 +48,19 @@ export function shinamiEnabled(): boolean {
  *
  * Returns `null` when no node-service key is configured so callers can
  * cleanly fall back to the public `fullnode.mainnet.sui.io:443` URL
- * without a try/catch. Does NOT throw — that contract matters because
+ * without a try/catch. Does NOT throw, that contract matters because
  * the gasless build path treats a missing Shinami config as "use
  * public" and a present-but-invalid key as a hard fail (caught by the
  * retry guard).
  *
  * IMPORTANT: Shinami's Node Service uses a DIFFERENT API key from the
- * zkLogin Wallet + zkProver services (verified 2026-05-30 — the same
+ * zkLogin Wallet + zkProver services (verified 2026-05-30, the same
  * SHINAMI_API_KEY that works on `/sui/zkprover/v1` and
  * `/sui/zkwallet/v1` returns 401 on `/sui/node/v1`). Provision a
  * separate Node Service key at https://app.shinami.com and set it as
  * `SHINAMI_NODE_API_KEY`. If only the legacy `SHINAMI_API_KEY` is
  * present (no node-service key), this returns `null` and the gasless
- * build path stays on public mainnet — no retry-on-401 overhead.
+ * build path stays on public mainnet, no retry-on-401 overhead.
  */
 export function shinamiSuiNodeJsonRpc():
   | { url: string; headers: Record<string, string> }

@@ -7,11 +7,11 @@ import { verifyAssertion } from "@/lib/app-attest-verify";
 
 /**
  * Enforcement mode (F4 rollout):
- *   off     — gate disabled (no verification at all)
- *   log     — full verification runs; failures are LOGGED but never block
- *             (default — safe while legacy keys drain + before device-fixture
+ *   off   , gate disabled (no verification at all)
+ *   log   , full verification runs; failures are LOGGED but never block
+ *             (default, safe while legacy keys drain + before device-fixture
  *             validation of the attestation x5c chain)
- *   enforce — verification failures return 401
+ *   enforce, verification failures return 401
  * Set via TALISE_APP_ATTEST_MODE. Flip to "enforce" only after a real
  * device-captured attestation validates the register path + the Apple root CA
  * is pinned (APPLE_APP_ATTEST_ROOT_CA_PEM).
@@ -142,7 +142,7 @@ export function requireAppAttestStructural(req: Request): Response | null {
   if (!pathRequiresAppAttest(url.pathname)) return null;
   // Escape hatch for simulator / staging. `DCAppAttestService.isSupported`
   // is false in the iOS Simulator, so an iOS sim build CANNOT generate the
-  // assertion required by this check — turning every sponsor-execute into
+  // assertion required by this check, turning every sponsor-execute into
   // a 401. Setting `TALISE_APP_ATTEST_REQUIRED=0` lets dev / preview
   // environments accept simulator traffic. Production should leave this
   // unset (defaults to enforcing) once we ship to App Store users.

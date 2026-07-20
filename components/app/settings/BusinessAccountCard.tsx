@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * BusinessAccountCard — switch between the personal wallet (/app) and the
+ * BusinessAccountCard, switch between the personal wallet (/app) and the
  * business workspace (/business), and set up a business profile on first use.
  *
  * Model (web/lib/db.ts): a user has one account with an optional business
@@ -95,7 +95,7 @@ export function BusinessAccountCard() {
           </div>
         </div>
 
-        {/* Setup form — only visible before the business profile exists */}
+        {/* Setup form, only visible before the business profile exists */}
         {!isBusiness && setupOpen && (
           <div className="space-y-3 px-5 py-4">
             <label className="block">

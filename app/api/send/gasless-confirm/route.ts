@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  * a digest). Mirrors the deferred SnS + rewards crediting that
  * `/api/send/gasless-submit` does inline after its own broadcast.
  *
- * Returns 204 No Content — iOS does NOT need to await or retry this. The
+ * Returns 204 No Content, iOS does NOT need to await or retry this. The
  * Spend-and-Save and rewards crediting are best-effort by design, exactly
  * as they were inside `gasless-submit` (both were already wrapped in
  * void-IIFE / `.catch()` swallowers so a DB hiccup never failed a send).
@@ -23,7 +23,7 @@ export const runtime = "nodejs";
  * ── Idempotency ────────────────────────────────────────────────────
  *
  * Neither helper dedupes by digest on its own:
- *   • `enqueueRoundup` (web/lib/db.ts:1330) is a bare INSERT — no
+ *   • `enqueueRoundup` (web/lib/db.ts:1330) is a bare INSERT, no
  *     UNIQUE on digest, would double-enqueue on retry.
  *   • `awardForTx`     (web/lib/rewards/earn.ts:62) explicitly says
  *     "we DON'T dedupe by digest here" in the JSDoc and writes a
@@ -32,7 +32,7 @@ export const runtime = "nodejs";
  * So idempotency is enforced at the route level via an in-memory dedupe
  * Map keyed on `${userId}:${digest}`, with a 60s TTL. A duplicate confirm
  * within the window is a fast 204 no-op. Cross-process or post-restart
- * retries would slip through — acceptable because (a) iOS doesn't retry
+ * retries would slip through, acceptable because (a) iOS doesn't retry
  * on 2xx and (b) the rail is fire-and-forget so iOS has no error signal
  * that would trigger a retry in the first place.
  */
@@ -87,14 +87,14 @@ export async function POST(req: Request) {
   // {userId, digest} within the TTL. iOS sees the same 204 either way.
   if (dedupe(userId, digest)) {
     console.log(
-      `[send/gasless-confirm] user=${userId} digest=${digest} duplicate (60s TTL) — skipping bookkeeping`
+      `[send/gasless-confirm] user=${userId} digest=${digest} duplicate (60s TTL), skipping bookkeeping`
     );
     return new Response(null, { status: 204 });
   }
 
-  // Deferred Spend-and-Save — same logic as gasless-submit lines 115–139.
+  // Deferred Spend-and-Save, same logic as gasless-submit lines 115–139.
   // `takePendingRoundup` is synchronous (in-memory map) and pops the
-  // entry, so it's also naturally idempotent on its own — a second call
+  // entry, so it's also naturally idempotent on its own, a second call
   // for the same user returns null. The enqueue is wrapped in a void IIFE
   // so a DB hiccup never affects the response.
   const pendingRoundupUsd = takePendingRoundup(userId);
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     })();
   }
 
-  // Rewards earn — same ALLOWED set + 10k USD cap as gasless-submit
+  // Rewards earn, same ALLOWED set + 10k USD cap as gasless-submit
   // lines 141–169.
   const meta = body.meta;
   if (

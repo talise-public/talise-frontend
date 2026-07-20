@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
  * The buffer is per-process so distinct Vercel function instances
  * report distinct samples; refresh a few times to get a representative
  * picture. Bounded to 64 entries (see `SEND_LATENCY_MAX`), so this is
- * intentionally lossy — it's a freshness signal, not an analytics
+ * intentionally lossy, it's a freshness signal, not an analytics
  * pipeline.
  *
  * No auth needed. The values are aggregate timing numbers (no PII, no

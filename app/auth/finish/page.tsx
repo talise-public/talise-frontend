@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * /auth/finish — the staged sign-in loader.
+ * /auth/finish, the staged sign-in loader.
  *
  * Google's OAuth redirect lands on /auth/callback, which (for web) bounces
  * here instantly with ?code&state. We POST those to /api/auth/exchange and
  * play a 4-step progress sequence WHILE the real work runs (token exchange →
  * Shinami wallet → account setup → cookies), ending on "You're all set" and a
  * redirect into the app. Steps advance on a gentle timer but the final step
- * only fires when the server actually finishes — honest theater.
+ * only fires when the server actually finishes, honest theater.
  */
 
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -87,11 +87,14 @@ function FinishInner() {
   const allSet = step >= STEPS.length;
 
   return (
-    <main className="landing-mint flex min-h-dvh flex-col items-center justify-center px-6">
-      {/* Wordmark — the real brand mark, light weight */}
+    <main className="bp-page flex min-h-dvh flex-col items-center justify-center px-6">
+      {/* Wordmark, the real brand mark, light weight */}
       <div className="mb-10 flex items-center gap-2.5">
         <Diamond />
-        <span className="text-[20px] font-medium lowercase tracking-[-0.02em] text-fg">
+        <span
+          className="text-[20px] lowercase tracking-[-0.03em] text-[var(--color-fg)]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontWeight: 500 }}
+        >
           talise
         </span>
       </div>
@@ -100,7 +103,7 @@ function FinishInner() {
       <div className="flex w-full max-w-xs flex-col items-center">
         {allSet ? (
           <>
-            <span className="flex size-14 items-center justify-center rounded-full bg-accent-deep text-white shadow-[0_10px_30px_-10px_rgba(35,78,20,0.5)]">
+            <span className="flex size-14 items-center justify-center rounded-[10px] bg-[var(--color-accent-deep)] text-white">
               {/* check */}
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path
@@ -112,20 +115,23 @@ function FinishInner() {
                 />
               </svg>
             </span>
-            <p className="mt-5 text-[17px] font-medium tracking-[-0.01em] text-fg">
+            <p
+              className="mt-5 text-[17px] tracking-[-0.03em] text-[var(--color-fg)]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontWeight: 500 }}
+            >
               You&rsquo;re all set
             </p>
           </>
         ) : (
           <>
-            {/* Spinner — soft ring with an accent comet arc */}
+            {/* Spinner, soft ring with an accent comet arc */}
             <span className="relative flex size-14 items-center justify-center" aria-hidden>
-              <span className="absolute inset-0 rounded-full border-[3px] border-accent-soft" />
-              <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-transparent border-t-accent-deep" />
+              <span className="absolute inset-0 rounded-full border-[3px] border-[var(--color-accent-soft)]" />
+              <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-transparent border-t-[var(--color-accent-deep)]" />
             </span>
             <p
               key={step}
-              className="mt-5 animate-[fadeIn_300ms_ease] text-[15px] font-normal text-fg-muted"
+              className="mt-5 animate-[fadeIn_300ms_ease] font-mono text-[13px] text-[var(--color-fg-muted)]"
               aria-live="polite"
             >
               {failed ? "Something went wrong…" : STEPS[Math.min(step, STEPS.length - 1)]}
@@ -138,12 +144,12 @@ function FinishInner() {
           {[...STEPS, "done"].map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
+              className={`h-1.5 rounded-[3px] transition-all duration-300 ${
                 i < step || allSet
-                  ? "w-6 bg-accent-deep"
+                  ? "w-6 bg-[var(--color-accent-deep)]"
                   : i === step
-                    ? "w-6 bg-accent-deep/40"
-                    : "w-1.5 bg-accent-soft"
+                    ? "w-6 bg-[var(--color-accent-deep)]/40"
+                    : "w-1.5 bg-[var(--color-accent-soft)]"
               }`}
             />
           ))}
@@ -170,7 +176,7 @@ export default function AuthFinishPage() {
   return (
     <Suspense
       fallback={
-        <main className="landing-mint flex min-h-dvh items-center justify-center" />
+        <main className="bp-page flex min-h-dvh items-center justify-center" />
       }
     >
       <FinishInner />

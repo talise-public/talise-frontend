@@ -20,7 +20,7 @@ export const runtime = "nodejs";
  *
  * Wallet-conditioning swap: convert a non-USDsui Coin<T> in the user's
  * wallet into USDsui, sponsored by Onara. Mirrors the FUSED build pattern
- * from `/api/send/sponsor-prepare`'s sponsored branch — one round-trip,
+ * from `/api/send/sponsor-prepare`'s sponsored branch, one round-trip,
  * sets sender + gasOwner + gasPrice, returns sponsor-ready bytes that iOS
  * signs and forwards to `/api/zk/sponsor-execute`.
  *
@@ -34,12 +34,12 @@ export const runtime = "nodejs";
  * can show "you'll receive ~$X" with the slippage cap applied to the
  * on-chain `minOut`.
  *
- * The output USDsui is transferred back to the user — never to a third
+ * The output USDsui is transferred back to the user, never to a third
  * party. The combined "swap + send to recipient" flow is a follow-up.
  */
 
 const SLIPPAGE_BPS = 100; // 1.00%
-/** Talise swap fee — 1% of the swap output, routed to the treasury on every
+/** Talise swap fee, 1% of the swap output, routed to the treasury on every
  *  swap / auto-swap. Based on the min-out so the on-chain split never exceeds
  *  the actual output coin. */
 const SWAP_FEE_BPS = 100; // 1.00%
@@ -125,7 +125,7 @@ function deepbook(): DeepBookClient {
  *
  * baseQty / quoteQty: SDK expects whole-unit numbers; we round-trip via
  * the coin's scalar exposed on the config. For our purposes we already
- * have the raw micros and just need the raw out — so we use the
+ * have the raw micros and just need the raw out, so we use the
  * SDK's number-output * scalar back to micros.
  */
 async function quoteDirect(
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
   if (!route) {
     return NextResponse.json(
       {
-        error: `unsupported fromCoinType — allowlist: USDC, SUI, DEEP`,
+        error: `unsupported fromCoinType, allowlist: USDC, SUI, DEEP`,
         code: "SWAP_UNSUPPORTED",
       },
       { status: 400 }
@@ -226,8 +226,8 @@ export async function POST(req: Request) {
     const tTotalStart = Date.now();
 
     // Kick off the two expensive remote lookups in parallel:
-    // (a) Onara sponsor address — 60s memo.
-    // (b) Reference gas price — 1.5s memo (per-epoch).
+    // (a) Onara sponsor address, 60s memo.
+    // (b) Reference gas price, 1.5s memo (per-epoch).
     const onaraClient = onara();
     const client = sui();
     const net = network();
@@ -271,7 +271,7 @@ export async function POST(req: Request) {
           deepCoin?: unknown;
         }) => (t: Transaction) => readonly [unknown, unknown, unknown];
       };
-      // Internal config lookup — used to pull pool + coin scalars so we
+      // Internal config lookup, used to pull pool + coin scalars so we
       // can pass raw u64 micros all the way through (the SDK helpers
       // accept bigint as-is, no whole-unit conversion).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -300,19 +300,28 @@ export async function POST(req: Request) {
     // DeepBook pair). The 1% Talise fee is taken NATIVELY by the aggregator's
     // overlay fee → treasury during the swap (no manual coin split). Routing
     // was verified live for SUI→USDsui. NOTE: smoke-test a real swap on the
-    // next build — the DeepBook path remains in git history as a fallback.
+    // next build, the DeepBook path remains in git history as a fallback.
     const aggregator = new AggregatorClient({
       client,
       signer: user.sui_address,
       overlayFeeRate: SWAP_FEE_BPS / 10_000, // 1.00% → treasury
       overlayFeeReceiver: TREASURY_WALLET,
     });
-    const cetusRouter = await aggregator.findRouters({
-      from: fromCoinType,
-      target: USDSUI_TYPE,
-      amount: fromMicros.toString(),
-      byAmountIn: true,
-    });
+    // Bound the aggregator lookup: a slow/unresponsive Cetus router must not
+    // hang the request. On timeout we fall through to the SAME NO_ROUTE / 503
+    // path a missing route already takes (findRouters resolving null-ish).
+    const ROUTE_TIMEOUT_MS = 10_000;
+    const cetusRouter = await Promise.race([
+      aggregator.findRouters({
+        from: fromCoinType,
+        target: USDSUI_TYPE,
+        amount: fromMicros.toString(),
+        byAmountIn: true,
+      }),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), ROUTE_TIMEOUT_MS)
+      ),
+    ]);
     if (!cetusRouter || cetusRouter.insufficientLiquidity) {
       return NextResponse.json(
         { error: "No swap route available right now. Try again shortly.", code: "NO_ROUTE" },
@@ -321,7 +330,7 @@ export async function POST(req: Request) {
     }
     estimatedToMicros = BigInt(cetusRouter.amountOut.toString());
 
-    // The input coin (the user's non-USDsui balance — never the gas coin,
+    // The input coin (the user's non-USDsui balance, never the gas coin,
     // which Onara owns in the sponsored leg).
     const inputCoin = tx.add(
       coinWithBalance({ type: fromCoinType, balance: fromMicros, useGasCoin: false })
@@ -384,7 +393,7 @@ export async function POST(req: Request) {
 // ─── Coin scalar lookup ─────────────────────────────────────────────
 // Mirror of the DeepBook SDK's mainnet coin config for the types we
 // route through. Hardcoded here so we don't reach into the SDK's
-// private config object — the values are stable (scalar = 10^decimals).
+// private config object, the values are stable (scalar = 10^decimals).
 const COIN_SCALARS: Record<string, number> = {
   [COIN_TYPES.SUI]: 1_000_000_000, // 9 decimals
   [COIN_TYPES.USDC]: 1_000_000, // 6 decimals

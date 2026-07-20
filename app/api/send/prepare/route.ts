@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
@@ -86,9 +86,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "amount too small" }, { status: 400 });
   }
 
-  // ── Compliance screening — HARD STOP (mirrors /api/send/sponsor-prepare) ──
+  // ── Compliance screening, HARD STOP (mirrors /api/send/sponsor-prepare) ──
   // This legacy build path mints signable bytes too, so it MUST run the same
-  // screen before producing them — otherwise it's a screening bypass. Runs
+  // screen before producing them, otherwise it's a screening bypass. Runs
   // AFTER recipient/amount validation, BEFORE any PTB bytes are built.
   // `screenTransfer` is fail-closed on a sanctioned-name hit, fail-open on a
   // provider/transport error (a vendor outage must not 500 every send).
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ── Rolling transaction-limit gate (USDsui only — the cap engine is
+  // ── Rolling transaction-limit gate (USDsui only, the cap engine is
   // fiat-USD; USDsui is 1:1 USD). Fail-open by contract. ────────────────────
   if (asset === "USDsui") {
     const decision = await checkSendAllowed(userId, amountNum);
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
       //   1. The PK call IS a MoveCall, so we no longer need the
       //      `0x2::clock::timestamp_ms` no-op shim to satisfy Onara's
       //      "≥1 MoveCall" sponsor policy.
-      //   2. Every Talise send is provably part of the platform —
+      //   2. Every Talise send is provably part of the platform -
       //      Suiscan shows the PK call as the tx kind, and indexers
       //      can recover the kind ("send"), sender, receiver, and
       //      timestamp from the nonce alone.
@@ -162,18 +162,18 @@ export async function POST(req: Request) {
         amountUsdsui: amountNum,
       });
 
-      // Round-up & Save (Phase 2 v2 — real on-chain auto-supply).
+      // Round-up & Save (Phase 2 v2, real on-chain auto-supply).
       // If the user has toggled round-up on, we append a NAVI supply
       // for `amount × percentage / 100` USDsui to the SAME PTB so the
       // send + the save land atomically in one user-signed tx. No
-      // delegation key needed — the user signs once for both legs.
+      // delegation key needed, the user signs once for both legs.
       // If the supply leg fails on chain (insufficient balance after
-      // the send), the WHOLE tx fails — the user sees a clean error
+      // the send), the WHOLE tx fails, the user sees a clean error
       // rather than a half-applied state.
       let roundupUsd = 0;
       try {
         const cfg = await getRoundupConfig(userId);
-        // Diagnostic — surfaces in the dev log so we can tell at a
+        // Diagnostic, surfaces in the dev log so we can tell at a
         // glance whether the toggle was read correctly + what the
         // computed amount worked out to. Critical for debugging
         // "I turned it on but nothing happened" reports.
@@ -187,7 +187,7 @@ export async function POST(req: Request) {
           // round-up = $0.0007 USDsui = 700 micro-USDsui, which is
           // a perfectly valid on-chain supply (NAVI accepts any
           // positive amount). Earlier revision used a $0.01 floor
-          // that silently swallowed every small-NGN test — exactly
+          // that silently swallowed every small-NGN test, exactly
           // the case the user reported.
           const cappedUsd = Math.min(computed, amountNum);
           const microUnits = Math.round(cappedUsd * 1e6);
@@ -213,7 +213,7 @@ export async function POST(req: Request) {
           }
         }
       } catch (err) {
-        // Defensive — a round-up build failure must NOT block the
+        // Defensive, a round-up build failure must NOT block the
         // send. If we can't compose the supply leg (NAVI SDK init
         // failure, etc.), fall back to a send-only PTB.
         console.warn(
@@ -228,7 +228,7 @@ export async function POST(req: Request) {
         onlyTransactionKind: true,
       });
 
-      // Reserve against the rolling limit window (USDsui only; best-effort —
+      // Reserve against the rolling limit window (USDsui only; best-effort -
       // recordSend never throws, mirrors sponsor-prepare's reservation model).
       void recordSend({ userId, amountUsd: amountNum, asset, digest: null });
 
@@ -247,7 +247,7 @@ export async function POST(req: Request) {
     }
 
     // SUI transfers can't use Payment Kit (the registry is USDsui-only
-    // — coinType is fixed at registry creation time). Keep the existing
+    //, coinType is fixed at registry creation time). Keep the existing
     // clock-MoveCall + split + transfer path for raw SUI sends.
     tx.moveCall({
       target: "0x2::clock::timestamp_ms",

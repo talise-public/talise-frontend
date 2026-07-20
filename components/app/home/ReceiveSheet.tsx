@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Receive sheet — shows the user's wallet QR (encoded as `sui:<address>`) plus
+ * Receive sheet, shows the user's wallet QR (encoded as `sui:<address>`) plus
  * the @handle / short address and a copy-to-clipboard control. Opened by the
  * "Receive" and "Scan/QR" quick actions on Home. Pure display: no money moves.
  */
@@ -28,7 +28,7 @@ export function ReceiveSheet({
   const address = me?.suiAddress ?? "";
   const handle = me?.taliseHandle ?? "";
   const qrValue = address ? `sui:${address}` : "sui:";
-  const short = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "—";
+  const short = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "-";
 
   // The friendly, on-brand way to get paid: a public pay link to your @handle
   // (the /pay/[handle] page), not a raw 0x address.

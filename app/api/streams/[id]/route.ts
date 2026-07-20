@@ -9,7 +9,7 @@ export const runtime = "nodejs";
  * GET /api/streams/[id]
  *
  * Status for one stream with computed progress. Authorized to the SENDER or
- * the RECIPIENT only (a stream's parties — not arbitrary callers).
+ * the RECIPIENT only (a stream's parties, not arbitrary callers).
  */
 export async function GET(
   req: Request,

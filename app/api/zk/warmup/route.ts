@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * every send: Onara sponsor address and Sui reference gas price. Both
  * round-trips otherwise add ~700ms each to the *first* send of a session.
  *
- * Called from <ProofWarmer/> on dashboard load — by the time the user
+ * Called from <ProofWarmer/> on dashboard load, by the time the user
  * actually taps Send, both caches are hot and `tx.build` is roughly 3x
  * faster.
  *
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     // Onara status + Sui gas price warm in parallel with the Payment Kit
     // registry check. The PK ensure is the slow leg on a cold boot (it
     // mints if missing), but after the first call it's a memo cache hit
-    // and adds <1ms. We don't `await` PK alongside the two fast checks —
+    // and adds <1ms. We don't `await` PK alongside the two fast checks -
     // we let it run separately so a missing operator key doesn't fail
     // the whole warmup (sends still work without receipts).
     // Pre-warm everything the Send hot path consumes:
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     ]);
     // Wait for the registry bootstrap so we can tell the client whether
     // Payment Kit receipts are safe to attach to the next send. A failure
-    // here is non-fatal — sends will fall back to plain transfers.
+    // here is non-fatal, sends will fall back to plain transfers.
     let pkReady = false;
     try {
       const r = await ensurePaymentRegistry();

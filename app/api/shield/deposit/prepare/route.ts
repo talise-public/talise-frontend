@@ -25,14 +25,14 @@ export const dynamic = "force-dynamic";
  * following GATES MUST be cleared before flipping this flag on a build that
  * touches real mainnet USDsui:
  *
- *   1. ONARA ALLOWLIST — the sponsorship policy must permit the `talise_privacy`
+ *   1. ONARA ALLOWLIST, the sponsorship policy must permit the `talise_privacy`
  *      package targets (`proof::new`, `ext_data::new`, `shielded_pool::transact`)
  *      or /api/zk/sponsor-execute rejects every deposit.
- *   2. SCAN-RESUME FLOW — if the app is torn down between a landed deposit and the
+ *   2. SCAN-RESUME FLOW, if the app is torn down between a landed deposit and the
  *      withdraw, the in-memory output note is lost; funds are protocol-recoverable
  *      but a `scanNotes`-driven resume must exist to actually complete the queued
  *      transfer (otherwise the recipient never gets paid).
- *   3. DEVICE TEST — validate the full round-trip on TestFlight with a ≤$10 send.
+ *   3. DEVICE TEST, validate the full round-trip on TestFlight with a ≤$10 send.
  *
  * Off → the harness reports the honest "finalizing" status; funds are untouched.
  */
@@ -46,7 +46,7 @@ const MAX_DEPOSIT_MICROS = 2_500_000n;
 const SPONSOR_GAS_BUDGET_MIST = 60_000_000n;
 
 /**
- * POST /api/shield/deposit/prepare — build a sponsor-ready DEPOSIT PTB for the
+ * POST /api/shield/deposit/prepare, build a sponsor-ready DEPOSIT PTB for the
  * in-app private send. The webview supplies the WASM-built Groth16 proof + the
  * two ECIES note blobs; this route sources the exact-$amount USDsui coin from the
  * USER's own balance, assembles the `transact` deposit PTB, wraps it with Onara
@@ -164,11 +164,11 @@ export async function POST(req: Request) {
 
     // Fail-fast UX: the proof root must be a CURRENTLY-KNOWN tree root, else the
     // on-chain assert_root_is_known rejects it. The indexer-rebuilt live root is
-    // authoritative; a mismatch means the tree advanced — re-fetch + re-prove.
+    // authoritative; a mismatch means the tree advanced, re-fetch + re-prove.
     const liveRoot = await refreshMerkleCache(USDSUI_TYPE);
     if (pr.root !== liveRoot) {
       return NextResponse.json(
-        { error: "pool state advanced — retry", code: "ROOT_STALE", liveRoot },
+        { error: "pool state advanced, retry", code: "ROOT_STALE", liveRoot },
         { status: 409 }
       );
     }
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
     tx.setGasOwner(sponsor);
     tx.setGasPrice(BigInt(gasPrice));
     tx.setGasBudget(SPONSOR_GAS_BUDGET_MIST);
-    // Resolve the shared ShieldedPool object via JSON-RPC (same as the relay) —
+    // Resolve the shared ShieldedPool object via JSON-RPC (same as the relay) -
     // the gRPC client mis-resolves shared objects (no initialSharedVersion). The
     // coinWithBalance plugin runs first + resolves the deposit coin, so this only
     // pins the pool.

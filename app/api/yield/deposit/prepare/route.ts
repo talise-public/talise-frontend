@@ -27,7 +27,7 @@ export const runtime = "nodejs";
  * NAVI/Suilend/AlphaLend follow (AccountCap / cToken / PositionCap receipts).
  *
  * Body: { venue?: "scallop", amount?: number, positionId?: string }
- * Returns: { transactionKindB64, mode } — feed into /api/zk/sponsor.
+ * Returns: { transactionKindB64, mode }, feed into /api/zk/sponsor.
  */
 
 const SUPPORTED = new Set(["scallop"]); // expanding as each venue is verified

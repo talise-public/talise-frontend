@@ -7,8 +7,8 @@ import { db, ensureSchema } from "@/lib/db";
 /**
  * Corridor-agnostic transfers state machine.
  *
- * A single machine that drives ANY corridor — African (NGN/KES/GHS/ZAR) and
- * Asian/global (JPY/SGD/PHP/IDR/VND/USD) — through one typed lifecycle. See
+ * A single machine that drives ANY corridor, African (NGN/KES/GHS/ZAR) and
+ * Asian/global (JPY/SGD/PHP/IDR/VND/USD), through one typed lifecycle. See
  * the master plan §3 (line 62) and §11 item 5:
  *
  *   quoted → debited → onchain_settling → onchain_settled
@@ -17,7 +17,7 @@ import { db, ensureSchema } from "@/lib/db";
  * THE COMMIT POINT is the on-chain leg. Until `onchain_settled` the transfer
  * can be cleanly aborted (no value has crossed Talise's trust boundary). Once
  * the chain has moved value, we are committed: a downstream fiat-out failure
- * does NOT lose funds — it PARKS them (`failed` with `parkedFunds=true`) so a
+ * does NOT lose funds, it PARKS them (`failed` with `parkedFunds=true`) so a
  * compensating action (refund to sender, credit to recipient vault, manual
  * retry) can reconcile later. This is the "compensating-failure" semantics the
  * master plan calls for ("fiat-out failure parks funds in the recipient's
@@ -26,7 +26,7 @@ import { db, ensureSchema } from "@/lib/db";
  * The live NGN off-ramp is the Linq engine (web/lib/linq.ts +
  * web/app/api/offramp/linq/*), tracked in its own `linq_offramps` table.
  *
- * No HTTP/provider I/O lives here — only the persisted state + the legal
+ * No HTTP/provider I/O lives here, only the persisted state + the legal
  * transitions. Callers (corridor routes) drive the machine by firing events
  * and supply the side effects (FX quote, chain verification, PSP payout).
  */
@@ -55,7 +55,7 @@ export const TERMINAL_STATES: ReadonlySet<TransferState> = new Set<TransferState
 ]);
 
 /**
- * The commit point. At/after this state a `fail` does not unwind value — it
+ * The commit point. At/after this state a `fail` does not unwind value, it
  * parks the funds for compensating reconciliation. Before it, `fail`/`abort`
  * is clean (nothing committed).
  */
@@ -114,7 +114,7 @@ const TRANSITIONS: ReadonlyArray<{
   { from: "onchain_settled", event: "start_fiat_out", to: "fiat_out_pending" },
   { from: "fiat_out_pending", event: "confirm_fiat_out", to: "settled" },
 
-  // Pre-commit abort (clean — nothing has crossed the boundary).
+  // Pre-commit abort (clean, nothing has crossed the boundary).
   { from: "quoted", event: "abort", to: "failed" },
   { from: "debited", event: "abort", to: "failed" },
   { from: "onchain_settling", event: "abort", to: "failed" },
@@ -127,7 +127,7 @@ const TRANSITIONS: ReadonlyArray<{
   { from: "onchain_settled", event: "fail", to: "failed" },
   { from: "fiat_out_pending", event: "fail", to: "failed" },
 
-  // Refunds — sender made whole. Pre-commit: trivially (funds never left).
+  // Refunds, sender made whole. Pre-commit: trivially (funds never left).
   // Post-commit / from a parked `failed`: requires an explicit on-chain or
   // ledger compensating action by the caller before firing this.
   { from: "quoted", event: "refund", to: "refunded" },
@@ -207,7 +207,7 @@ export interface TransferRecord {
   /** Free-text reason for the latest failure/abort/refund. */
   stateReason: string | null;
   /**
-   * True iff funds are PARKED — i.e. value crossed the on-chain commit point
+   * True iff funds are PARKED, i.e. value crossed the on-chain commit point
    * and a downstream leg failed. These funds are NOT lost; they await a
    * compensating action (refund to sender / credit to recipient vault).
    */
@@ -222,9 +222,9 @@ export interface TransferRecord {
 }
 
 export interface AdvanceContext {
-  /** Set on `confirm_onchain` — the digest of the committed on-chain leg. */
+  /** Set on `confirm_onchain`, the digest of the committed on-chain leg. */
   onchainDigest?: string;
-  /** Set on `start_fiat_out` — the PSP reference for the payout. */
+  /** Set on `start_fiat_out`, the PSP reference for the payout. */
   providerReference?: string;
   /** Human-readable reason; required (advisory) for fail/abort/refund. */
   reason?: string;
@@ -378,7 +378,7 @@ export async function getTransfer(id: string): Promise<TransferRecord | null> {
  * compensating-failure semantics.
  *
  * Concurrency: the UPDATE is guarded by `WHERE id=? AND state=?` so two racing
- * callers can't both advance the same transfer — the loser sees `rowsAffected
+ * callers can't both advance the same transfer, the loser sees `rowsAffected
  * === 0` and gets a `conflict` result (the row moved underneath it).
  *
  * Commit-point semantics:
@@ -401,11 +401,11 @@ export async function advanceTransfer(
   if (!current) {
     return { ok: false, code: "not_found", message: `transfer ${id} not found` };
   }
-  // Terminal states block forward progress — with ONE deliberate carve-out:
+  // Terminal states block forward progress, with ONE deliberate carve-out:
   // a parked `failed` transfer may be reconciled into a `refunded` once the
   // caller has performed the compensating action (the table defines
   // failed→refund explicitly). Without this exception the post-commit
-  // "park funds for later reconciliation" guarantee is dead code — you
+  // "park funds for later reconciliation" guarantee is dead code, you
   // could never actually refund a parked failure.
   const isReconcileRefund = current.state === "failed" && event === "refund";
   if (TERMINAL_STATES.has(current.state) && !isReconcileRefund) {

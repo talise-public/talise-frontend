@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  *
  * Owns the user-facing config for Phase 2 Round-up & Save. The actual
  * roundup booking happens in /api/zk/sponsor-execute after a send
- * settles — this route is purely the toggle + slider backend for the
+ * settles, this route is purely the toggle + slider backend for the
  * iOS RoundupCard.
  */
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
 
-  // Validate the inputs — only accept the two documented fields, and
+  // Validate the inputs, only accept the two documented fields, and
   // clip percentage to 1..10 (server-side; setRoundupConfig also
   // clamps, but rejecting bad shapes here gives the client a clearer
   // error.)

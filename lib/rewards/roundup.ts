@@ -4,7 +4,7 @@ import { db, ensureSchema, type User } from "@/lib/db";
 import { awardForTx, POINT_RATES } from "@/lib/rewards/earn";
 
 /**
- * Round-up & Save — Phase 2 v2 (compound-PTB architecture).
+ * Round-up & Save, Phase 2 v2 (compound-PTB architecture).
  *
  * Every outbound send by an opted-in user auto-supplies a configurable
  * percentage (default 2%, 1-10) of the send amount to NAVI in the SAME
@@ -17,13 +17,13 @@ import { awardForTx, POINT_RATES } from "@/lib/rewards/earn";
  * The on-chain leg lives in `/api/send/prepare`: when `roundup_enabled`
  * is on, it appends `appendNaviSupply(tx, sender, roundupUsd)` plus a
  * Payment Kit marker to the send's compound PTB. No delegation key
- * required — the user signs the whole tx once with their ephemeral
+ * required, the user signs the whole tx once with their ephemeral
  * zkLogin key.
  *
  * The OFF-chain bookkeeping happens in `/api/zk/sponsor-execute` after
  * Onara confirms broadcast. Server reads the server-blessed
  * `meta.roundupUsd` (came from prepare, can't be inflated by a lying
- * client — the actual on-chain supply was for exactly that amount or
+ * client, the actual on-chain supply was for exactly that amount or
  * the PTB would have failed validation), then:
  *   • `users.roundup_saved_usd`  += amount (the RoundupCard's running tally)
  *   • `users.lifetime_saved_usd` += amount (via `awardForTx`)
@@ -32,21 +32,21 @@ import { awardForTx, POINT_RATES } from "@/lib/rewards/earn";
  *
  * ── Helpers in this file ───────────────────────────────────────────
  *
- *   • `getRoundupConfig(userId)` — read the user's enabled + percentage
+ *   • `getRoundupConfig(userId)`, read the user's enabled + percentage
  *      + lifetime saved tally. Used by both /api/send/prepare (to
  *      decide whether to append the supply leg) and /api/referral/summary
  *      (to render the RoundupCard).
  *
- *   • `setRoundupConfig(...)` — write the toggle + percentage. Called
+ *   • `setRoundupConfig(...)`, write the toggle + percentage. Called
  *      from `/api/rewards/roundup` POST.
  *
- *   • `maybeRoundupForSend(...)` — LEGACY (v1 tracking-only path).
+ *   • `maybeRoundupForSend(...)`, LEGACY (v1 tracking-only path).
  *      Kept temporarily for back-compat; no longer called from the
  *      hot path. Marked `@deprecated`; safe to delete once nothing
  *      references it.
  */
 
-/** Result returned by `maybeRoundupForSend` — useful for tests + logs. */
+/** Result returned by `maybeRoundupForSend`, useful for tests + logs. */
 export type RoundupResult =
   | { swept: false; reason: "disabled" | "no-amount" | "already-applied" | "user-missing" }
   | { swept: true; roundupUsd: number; points: number };
@@ -57,7 +57,7 @@ export type RoundupResult =
  *
  * @param userId         Talise user id (numeric, from mobile_sessions)
  * @param sendAmountUsd  USD amount of the parent send (positive)
- * @param sourceDigest   Sui digest of the parent send tx — idempotency key
+ * @param sourceDigest   Sui digest of the parent send tx, idempotency key
  */
 export async function maybeRoundupForSend(opts: {
   userId: number;
@@ -72,7 +72,7 @@ export async function maybeRoundupForSend(opts: {
   }
 
   // Read the user's roundup config off the users row. Cheap single-row
-  // read — same source the Rewards summary reads.
+  // read, same source the Rewards summary reads.
   const r = await c.execute({
     sql: `SELECT roundup_enabled, roundup_percentage
           FROM users WHERE id = ? LIMIT 1`,
@@ -97,7 +97,7 @@ export async function maybeRoundupForSend(opts: {
   // Idempotency: have we already booked a round-up for this source
   // digest? `awardForTx` writes `{ amountUsd, digest }` into the
   // event's metadata column (JSON-as-text); a substring match on the
-  // digest is enough — Sui digests are base58 of a 32-byte hash, so
+  // digest is enough, Sui digests are base58 of a 32-byte hash, so
   // there's effectively zero chance of false-positive collision.
   const dupe = await c.execute({
     sql: `SELECT 1 FROM rewards_events
@@ -111,7 +111,7 @@ export async function maybeRoundupForSend(opts: {
     return { swept: false, reason: "already-applied" };
   }
 
-  // Credit the user — points + lifetime_saved_usd bump + event row.
+  // Credit the user, points + lifetime_saved_usd bump + event row.
   // `awardForTx` writes the canonical `roundup_save` event with
   // `{ amountUsd, digest }` metadata. We pass the parent send digest
   // as `digest` so the dedupe LIKE-check above can find it on retry,
@@ -137,7 +137,7 @@ export async function maybeRoundupForSend(opts: {
 
   // TODO(roundup-onchain): wire the actual NAVI supply. The PTB builder
   // already exists in `web/lib/navi-supply.ts → appendNaviSupply`. The
-  // blocker is non-interactive signing — we need either:
+  // blocker is non-interactive signing, we need either:
   //   (a) a passkey-bound secondary authority the user pre-authorizes
   //   (b) a server-held delegation key gated by an on-chain SpendPolicy
   // Until one of those lands we cannot construct + sponsor-execute the
@@ -175,7 +175,7 @@ export async function getRoundupConfig(userId: number): Promise<{
 }
 
 /**
- * Update the round-up config. Either field is optional — missing
+ * Update the round-up config. Either field is optional, missing
  * fields are left untouched. Returns the post-update shape so the
  * caller can echo it back to the client without a second round-trip.
  */
@@ -187,7 +187,7 @@ export async function setRoundupConfig(opts: {
   await ensureSchema();
   const c = db();
 
-  // Build the UPDATE dynamically — only touch the columns the caller
+  // Build the UPDATE dynamically, only touch the columns the caller
   // actually supplied. Avoids stomping the user's saved % to default
   // when they only toggled the switch.
   const sets: string[] = [];

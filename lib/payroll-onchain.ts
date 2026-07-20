@@ -9,11 +9,11 @@ import { resolveRecipient } from "@/lib/suins";
 import type { PayoutTeamMember } from "@/lib/payout-teams";
 
 /**
- * On-chain payroll TEAMS — server seam (mirrors lib/streams.ts).
+ * On-chain payroll TEAMS, server seam (mirrors lib/streams.ts).
  *
  * A team's ROSTER lives on-chain as a `talise_payroll::payroll::Team` shared
  * object: create/edit/delete are Onara-sponsored Move calls the user signs.
- * The object holds NO money — paying the team still routes through the screened
+ * The object holds NO money, paying the team still routes through the screened
  * `/api/payouts/batch/prepare` → `talise::batch_pay::pay_many` path, which
  * re-resolves + compliance-screens every recipient + checks send limits. This
  * file builds only the roster-mutation transactions + reads back the created
@@ -37,7 +37,7 @@ function teamObjectTypePrefix(pkg: string): string {
   return `${pkg}::payroll::Team`.toLowerCase();
 }
 
-const GAS_BUDGET = 60_000_000n; // 0.06 SUI — same fixed budget streams/goal use.
+const GAS_BUDGET = 60_000_000n; // 0.06 SUI, same fixed budget streams/goal use.
 
 /** USD float → 1e-6 micro units (clamped non-negative). */
 function toMicros(amount: number | undefined): bigint {
@@ -54,7 +54,7 @@ export interface ResolvedRoster {
 /**
  * Resolve every member's typed recipient (@handle / name.talise.sui / 0x…) to
  * an address for the on-chain vectors. Throws a friendly Error naming the first
- * recipient that can't be resolved — the same failure the editor's live lookup
+ * recipient that can't be resolved, the same failure the editor's live lookup
  * already surfaces, enforced server-side before we build the transaction.
  */
 export async function resolveRoster(
@@ -102,7 +102,7 @@ export async function buildTeamCreateSponsored(input: {
   roster: ResolvedRoster;
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = payrollPackageId();
-  if (!pkg) throw new Error("PAYROLL_PACKAGE_ID unset — on-chain teams disabled");
+  if (!pkg) throw new Error("PAYROLL_PACKAGE_ID unset, on-chain teams disabled");
   const { sponsor, gasPrice } = await sponsorContext();
 
   const tx = new Transaction();
@@ -122,7 +122,7 @@ export async function buildTeamCreateSponsored(input: {
 }
 
 /**
- * Build the Onara-SPONSORED `payroll::set_roster` PTB — the edit path. The
+ * Build the Onara-SPONSORED `payroll::set_roster` PTB, the edit path. The
  * contract asserts `ctx.sender() == team.owner`, so a non-owner's signed tx
  * aborts on chain.
  */
@@ -133,7 +133,7 @@ export async function buildTeamEditSponsored(input: {
   roster: ResolvedRoster;
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = payrollPackageId();
-  if (!pkg) throw new Error("PAYROLL_PACKAGE_ID unset — on-chain teams disabled");
+  if (!pkg) throw new Error("PAYROLL_PACKAGE_ID unset, on-chain teams disabled");
   const { sponsor, gasPrice } = await sponsorContext();
 
   const tx = new Transaction();
@@ -159,7 +159,7 @@ export async function buildTeamDeleteSponsored(input: {
   teamObjectId: string;
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = payrollPackageId();
-  if (!pkg) throw new Error("PAYROLL_PACKAGE_ID unset — on-chain teams disabled");
+  if (!pkg) throw new Error("PAYROLL_PACKAGE_ID unset, on-chain teams disabled");
   const { sponsor, gasPrice } = await sponsorContext();
 
   const tx = new Transaction();

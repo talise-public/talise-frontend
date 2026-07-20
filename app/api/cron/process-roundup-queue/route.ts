@@ -26,14 +26,14 @@ export const dynamic = "force-dynamic";
  * after the gasless tx lands. This cron is responsible for actually
  * executing the NAVI supply as a separate sponsored tx.
  *
- * Sketch of the real implementation (intentionally not built today —
+ * Sketch of the real implementation (intentionally not built today -
  * the queue itself is what unblocks the speed win):
  *
  *   1. `pendingRoundups()` from `lib/db.ts` (already ships) returns
  *      up to N un-processed rows ordered by `created_at ASC`.
  *   2. For each row: build a NAVI supply PTB on behalf of the user
  *      (we have `user_id` → `sui_address` via `userById`), sponsor
- *      via Onara, sign as the user (here's the subtle part — supply
+ *      via Onara, sign as the user (here's the subtle part, supply
  *      from a custodial-equivalent path; needs the same zkLogin
  *      multisig story we use for /api/zk/sponsor-execute, OR a
  *      Talise-treasury supply that credits the user's position via
@@ -45,7 +45,7 @@ export const dynamic = "force-dynamic";
  * Cron schedule (when wired in `vercel.json`): every minute, same
  * cadence as `/api/cron/auto-swap-sweep`.
  *
- * Current behaviour: empty 200 — Vercel's cron won't crash, and the
+ * Current behaviour: empty 200, Vercel's cron won't crash, and the
  * queue continues to accumulate rows safely (Postgres index is
  * partial on `processed_at IS NULL`, so unbounded growth here just
  * means each drain reads them when the real worker lands).

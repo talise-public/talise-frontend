@@ -39,7 +39,7 @@ function eventTitle(kind: string): string {
   }
 }
 
-/** Short date ("4 Jun 2026") — same shape as the iOS history rows. */
+/** Short date ("4 Jun 2026"), same shape as the iOS history rows. */
 function eventDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -53,7 +53,7 @@ function eventDate(iso: string): string {
 /**
  * Earning history: the 5 most recent point events in one hairline-divided
  * card, with a "See all" row that expands the rest of the server ledger
- * inline. Points only — no money amounts, so no privacy masking needed.
+ * inline. Points only, no money amounts, so no privacy masking needed.
  * Renders nothing when there's no history yet. Mirrors iOS `historySection`.
  */
 export function EarningHistory({ events }: { events: ReferralEvent[] }) {
@@ -83,7 +83,7 @@ export function EarningHistory({ events }: { events: ReferralEvent[] }) {
           </div>
         ))}
 
-        {/* "See all" — only when there's more than the fold. */}
+        {/* "See all", only when there's more than the fold. */}
         {!showAll && events.length > FOLD && (
           <>
             <div className="mx-4 h-px bg-[#15300c]/10" />

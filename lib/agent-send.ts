@@ -15,7 +15,7 @@ import type { AgentWalletRow } from "./agent-wallets";
  * gasless `0x2::balance::send_funds` PTB, sign the bytes with the wallet's
  * CUSTODIED ephemeral key, assemble the zkLogin signature from the wallet's
  * JWT+salt, and broadcast directly to the fullnode (gasless needs only the
- * user's zkLogin signature — no sponsor). The build mirrors
+ * user's zkLogin signature, no sponsor). The build mirrors
  * `/api/send/sponsor-prepare`'s gasless branch byte-for-byte (ValidDuring
  * expiration + empty gas payment) so it produces the same accumulator-only PTB.
  *
@@ -82,7 +82,7 @@ export async function agentGaslessSend(opts: {
     signatures: [assembled.signature],
   })) as Record<string, unknown>;
 
-  // MONEY-SAFETY: a Move-ABORT returns FailedTransaction WITH a digest — never
+  // MONEY-SAFETY: a Move-ABORT returns FailedTransaction WITH a digest, never
   // report it as a delivered send (no funds moved).
   const okTx = result.Transaction as { digest?: string } | undefined;
   const failedTx = result.FailedTransaction as { digest?: string } | undefined;

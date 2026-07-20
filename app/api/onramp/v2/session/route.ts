@@ -19,7 +19,7 @@ export const runtime = "nodejs";
  *
  * Create a provider-agnostic on-ramp session. Returns the (stub) widget URL /
  * client secret. The destination is LOCKED to the authenticated user's own
- * Sui address — the client never chooses where funds land.
+ * Sui address, the client never chooses where funds land.
  *
  * This does NOT move money or touch any balance/limit path: with no API key
  * configured the selected adapter returns a stub URL. Dormant unless the
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   if (!providerCustomerId) {
     let profile: KycProfile | undefined = body.profile;
     // Widget-KYC providers (Transak) verify identity inside their hosted
-    // widget, so the client need not collect a profile — derive a minimal one
+    // widget, so the client need not collect a profile, derive a minimal one
     // from the authenticated user just to mint a stable partner reference.
     // Bridge runs hosted KYC from just an email + name, so we likewise derive
     // a minimal profile from the signed-in user rather than make the client
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     }
     if (!profile) {
       return NextResponse.json(
-        { error: "no provider customer yet — supply `profile` to create one" },
+        { error: "no provider customer yet, supply `profile` to create one" },
         { status: 400 }
       );
     }
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
 
   // If we just created the customer and it needs hosted KYC, return the KYC
   // URL only. A non-active customer can't be issued a virtual account (Bridge
-  // rejects it), so attempting the session here would error — the client shows
+  // rejects it), so attempting the session here would error, the client shows
   // the verify-identity step first, then retries once the customer is active.
   if (kycUrl) {
     return NextResponse.json({ provider: provider.name, kycUrl });

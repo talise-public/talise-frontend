@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Walrus blob storage — Sui's decentralized storage network.
+ * Walrus blob storage, Sui's decentralized storage network.
  *
  * Used for claimable money-link NOTES: the sender's (encrypted) message is
  * stored as a Walrus blob and the resulting blob id is recorded on the cheque
@@ -29,7 +29,7 @@ if (
   (!process.env.WALRUS_PUBLISHER || !process.env.WALRUS_AGGREGATOR)
 ) {
   console.warn(
-    "[walrus] MAINNET app is using the TESTNET Walrus default — set WALRUS_PUBLISHER/WALRUS_AGGREGATOR to a mainnet endpoint; testnet blobs (cheque notes) may be pruned."
+    "[walrus] MAINNET app is using the TESTNET Walrus default, set WALRUS_PUBLISHER/WALRUS_AGGREGATOR to a mainnet endpoint; testnet blobs (cheque notes) may be pruned."
   );
 }
 

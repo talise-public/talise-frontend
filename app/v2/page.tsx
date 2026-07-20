@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /**
  * Talise landing, v2 PREVIEW (Wero-inspired, brand-mint). Lives at /v2 so the
  * production landing (app/page.tsx) stays untouched until this is approved.
- * Style spec: app/v2/STYLE-SPEC.md.
+ * Style spec: docs/v2-STYLE-SPEC.md.
  */
 export default function LandingV2() {
   return (

@@ -218,7 +218,7 @@ export async function readInsightsSnapshot(userId: number): Promise<InsightsSnap
 
 /**
  * Persist the last-known-good month insights. Callers must only write
- * snapshots computed from a COMPLETE activity read — a timed-out read's
+ * snapshots computed from a COMPLETE activity read, a timed-out read's
  * zeros must never become the value we later serve as "last known".
  */
 export async function writeInsightsSnapshot(s: {

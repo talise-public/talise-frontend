@@ -5,7 +5,7 @@
  *  - Margin lending pool stats (supply, borrow, interest rate, utilization).
  *
  * All queries use the SDK's simulateTransaction path under the hood, so they
- * don't broadcast anything — just observe on-chain state.
+ * don't broadcast anything, just observe on-chain state.
  *
  * The DeepBookClient needs a `sender` address even for read-only sims. We use
  * a constant placeholder address; replace via `forUser(...)` if you want
@@ -15,7 +15,7 @@
 import { DeepBookClient } from "@mysten/deepbook-v3";
 import { sui, network } from "./sui";
 
-// Any valid Sui address works as the sim sender — we never broadcast.
+// Any valid Sui address works as the sim sender, we never broadcast.
 const SIM_SENDER =
   "0x0000000000000000000000000000000000000000000000000000000000000001";
 
@@ -93,7 +93,7 @@ export type MarginPoolInfo = {
   totalSupply: number;
   totalBorrow: number;
   utilization: number;
-  /** Supply APR as a decimal (0.064 = 6.4%) — borrow rate * utilization (rough). */
+  /** Supply APR as a decimal (0.064 = 6.4%), borrow rate * utilization (rough). */
   supplyApr: number;
   /** Borrow APR as a decimal (0.082 = 8.2%). */
   borrowApr: number;

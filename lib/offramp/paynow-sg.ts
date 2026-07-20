@@ -6,7 +6,7 @@
  * MAS-licensed PSP/MPI (Nium, dtcpay, StraitsX/XSGD, Airwallex/Currencycloud)
  * while Talise's own MPI pends.
  *
- * This implementation makes NO live partner calls — it returns deterministic
+ * This implementation makes NO live partner calls, it returns deterministic
  * mock shapes so the corridor registry and route contract can be exercised
  * end-to-end. Replace the bodies with the chosen PSP's API when the SG leg
  * goes live; the interface stays fixed.

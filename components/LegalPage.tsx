@@ -22,50 +22,40 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <div className="landing-mint relative min-h-screen overflow-hidden text-[var(--color-fg)]">
-      <div className="talise-top-glow" aria-hidden />
+    <div className="bp-page relative min-h-screen overflow-hidden">
+      <div className="bp-frame flex min-h-screen flex-col" style={{ maxWidth: 840 }}>
+        <span aria-hidden className="bp-tick bp-tick-tl" />
+        <span aria-hidden className="bp-tick bp-tick-tr" />
+        <span aria-hidden className="bp-tick bp-tick-bl" />
+        <span aria-hidden className="bp-tick bp-tick-br" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-5 md:px-12 lg:px-16">
-        <Link
-          href="/"
-          className="flex items-center gap-2.5 text-[17px] tracking-tight text-[var(--color-fg)]"
-        >
-          <Diamond />
-          <span>talise</span>
-        </Link>
-      </header>
+        <header className="flex items-center justify-between border-b border-[var(--color-line)] px-6 py-5 sm:px-10">
+          <Link href="/" className="flex items-center gap-2.5 text-[17px] tracking-[-0.02em] text-[var(--color-fg)]">
+            <Diamond />
+            <span>talise</span>
+          </Link>
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-accent)]">Legal</span>
+        </header>
 
-      <main className="relative z-10 mx-auto w-full max-w-[720px] px-6 pb-24 pt-10 md:pt-16">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-accent-deep)]">
-          {eyebrow}
-        </p>
-        <h1 className="mt-3 text-[clamp(32px,5vw,48px)] font-medium leading-[1.06] tracking-[-0.03em]">
-          {title}
-        </h1>
-        <p className="mt-3 text-[13px] text-[var(--color-fg-dim)]">{updated}</p>
+        <main className="flex-1 px-6 pb-24 pt-12 sm:px-10">
+          <span className="bp-kicker">{eyebrow}</span>
+          <h1 className="mt-5 text-[clamp(32px,5vw,48px)] leading-[1.05]">{title}</h1>
+          <p className="mt-3 font-mono text-[12px] text-[var(--color-fg-dim)]">{updated}</p>
+          <div className="mt-12 space-y-10">{children}</div>
+        </main>
 
-        <div className="mt-10 space-y-10">{children}</div>
-      </main>
-
-      <footer className="relative z-10 mx-auto w-full max-w-[720px] px-6 pb-10">
-        <div className="flex flex-col items-start gap-3 border-t border-[var(--color-line)] pt-6 text-[12px] text-[var(--color-fg-dim)] sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Talise · Built on Sui.</span>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <Link href="/" className="hover:text-[var(--color-fg)]">
-              Home
-            </Link>
-            <Link href="/privacy" className="hover:text-[var(--color-fg)]">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-[var(--color-fg)]">
-              Terms
-            </Link>
-            <a href="mailto:team@talise.io" className="hover:text-[var(--color-fg)]">
-              team@talise.io
-            </a>
+        <footer className="px-6 pb-10 sm:px-10">
+          <div className="flex flex-col items-start gap-3 border-t border-[var(--color-line)] pt-6 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-fg-dim)] sm:flex-row sm:items-center sm:justify-between">
+            <span>© {new Date().getFullYear()} Talise · Built on Sui</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <Link href="/" className="hover:text-[var(--color-fg)]">Home</Link>
+              <Link href="/privacy" className="hover:text-[var(--color-fg)]">Privacy</Link>
+              <Link href="/terms" className="hover:text-[var(--color-fg)]">Terms</Link>
+              <a href="mailto:team@talise.io" className="hover:text-[var(--color-fg)]">team@talise.io</a>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
@@ -95,7 +85,7 @@ export function LegalList({ items }: { items: ReactNode[] }) {
       {items.map((item, i) => (
         <li key={i} className="flex gap-3">
           <span
-            className="mt-[9px] size-1.5 shrink-0 rounded-full bg-[var(--color-accent-deep)]"
+            className="mt-[8px] size-1.5 shrink-0 bg-[var(--color-accent)]"
             aria-hidden
           />
           <span>{item}</span>

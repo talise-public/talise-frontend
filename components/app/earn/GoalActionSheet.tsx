@@ -9,7 +9,7 @@
  *   - Archive    → PATCH /api/rewards/goals/[id] { archive:true }
  *
  * Add/Withdraw share one amount field, toggled by a <Segmented>. Like the rest
- * of the rewards-goals model these are TRACKING writes — the dollars stay
+ * of the rewards-goals model these are TRACKING writes, the dollars stay
  * liquid in the user's own yield-earning balance, so no signer is needed.
  */
 

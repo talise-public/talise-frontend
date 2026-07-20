@@ -51,6 +51,10 @@ export async function GET(req: Request) {
       kycStatus: r.kycStatus,
       tosStatus: r.tosStatus,
       customerId: r.customerId,
+      // Re-surface the hosted links so the client can keep the identity +
+      // "accept terms" steps reachable while KYC is pending.
+      kycUrl: r.kycUrl,
+      tosUrl: r.tosUrl,
     });
   } catch (e) {
     console.error(`[kyc/bridge/status] refresh failed user=${userId}: ${(e as Error).message}`);

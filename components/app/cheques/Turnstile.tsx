@@ -60,7 +60,7 @@ export type TurnstileProps = {
 
 /**
  * Cloudflare Turnstile widget (explicit render). Renders nothing if the
- * sitekey env var isn't set, so the app degrades cleanly in local dev — the
+ * sitekey env var isn't set, so the app degrades cleanly in local dev, the
  * server only enforces the captcha when its secret is configured.
  */
 export function Turnstile({ onToken, className = "" }: TurnstileProps) {
@@ -88,7 +88,7 @@ export function Turnstile({ onToken, className = "" }: TurnstileProps) {
         });
       })
       .catch(() => {
-        /* offline / blocked — server falls back to other gates */
+        /* offline / blocked, server falls back to other gates */
       });
 
     return () => {

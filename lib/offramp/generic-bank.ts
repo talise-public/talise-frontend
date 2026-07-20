@@ -3,8 +3,8 @@
  *
  * Corridor: USDsui → a local-currency bank account over whatever instant /
  * batch clearing rail the destination market exposes. Used for the
- * corridors that have no bespoke adapter yet — Ghana (GHS) and South
- * Africa (ZAR) per the master plan §4 expansion table — behind a generic
+ * corridors that have no bespoke adapter yet, Ghana (GHS) and South
+ * Africa (ZAR) per the master plan §4 expansion table, behind a generic
  * BaaS/PSP partner.
  *
  * Unlike the single-currency adapters, this one is parameterized by

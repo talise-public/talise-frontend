@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/contacts — recent counterparties built from the user's
+ * GET /api/contacts, recent counterparties built from the user's
  * on-chain activity. Deduped by address, sorted by most-recent
  * interaction, capped at 30.
  *
@@ -22,12 +22,12 @@ export const dynamic = "force-dynamic";
  *
  * Fast-load policy: contacts are a pure DERIVED VIEW of the per-user
  * activity snapshot (`user_activity_snapshot`, the same monotonic floor
- * /api/activity maintains), so the request path is one indexed PK read —
+ * /api/activity maintains), so the request path is one indexed PK read -
  * never the 4-6s tx-history walk that used to ride here. A slightly stale
  * contact list is fine: contacts only change when the user transacts, and
  * the post-send `?fresh=1` activity reconcile updates the snapshot anyway.
  * Only a user with NO snapshot at all (brand-new, contacts before Home)
- * pays a live scan, and even then with a hard 2.5s budget — the in-flight
+ * pays a live scan, and even then with a hard 2.5s budget, the in-flight
  * scan keeps running and write-throughs the snapshot, so it self-heals.
  */
 
@@ -46,7 +46,7 @@ function contactsFrom(entries: SerializedEntry[]): Contact[] {
     if (!e.counterparty) continue;
     // Off-ramp deposit wallets are NOT contacts. A cash-out's on-chain
     // leg pays a Linq deposit address whose enriched counterpartyName is
-    // the destination BANK ("OPay", "Moniepoint MFB", …) — surfacing
+    // the destination BANK ("OPay", "Moniepoint MFB", …), surfacing
     // those as recents read like Talise thinks your bank is a person,
     // and each cash-out mints a fresh deposit address so they multiply.
     if (e.offramp) continue;
@@ -83,7 +83,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Snapshot-first: ANY age serves (the floor is monotonic — it can only
+    // Snapshot-first: ANY age serves (the floor is monotonic, it can only
     // be missing rows newer than the last refresh, never wrong ones). Warm
     // it in the background when it's older than the shared refresh window.
     const snap = await readActivitySnapshot(userId).catch(() => null);
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // No snapshot yet — BOUNDED live scan. The compute write-throughs the
+    // No snapshot yet, BOUNDED live scan. The compute write-throughs the
     // snapshot when it lands (even after we've responded), so the next load
     // is instant. 2.5s budget: past that, an empty picker beats a spinner.
     const LIVE_BUDGET_MS = 2_500;

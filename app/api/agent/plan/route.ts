@@ -9,13 +9,13 @@ import { planIntent } from "@/lib/agent/plan";
 export const runtime = "nodejs";
 
 /**
- * POST /api/agent/plan — the Talise Agent's safety brain.
+ * POST /api/agent/plan, the Talise Agent's safety brain.
  *
- * Body: `{ steps: ChatStep[] }` — the intent the agent proposed (parsed client-side
+ * Body: `{ steps: ChatStep[] }`, the intent the agent proposed (parsed client-side
  * from the `---INTENT---` block). Returns a VALIDATED, priced preview (recipients
  * resolved + screened, send total cap-checked) the client renders as a confirm card.
  *
- * This endpoint moves NO money — it neither prepares, signs, nor broadcasts. Only
+ * This endpoint moves NO money, it neither prepares, signs, nor broadcasts. Only
  * after the user slides to confirm does the client call the real prepare + sign
  * endpoints per step. Same guardrails (auth, app-access, rate-limit) as the money
  * routes so the agent can't be used to probe limits at scale.

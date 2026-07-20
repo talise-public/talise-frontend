@@ -19,7 +19,7 @@ import { suins } from "./suins-operator";
  *   0x<64 hex>             → bypasses SuiNS entirely
  *
  * Talise subnames are preferred when both could resolve (e.g. the app
- * mints `alice.talise.sui` and someone else owns the root `alice.sui` —
+ * mints `alice.talise.sui` and someone else owns the root `alice.sui` -
  * we send to the Talise user because that's what "alice" means in our
  * app context). Hex addresses bypass SuiNS entirely.
  */
@@ -46,7 +46,7 @@ export async function resolveRecipient(input: string): Promise<Resolved | null> 
         };
       }
     } catch {
-      // ObjectError / "not exist" / RPC hiccup — try the next candidate.
+      // ObjectError / "not exist" / RPC hiccup, try the next candidate.
       continue;
     }
   }
@@ -66,7 +66,7 @@ function candidateSuinsNames(raw: string): string[] {
   if (!s) return [];
   if (s.startsWith("@")) s = s.slice(1);
 
-  // IMPORTANT — Talise display forms (which contain `@`) must be
+  // IMPORTANT, Talise display forms (which contain `@`) must be
   // matched BEFORE the generic `.sui` suffix branch. Otherwise a
   // string like "alice@talise.sui" matches `.endsWith(".sui")` first
   // and gets rejected by validateSui (because the "alice@talise"
@@ -89,7 +89,7 @@ function candidateSuinsNames(raw: string): string[] {
     return validateSui(s) ? [s] : [];
   }
 
-  // Bare username — try Talise sub (our users), then root SuiNS
+  // Bare username, try Talise sub (our users), then root SuiNS
   // (everyone else on Sui mainnet).
   if (USERNAME_RE.test(s)) {
     return [`${s}.talise.sui`, `${s}.sui`];

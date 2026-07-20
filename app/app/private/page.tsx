@@ -9,16 +9,16 @@ import { shieldConfigured, SHIELD } from "@/lib/shield/onchain";
 
 export const dynamic = "force-dynamic";
 
-const DISPLAY = { fontFamily: "var(--font-display-v2)" } as const;
+const DISPLAY = { fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' } as const;
 
 /**
- * /app/private — shielded USDsui send (Talise's own ZK privacy layer).
+ * /app/private, shielded USDsui send (Talise's own ZK privacy layer).
  *
  * Reached from the iOS "Send private tx" tile (which opens this on the web app,
  * so the Groth16 proof is built in the user's own session; the relayer only
  * sponsors gas, never the note secrets). The shielded pool is published on
  * mainnet as a $2.50/tx operator-trusted pilot, but the SUBSYSTEM is gated by
- * `shieldConfigured()` (SHIELD_PKG + SHIELD_POOL_USDSUI) — which stays UNSET in
+ * `shieldConfigured()` (SHIELD_PKG + SHIELD_POOL_USDSUI), which stays UNSET in
  * prod until the relayer keypair is funded + the env is set. So this page tells
  * the truth: explainer + honest pilot disclosure, and either "switching on"
  * (current) or the live send form (once flipped on).
@@ -32,7 +32,7 @@ export default function PrivatePage() {
       <header className="space-y-3">
         <Eyebrow>Private</Eyebrow>
         <h1
-          className="max-w-xl text-[clamp(28px,6vw,44px)] font-[800] uppercase leading-[1.0] tracking-[-0.02em] text-[#15300c]"
+          className="max-w-xl text-[clamp(28px,6vw,44px)] font-[500] leading-[1.0] tracking-[-0.05em] text-[#15300c]"
           style={DISPLAY}
         >
           Send USDsui, shielded.
@@ -47,7 +47,7 @@ export default function PrivatePage() {
       {/* Status */}
       <section
         className="rounded-[28px] bg-[#f7fcf2] p-7"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         <div className="flex items-start gap-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#CAFFB8]">
@@ -56,7 +56,7 @@ export default function PrivatePage() {
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex items-center gap-2">
               <h2
-                className="text-[clamp(18px,2.4vw,22px)] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
+                className="text-[clamp(18px,2.4vw,22px)] font-[500] tracking-[-0.05em] text-[#15300c]"
                 style={DISPLAY}
               >
                 Private payments
@@ -102,7 +102,7 @@ export default function PrivatePage() {
       {/* Honest pilot disclosure */}
       <section
         className="rounded-[28px] bg-[#f7fcf2] p-7"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#3d7a29]">
           About this pilot
@@ -155,13 +155,13 @@ function InfoCard({
   return (
     <div
       className="rounded-[28px] p-6"
-      style={{ background: bg, boxShadow: "10px 10px 0 #15300c" }}
+      style={{ background: bg, boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
     >
       <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#15300c]/[0.08]">
         <HugeiconsIcon icon={icon} className="h-5 w-5 text-[#15300c]" />
       </span>
       <h3
-        className="mb-1.5 text-[18px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
+        className="mb-1.5 text-[18px] font-[500] tracking-[-0.05em] text-[#15300c]"
         style={DISPLAY}
       >
         {title}

@@ -23,7 +23,7 @@ export const runtime = "nodejs";
  * /api/send/sponsor-prepare's gasless→sponsored fallback:
  *
  *   • PREFERRED: gasless `0x2::balance::send_funds<USDSUI>` of the full
- *     amount to the escrow (free, no sponsor) — works when the sender's
+ *     amount to the escrow (free, no sponsor), works when the sender's
  *     USDsui lives in their Address Balance accumulator.
  *   • FALLBACK: if the gasless build/simulate fails for a categorized
  *     reason (accumulator underfunded / Coin-only balance / "withdraw
@@ -42,7 +42,7 @@ export const runtime = "nodejs";
  * closed) → checkSendAllowed on the FULL amount → build funding PTB to the
  * escrow address → return `{ bytes, streamPlan, escrowAddress }`.
  *
- * The DB row is NOT inserted here — it's inserted by /api/streams/record once
+ * The DB row is NOT inserted here, it's inserted by /api/streams/record once
  * the funding tx confirms (the funding digest only exists post-execute).
  */
 
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Streaming is now the ON-CHAIN, Clock-based rail only — the escrow +
+  // Streaming is now the ON-CHAIN, Clock-based rail only, the escrow +
   // scheduler (cron) rail is retired. A stream is a real Stream<USDSUI> Move
   // object; the recipient pulls accrued tranches via stream::claim_accrued.
   // So availability is gated on STREAM_PACKAGE_ID/REGISTRY_ID, not the (now
@@ -189,7 +189,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ── Resolve recipient — must be a REAL Talise/SuiNS recipient (§6 gating).
+  // ── Resolve recipient, must be a REAL Talise/SuiNS recipient (§6 gating).
   let resolved;
   try {
     resolved = await resolveRecipient(toInput);
@@ -231,10 +231,10 @@ export async function POST(req: Request) {
       );
     }
   } catch {
-    /* fail open on the count read — never block a legitimate create */
+    /* fail open on the count read, never block a legitimate create */
   }
 
-  // ── Compliance screening — HARD STOP, fail-closed on a sanctions name hit.
+  // ── Compliance screening, HARD STOP, fail-closed on a sanctions name hit.
   const screen = await screenTransfer({
     senderAddr: user.sui_address,
     recipientAddr: recipientAddress,
@@ -255,7 +255,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ── Hard transaction-limit gate — the WHOLE stream amount counts NOW
+  // ── Hard transaction-limit gate, the WHOLE stream amount counts NOW
   // (funds leave at funding time), so a stream can't dodge tier caps by
   // drip-sending. Fail-open by contract.
   const decision = await checkSendAllowed(userId, totalUsd);

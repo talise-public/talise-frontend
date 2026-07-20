@@ -4,7 +4,7 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
 import { cetusUniverse } from "@/lib/cetus-tokens";
 
 /**
- * COIN VERIFICATION — the single gate for which coins Talise shows + offers to
+ * COIN VERIFICATION, the single gate for which coins Talise shows + offers to
  * convert. ALWAYS IGNORE NON-VERIFIED coins: spam/airdrop tokens (e.g. random
  * "LMAGMA_COIN") must never appear in balances, never be offered for a
  * "Convert all to USDsui" swap (they have no Cetus liquidity → the aggregator
@@ -16,7 +16,7 @@ import { cetusUniverse } from "@/lib/cetus-tokens";
  * break if the Cetus fetch is slow/unreachable. (Per the chosen design.)
  */
 
-/** A coin must have at least this much on-chain liquidity to be convertible —
+/** A coin must have at least this much on-chain liquidity to be convertible -
  *  below it the Cetus aggregator aborts with "insufficient liquidity" (exactly
  *  what spam coins like LMAGMA_COIN do). Such coins are ignored entirely. */
 const MIN_LIQUIDITY_USD = 100;
@@ -31,7 +31,7 @@ function norm(t: string): string {
 }
 
 /**
- * Always-verified floor — coins we KNOW are Cetus-verified with deep liquidity,
+ * Always-verified floor, coins we KNOW are Cetus-verified with deep liquidity,
  * i.e. the ones a convert-to-USDsui swap actually succeeds on. This is both the
  * trusted core AND the fallback when the Cetus registry can't be fetched.
  */

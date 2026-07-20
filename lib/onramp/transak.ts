@@ -18,10 +18,10 @@ import {
 import { computeRequirements } from "./requirements";
 
 /**
- * Transak on-ramp adapter — the LIVE money-in provider for Talise.
+ * Transak on-ramp adapter, the LIVE money-in provider for Talise.
  *
  * Transak's HOSTED WIDGET performs KYC itself (tiered: light KYC for small
- * amounts, full ID for larger), so Talise collects no identity fields — we
+ * amounts, full ID for larger), so Talise collects no identity fields, we
  * just build the widget URL with the user's Sui address locked in. Transak
  * does NOT deliver USDsui; it delivers USDC on Sui, and a separate
  * swap-to-USDsui step (`/api/swap/prepare`) converts it. So this adapter
@@ -79,7 +79,7 @@ export const transakAdapter: OnrampProvider = {
   },
 
   async createOrUpdateCustomer(profile: KycProfile): Promise<CustomerResult> {
-    // No partner-KYC API call here — Transak verifies identity in its widget.
+    // No partner-KYC API call here, Transak verifies identity in its widget.
     // We only mint a STABLE partner reference so orders + webhooks reconcile
     // back to this user. Works identically with or without an API key.
     return {
@@ -92,7 +92,7 @@ export const transakAdapter: OnrampProvider = {
 
   async createOnrampSession(input: SessionInput): Promise<SessionResult> {
     const key = apiKey();
-    // Transak only delivers USDC — coerce regardless of what the caller asked.
+    // Transak only delivers USDC, coerce regardless of what the caller asked.
     const deliverAsset: DeliverAsset = DELIVER;
 
     if (!key) {
@@ -166,7 +166,7 @@ export const transakAdapter: OnrampProvider = {
           payload = decoded;
         }
       } else {
-        // No JWT envelope — treat the body as the event object (unverified).
+        // No JWT envelope, treat the body as the event object (unverified).
         payload = (outer ?? {}) as Record<string, unknown>;
       }
     } catch {
@@ -223,7 +223,7 @@ function b64urlToBuf(s: string): Buffer {
 /**
  * Verify a compact HS256 JWT against `secret` and return its decoded payload,
  * or null if the signature doesn't match / the token is malformed. No external
- * dependency — Transak only ever uses HS256 for webhook signing.
+ * dependency, Transak only ever uses HS256 for webhook signing.
  */
 function verifyJwtHs256(
   token: string,

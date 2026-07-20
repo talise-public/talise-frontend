@@ -62,7 +62,7 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
     res = await fetch(buildUrl(path, query, fresh), init);
   } catch (e) {
     if ((e as Error).name === "AbortError") throw e;
-    throw new ApiError(0, "Network error — check your connection.", "NETWORK");
+    throw new ApiError(0, "Network error, check your connection.", "NETWORK");
   }
 
   const text = await res.text();

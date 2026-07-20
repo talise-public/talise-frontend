@@ -3,7 +3,7 @@
 /**
  * Read-data hooks for the app. Each wraps an `/api/*` endpoint with simple
  * fetch-on-mount + revalidate semantics. The /api/balances and /api/activity
- * snapshots are DISPLAY-ONLY — pass `fresh` (refreshFresh / refresh) right
+ * snapshots are DISPLAY-ONLY, pass `fresh` (refreshFresh / refresh) right
  * after a tx to bypass the snapshot caches.
  *
  * A global `talise:tx` window event (dispatched by useSignAndSend after a
@@ -18,12 +18,12 @@ import { api, ApiError } from "./api";
 // Every read hook is backed by one module-level cache keyed by endpoint, with
 // in-flight de-dupe + cross-component subscription + background revalidation.
 // Why this matters:
-//   • SPEED — navigating between screens renders the cached value INSTANTLY
+//   • SPEED, navigating between screens renders the cached value INSTANTLY
 //     (no per-screen refetch waterfall / loading flash).
-//   • CONSISTENCY — every component that reads balances sees the same number
+//   • CONSISTENCY, every component that reads balances sees the same number
 //     (this is what was causing the Send screen to flash "₦0" while the
-//     dashboard showed the real balance — each hook fetched on its own).
-//   • EFFICIENCY — N components mounting the same endpoint = ONE request.
+//     dashboard showed the real balance, each hook fetched on its own).
+//   • EFFICIENCY, N components mounting the same endpoint = ONE request.
 // (This is browser code, so Date.now()/timers are fine here.)
 
 type CacheEntry = {

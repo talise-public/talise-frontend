@@ -12,14 +12,14 @@ import {
  * A virtual account is a persistent bank account number issued to a customer.
  * Any fiat they deposit (USD via ACH/FedNow/wire, EUR/GBP via SEPA/Faster
  * Payments) is auto-converted and delivered as **USDsui directly to their Sui
- * address** — no swap, no widget redirect. The user just sees "send money to
+ * address**, no swap, no widget redirect. The user just sees "send money to
  * this account number / IBAN."
  *
  * This is the clean recurring-funding UX. (For a one-off, `createOnrampTransfer`
  * returns ad-hoc deposit instructions instead.)
  *
  * Source fiat currencies: usd | eur | gbp | mxn | brl | cop. NGN is NOT
- * supported by Bridge — Nigerian local payout stays on Linq.
+ * supported by Bridge, Nigerian local payout stays on Linq.
  */
 
 export type BridgeFiatCurrency = "usd" | "eur" | "gbp" | "mxn" | "brl" | "cop";
@@ -34,7 +34,7 @@ export type BridgeDepositInstructions = {
   bank_account_number?: string;
   bank_routing_number?: string;
   bank_beneficiary_name?: string;
-  /** Account holder's address on file — sending forms ask for it. */
+  /** Account holder's address on file, sending forms ask for it. */
   bank_beneficiary_address?: string;
   iban?: string;
   bic?: string;

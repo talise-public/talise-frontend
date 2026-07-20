@@ -10,7 +10,7 @@ export type GlassPillProps = {
   size?: "sm" | "md";
 };
 
-/** A capsule glass chip — used for filters, quick actions, balance chips. */
+/** A capsule glass chip, used for filters, quick actions, balance chips. */
 export function GlassPill({
   children,
   onClick,

@@ -1,5 +1,5 @@
 /**
- * Talise shielded-pool prover — main-thread client for the Web Worker prover.
+ * Talise shielded-pool prover, main-thread client for the Web Worker prover.
  *
  * Public surface:
  *   • prove(input)                  → ProofOutput   (off-thread Groth16 prove)
@@ -8,17 +8,17 @@
  *   • preloadProvingKey()           → warm the cache before the user proves
  *
  * Asset hosting (static, served from web/public/shield/):
- *   • /shield/talise_privacy_circuit.js       — wasm-bindgen `--target web` glue
- *   • /shield/talise_privacy_circuit_bg.wasm  — ~1.4MB circuit binary
- *   • /shield/proving_key.bin                 — ~3.8MB arkworks proving key
- *   • /shield/vk_sui.hex                       — verifying key hex (Sui format)
+ *   • /shield/talise_privacy_circuit.js     , wasm-bindgen `--target web` glue
+ *   • /shield/talise_privacy_circuit_bg.wasm, ~1.4MB circuit binary
+ *   • /shield/proving_key.bin               , ~3.8MB arkworks proving key
+ *   • /shield/vk_sui.hex                     , verifying key hex (Sui format)
  *
  * The proving key is fetched ONCE and cached in IndexedDB (keyed by a version
  * tag) so repeat sessions skip the 3.8MB download. It is also kept in memory for
  * the lifetime of the tab. Regenerating the dev keys means bumping PK_CACHE_VER.
  *
  * Entropy: the WASM proof randomness comes from getrandom(js) ->
- * crypto.getRandomValues — REAL entropy, never a fixed seed.
+ * crypto.getRandomValues, REAL entropy, never a fixed seed.
  */
 
 /** Hosted asset paths (see web/public/shield/). */
@@ -45,13 +45,13 @@ export type ProofOutput = {
   proofC: number[];
   /** 8 public inputs as decimal strings, allocation order. */
   publicInputs: string[];
-  /** proofA‖proofB‖proofC (128 bytes) hex — the bytes the Move verifier wants. */
+  /** proofA‖proofB‖proofC (128 bytes) hex, the bytes the Move verifier wants. */
   proofSerializedHex: string;
-  /** 8 × 32-byte LE field elements hex — Move bcs::to_bytes(&u256) layout. */
+  /** 8 × 32-byte LE field elements hex, Move bcs::to_bytes(&u256) layout. */
   publicInputsSerializedHex: string;
 };
 
-/** Circuit input — every value a u256 decimal (or 0x-hex) string. */
+/** Circuit input, every value a u256 decimal (or 0x-hex) string. */
 export type ProofInput = {
   vortex: string;
   root: string;
@@ -134,7 +134,7 @@ function idbPut(key: string, val: ArrayBuffer): Promise<void> {
 
 /**
  * Fetch the proving key hex, using the IndexedDB cache when available. Safe to
- * call repeatedly — the in-memory copy is reused for the tab's lifetime.
+ * call repeatedly, the in-memory copy is reused for the tab's lifetime.
  */
 export async function preloadProvingKey(): Promise<string> {
   if (pkHexMem) return pkHexMem;
@@ -214,10 +214,10 @@ function post(msg: Record<string, unknown>): Promise<string | boolean> {
 // ---------------------------------------------------------------------------
 
 /**
- * Warm the prover BEFORE the user proves — call this on page load. Pre-fetches
+ * Warm the prover BEFORE the user proves, call this on page load. Pre-fetches
  * and caches the ~3.8MB proving key (IndexedDB + memory) AND instantiates the
  * ~1.4MB WASM in the worker, in parallel. Without this the FIRST proof (the
- * deposit leg) pays both costs inline — several seconds of the private send.
+ * deposit leg) pays both costs inline, several seconds of the private send.
  * Best-effort + idempotent: a failure just means the first proof loads cold.
  */
 export async function warmUp(): Promise<void> {

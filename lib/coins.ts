@@ -64,7 +64,7 @@ export async function getOwnedCoins(
   owner: string
 ): Promise<OwnedCoinSummary[]> {
   // gRPC `listBalances` returns one already-aggregated `{ coinType, balance }`
-  // row per coin type the owner holds — the same summed-by-type shape the old
+  // row per coin type the owner holds, the same summed-by-type shape the old
   // JSON-RPC `getAllCoins` loop produced by hand, so we no longer page through
   // individual coin objects. Paginate defensively in case a whale holds more
   // types than one page returns.

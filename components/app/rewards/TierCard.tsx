@@ -21,7 +21,7 @@ const TIER_ICON: Record<string, typeof Award01Icon> = {
 /**
  * The hero of the Rewards screen: tier eyebrow, a big ink points number,
  * and a progress bar to the next tier. At the top tier the bar is replaced
- * by a "Top tier" line. Mirrors the iOS `tierCard` — number is the hero,
+ * by a "Top tier" line. Mirrors the iOS `tierCard`, number is the hero,
  * no competing rosette.
  */
 export function TierCard({
@@ -45,14 +45,14 @@ export function TierCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow>{label}</Eyebrow>
-          {/* Big ink number — hero stat */}
+          {/* Big ink number, hero stat */}
           <div className="mt-1.5 flex items-baseline gap-1.5">
             <span
               className="tabular-nums text-[#15300c]"
               style={{
                 fontSize: 46,
                 fontWeight: 600,
-                letterSpacing: "-0.04em",
+                letterSpacing: "-0.05em",
                 lineHeight: 1,
               }}
             >

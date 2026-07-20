@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * Provision a CUSTODIAL agent wallet (`talise agent provision`).
  *
  * Mirrors `/api/auth/cli/start`, but the SERVER generates and CUSTODIES the
- * ephemeral key (that is the whole point — the agent host holds no key). The
+ * ephemeral key (that is the whole point, the agent host holds no key). The
  * key + binding + cap + name ride a short-lived signed cookie to the callback,
  * which persists them ENCRYPTED and mints a scoped agent token. Feature-gated
  * OFF by default (see agent-wallets.ts).

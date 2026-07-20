@@ -8,7 +8,7 @@ import { createAgentWallet, agentWalletsEnabled } from "@/lib/agent-wallets";
 export const runtime = "nodejs";
 
 /**
- * GET /auth/callback — Google's OAuth redirect target.
+ * GET /auth/callback, Google's OAuth redirect target.
  *
  * Three flows split here, by the shape of the OAuth `state`:
  *
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  *     which POSTs code+state to /api/auth/exchange so the staged loader animates
  *     WHILE the real exchange runs. The exchange validates + consumes the state.
  *
- *   • MOBILE (`m1.` prefix, from /api/auth/mobile/start): single-request flow —
+ *   • MOBILE (`m1.` prefix, from /api/auth/mobile/start): single-request flow -
  *     ASWebAuthenticationSession needs a plain redirect to the `talise://` scheme,
  *     so we run the full exchange here and bounce with the bearer.
  *
@@ -24,7 +24,7 @@ export const runtime = "nodejs";
  *     as mobile, but redirect the bearer + the zkLogin binding (maxEpoch,
  *     randomness) to the CLI's loopback server on http://127.0.0.1:<port> so
  *     `talise login` can sign locally. The ephemeral private key never leaves the
- *     user's machine — only the maxEpoch/randomness it was bound to travel back.
+ *     user's machine, only the maxEpoch/randomness it was bound to travel back.
  */
 function redirectAuthError(req: Request, state: string | null, err: string): NextResponse {
   if (state && (state.startsWith("cli.") || state.startsWith("agw."))) {
@@ -44,10 +44,10 @@ function redirectAuthError(req: Request, state: string | null, err: string): Nex
   return NextResponse.redirect(new URL(`/?err=${encodeURIComponent(err)}`, req.url));
 }
 
-/** Parse `<cli|agw>.<port>.<csrf>.<rand>` — port + csrf to build the loopback redirect. */
+/** Parse `<cli|agw>.<port>.<csrf>.<rand>`, port + csrf to build the loopback redirect. */
 function parseLoopbackState(state: string): { port: number; csrf: string } | null {
   const parts = state.split(".");
-  // [prefix, "<port>", "<csrf>", "<rand…>"] — csrf + rand are dot-free base64url.
+  // [prefix, "<port>", "<csrf>", "<rand…>"], csrf + rand are dot-free base64url.
   if (parts.length < 4 || (parts[0] !== "cli" && parts[0] !== "agw")) return null;
   const port = Number(parts[1]);
   const csrf = parts[2] ?? "";
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
   if (state.startsWith("cli.")) {
     const parsed = parseLoopbackState(state);
     if (!parsed) return redirectAuthError(req, state, "bad_state");
-    // CLI path: do NOT revoke the user's other sessions — a `talise login`
+    // CLI path: do NOT revoke the user's other sessions, a `talise login`
     // must not sign the user out of their phone (or another CLI session).
     const done = await completeMobileExchange(req, state, { revokePrior: false });
     if (!done.ok) return redirectAuthError(req, state, done.err);
@@ -108,7 +108,7 @@ export async function GET(req: Request) {
   }
 
   // ── WEB: hand off to the staged-loader page WITHOUT consuming the state
-  // cookie — /api/auth/exchange validates + clears it.
+  // cookie, /api/auth/exchange validates + clears it.
   if (!state.startsWith("m1.")) {
     const finish = new URL("/auth/finish", req.url);
     finish.searchParams.set("code", code);
@@ -118,7 +118,7 @@ export async function GET(req: Request) {
 
   // ── MOBILE (`m1.`): full exchange, bounce to the app scheme.
   // Revoke the user's prior mobile sessions first so a fresh app sign-in
-  // leaves exactly one selectable binding — this stops STALE rows (e.g. an
+  // leaves exactly one selectable binding, this stops STALE rows (e.g. an
   // old ephemeral key with an already-expired max_epoch) from lingering and
   // being picked by the signer on the next deposit. CLI sessions are on their
   // own path and are intentionally spared (revokePrior:false above).
@@ -188,7 +188,7 @@ async function completeMobileExchange(
         bindingMaxEpoch = typeof decoded.maxEpoch === "number" ? decoded.maxEpoch : null;
         bindingRandomness = decoded.randomness ?? null;
       } catch {
-        /* malformed — signing still works but a future send needs its own randomness */
+        /* malformed, signing still works but a future send needs its own randomness */
       }
     }
   }
@@ -199,7 +199,7 @@ async function completeMobileExchange(
   // inserting the new one, so only the current binding is selectable by the
   // signer. Prevents stale rows (old ephemeral key / expired max_epoch) from
   // shadowing the fresh binding on the next deposit. Gated to the mobile-app
-  // path — CLI sign-in passes revokePrior:false to avoid logging the user out
+  // path, CLI sign-in passes revokePrior:false to avoid logging the user out
   // of their phone or another CLI session.
   if (opts.revokePrior) {
     await revokeAllMobileSessions(user.id);

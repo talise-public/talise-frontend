@@ -6,7 +6,7 @@ import { teamStreamsEnabled, listTeamStreams } from "@/lib/team-streams";
 
 export const runtime = "nodejs";
 
-/** GET /api/payouts/streams — the caller's team streams (newest first), with progress. */
+/** GET /api/payouts/streams, the caller's team streams (newest first), with progress. */
 export async function GET(req: Request) {
   const userId = await readEntryIdFromRequest(req);
   if (!userId) return NextResponse.json({ error: "not authenticated" }, { status: 401 });

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/waitlist/handle/availability
  *
- * Body: { handle: string }   (any `email` field is ignored — see below)
+ * Body: { handle: string }   (any `email` field is ignored, see below)
  *
  * Returns:
  *   200 { available: true,  normalized: "alice" }
@@ -27,14 +27,14 @@ export const dynamic = "force-dynamic";
  * the caller's own already-claimed state from `/api/auth/me` instead.
  *
  * Rate-limited per IP with a tight burst limit on top of the per-minute
- * cap — the live-availability UI calls this on every (debounced)
+ * cap, the live-availability UI calls this on every (debounced)
  * keystroke, but a scripted enumerator scraping the taken-handle space
  * trips the burst limit fast.
  */
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  // Per-minute throttle — a normal keystroke flow (debounced 350ms on
+  // Per-minute throttle, a normal keystroke flow (debounced 350ms on
   // the client) stays well under 30/min.
   const rl = await rateLimitAsync({
     key: `waitlist-avail:${ip}`,
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 60) } }
     );
   }
-  // Tighter burst limit on a short window — blunts a fast scripted scan
+  // Tighter burst limit on a short window, blunts a fast scripted scan
   // of the handle namespace (enumerating which names are taken) while
   // still comfortably allowing human typing.
   const burst = await rateLimitAsync({

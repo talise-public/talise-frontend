@@ -46,7 +46,7 @@ export function ChequeCard({
         borderRadius: 28,
         background:
           "linear-gradient(135deg, #f7fcf2 0%, #eef8e4 100%)",
-        boxShadow: "10px 10px 0 #15300c",
+        boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)",
         color: INK,
         fontFamily: "var(--font-serif), Georgia, serif",
       }}
@@ -115,7 +115,7 @@ export function ChequeCard({
               className="block truncate font-serif font-semibold"
               style={{ color: INK, fontSize: "clamp(14px, 3.8vw, 20px)", marginTop: 2 }}
             >
-              {payee || "—"}
+              {payee || "-"}
             </span>
             <div style={{ height: 1, background: RULE, opacity: 0.6, marginTop: 3 }} />
           </div>

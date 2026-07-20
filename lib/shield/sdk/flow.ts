@@ -1,11 +1,11 @@
 /**
- * Talise shielded-pool SDK — END-TO-END FLOW ORCHESTRATION (Workstream C).
+ * Talise shielded-pool SDK, END-TO-END FLOW ORCHESTRATION (Workstream C).
  *
  * This is the single surface the app calls to run a shielded operation. It ties
  * together every other SDK piece into one round-trip per op:
  *
  *   keys (deriveShieldKeypair)
- *     → witness assembly (this file — mirrors circuit/src/prover.rs exactly)
+ *     → witness assembly (this file, mirrors circuit/src/prover.rs exactly)
  *     → Merkle path  (POST /api/shield/merkle-path)
  *     → Groth16 prove (proveTransact → WASM worker, real entropy)
  *     → note encryption (encryptNote → P-256 ECIES, REAL)
@@ -29,7 +29,7 @@
  *     == the circuit's `poseidon_opt` at arity 1/3/4 (keys.ts; known-answer gate
  *     circuit/tests/poseidon_parity.rs) and arity-2 == `sui::poseidon_bn254`
  *     on-chain (Phase-0 gate). So this JS witness assembler produces commitments
- *     and nullifiers the circuit accepts — browser-assembled proofs verify
+ *     and nullifiers the circuit accepts, browser-assembled proofs verify
  *     on-chain. The full lifecycle was also proven via the Rust prover.
  *   • Remaining trust assumption: the verifying key is a SINGLE-PARTY OsRng setup
  *     (constants.move). Not outsider-forgeable, but trustless mainnet at scale
@@ -73,7 +73,7 @@ function nullifierFor(sk: bigint, commitment: bigint, pathIndex: bigint): bigint
 
 // ── Note shapes used by the flow ────────────────────────────────────────────
 
-/** An input note being spent — the secrets + its on-chain position. */
+/** An input note being spent, the secrets + its on-chain position. */
 export type FlowInputNote = {
   /** Note spending key (the spend authority for this note). */
   privateKey: bigint;
@@ -85,7 +85,7 @@ export type FlowInputNote = {
   commitment: bigint;
 };
 
-/** An output note produced by the op — persist this to spend it later. */
+/** An output note produced by the op, persist this to spend it later. */
 export type FlowOutputNote = {
   amount: bigint;
   /** Owner public key field element (recipient or self). */
@@ -98,7 +98,7 @@ export type FlowOutputNote = {
   encrypted: Uint8Array;
 };
 
-/** Shared pool wiring — supplied from SHIELD env (see flow-config.ts callers). */
+/** Shared pool wiring, supplied from SHIELD env (see flow-config.ts callers). */
 export type ShieldFlowConfig = {
   /** Pinned `talise_privacy` package id. */
   packageId: string;
@@ -118,7 +118,7 @@ export type ShieldFlowConfig = {
 };
 
 type RelayerInfo = { address: string; maxRelayerFee: bigint };
-// `root` is the root the returned path AUTHENTICATES to — the proof's public
+// `root` is the root the returned path AUTHENTICATES to, the proof's public
 // root MUST equal this for the real input or the circuit is unsatisfiable. We
 // carry it so the proof root can never drift from the path it was built with.
 type PathResult = { leafIndex: number; pathPairs: [string, string][]; root: string };
@@ -180,7 +180,7 @@ type WitnessInput = {
   pathIndex: bigint;
   pathPairs: [string, string][];
   nullifier: bigint;
-  /** Root the path authenticates to — for a REAL (non-zero) input the proof's
+  /** Root the path authenticates to, for a REAL (non-zero) input the proof's
    *  public root MUST equal this, else the membership constraint fails. */
   pathRoot: bigint;
 };
@@ -193,7 +193,7 @@ type WitnessOutput = {
 
 /**
  * Build a fresh ZERO-amount dummy input. Its nullifier must be globally unique
- * (the on-chain set rejects a re-spent nullifier — the exact collision that bit
+ * (the on-chain set rejects a re-spent nullifier, the exact collision that bit
  * the manual demos), so the dummy key + blinding are RANDOM per call, and its
  * Merkle path is the all-zero dummy path (amount 0 ⇒ membership check skipped).
  */
@@ -209,7 +209,7 @@ async function dummyInput(cfg: ShieldFlowConfig, pool: bigint, pathIndex: bigint
 }
 
 /** Turn a real {@link FlowInputNote} into a witness input (fetch its live path
- *  AND the root that path folds to — they MUST stay together). */
+ *  AND the root that path folds to, they MUST stay together). */
 async function realInput(cfg: ShieldFlowConfig, pool: bigint, note: FlowInputNote): Promise<WitnessInput> {
   const pathIndex = BigInt(note.leafIndex);
   const { pathPairs, root } = await getPath(cfg, { commitment: dec(note.commitment) });
@@ -244,7 +244,7 @@ function assembleProofInput(args: {
 }): ProofInput {
   const { pool, root, publicAmount, ins, outs } = args;
   if (ins[0].nullifier === ins[1].nullifier) {
-    throw new Error("input nullifiers collide — regenerate a dummy input");
+    throw new Error("input nullifiers collide, regenerate a dummy input");
   }
   return {
     vortex: dec(pool),
@@ -332,7 +332,7 @@ async function runOp(args: {
   // 2. Encrypt the two output notes.
   const { blobs, notes } = await encryptOutputs(pool, outs, encKeys);
 
-  // 3. ext_data — relayer + (zero) fee + the two ECIES blobs.
+  // 3. ext_data, relayer + (zero) fee + the two ECIES blobs.
   const extData: ExtDataInput = {
     value: ext.value,
     valueSign: ext.valueSign,
@@ -416,7 +416,7 @@ export type PreparedShieldDeposit = {
   };
   enc0B64: string;
   enc1B64: string;
-  /** The spendable output note (out0) — persist + spend after it indexes. */
+  /** The spendable output note (out0), persist + spend after it indexes. */
   outputNote: { amount: string; blinding: string; commitment: string };
 };
 
@@ -439,7 +439,7 @@ export async function proveShieldDeposit(args: {
   cfg: ShieldFlowConfig;
   keypair: ShieldKeypair;
   amount: bigint;
-  /** Current pool root (decimal) — must be a known on-chain root. */
+  /** Current pool root (decimal), must be a known on-chain root. */
   root: bigint;
 }): Promise<PreparedShieldDeposit> {
   const { cfg, keypair, amount, root } = args;
@@ -508,7 +508,7 @@ export async function shieldWithdraw(args: {
   if (change < 0n) throw new Error("withdraw exceeds spent notes");
   // If a SECOND real note is spent, both paths must fold to the same root.
   if (inputNotes[1] && ins[0].pathRoot !== ins[1].pathRoot) {
-    throw new Error("input note paths disagree on the root — retry");
+    throw new Error("input note paths disagree on the root, retry");
   }
   const outs: [WitnessOutput, WitnessOutput] = [
     makeOutput(pool, keypair.publicKey, change),
@@ -518,7 +518,7 @@ export async function shieldWithdraw(args: {
   return runOp({
     cfg,
     // Bind the public root to the SAME read that produced the spent note's path
-    // — NOT a stale snapshot the caller captured earlier (that mismatch made the
+    //, NOT a stale snapshot the caller captured earlier (that mismatch made the
     // membership constraint unsatisfiable → proof failed → withdraw never sent).
     root: ins[0].pathRoot,
     publicAmount: mod(0n - amount),
@@ -533,7 +533,7 @@ export async function shieldWithdraw(args: {
 }
 
 /** Is this nullifier already spent on-chain? Conservative: a failed lookup
- *  returns false (treat as unspent) — the on-chain nullifier set is the real
+ *  returns false (treat as unspent), the on-chain nullifier set is the real
  *  guard, so the worst case is a withdraw that aborts harmlessly, never a spend. */
 async function isSpent(cfg: ShieldFlowConfig, nullifier: bigint): Promise<boolean> {
   try {
@@ -585,7 +585,7 @@ export async function shieldedBalanceMicros(args: {
  * funds, look for an UNSPENT note the user already owns whose amount matches the
  * send; if found, spend THAT to the recipient (a relayer-signed withdraw) and
  * skip the deposit entirely. This (a) completes a previously-stranded deposit
- * whose withdraw never fired — the funds are already in the pool — and (b) makes
+ * whose withdraw never fired, the funds are already in the pool, and (b) makes
  * sends cheaper when shielded balance exists. Returns the withdraw digest, or
  * null when no matching unspent note exists (caller falls back to deposit→withdraw).
  */
@@ -596,14 +596,14 @@ export async function spendExistingNote(args: {
   exitAddress: string;
   /** A relayer-owned coin to split the zero deposit-coin from (from /api/shield/relayer). */
   zeroCoinSourceId: string;
-  /** Current pool root (decimal) — must include the note's leaf. */
+  /** Current pool root (decimal), must include the note's leaf. */
   root: bigint;
 }): Promise<{ digest: string; outputs: FlowOutputNote[] } | null> {
   const { cfg, keypair, amount } = args;
   const viewingKey = await deriveShieldEncScalar(keypair.spendingKey);
   // Scanning is best-effort: a scan error means "couldn't check balance" → return
   // null so the caller deposits normally. But once a matching UNSPENT note is
-  // found, the withdraw is NOT swallowed — if it throws, it propagates so the
+  // found, the withdraw is NOT swallowed, if it throws, it propagates so the
   // caller surfaces the error and does NOT deposit again (no stranded-deposit loop).
   let notes: Awaited<ReturnType<typeof scanNotes>>;
   try {
@@ -644,7 +644,7 @@ export async function spendExistingNote(args: {
  * `destination` (the user's own wallet). One-tap reclaim of a shielded balance
  * stranded by earlier failed withdraws. Each note is withdrawn at its full
  * amount (no change), sequentially; a per-note failure is recorded and the sweep
- * continues (best-effort — never aborts the whole sweep on one bad note). The
+ * continues (best-effort, never aborts the whole sweep on one bad note). The
  * withdraw root is bound to each note's own freshly-fetched path (see
  * shieldWithdraw), so sequential withdraws stay valid as the tree grows.
  */
@@ -691,7 +691,7 @@ export async function sweepShieldedBalance(args: {
         amount: n.amount, // full note → no change
         exitAddress: destination,
         zeroCoinSourceId,
-        root: 0n, // ignored — shieldWithdraw binds the proof root to the note's path
+        root: 0n, // ignored, shieldWithdraw binds the proof root to the note's path
       });
       swept.push({ digest, amountMicros: dec(n.amount) });
       total += n.amount;
@@ -705,7 +705,7 @@ export async function sweepShieldedBalance(args: {
 /**
  * INTERNAL TRANSFER: spend `inputNotes` and re-split into a note for the
  * recipient (`recipientPubkey` + `recipientEncKey`) and a change note for the
- * user — with ZERO coin movement on-chain. public_amount == 0.
+ * user, with ZERO coin movement on-chain. public_amount == 0.
  */
 export async function shieldTransfer(args: {
   cfg: ShieldFlowConfig;
@@ -731,7 +731,7 @@ export async function shieldTransfer(args: {
   const change = totalIn - amount;
   if (change < 0n) throw new Error("transfer exceeds spent notes");
   if (inputNotes[1] && ins[0].pathRoot !== ins[1].pathRoot) {
-    throw new Error("input note paths disagree on the root — retry");
+    throw new Error("input note paths disagree on the root, retry");
   }
   // out0 → recipient, out1 → change back to self.
   const outs: [WitnessOutput, WitnessOutput] = [
@@ -756,10 +756,10 @@ export async function shieldTransfer(args: {
  * SCAN-FIRST shielded transfer: a shielded note IS spendable balance. Look for an
  * UNSPENT note the user already owns whose amount covers `amount`; if found, spend
  * THAT to the recipient via a HIDDEN-AMOUNT shieldTransfer (public_amount == 0, so
- * no amount or recipient lands on-chain) — change returns to self. Mirrors
+ * no amount or recipient lands on-chain), change returns to self. Mirrors
  * spendExistingNote's scan loop: scanning is best-effort (a scan error means
  * "couldn't check balance" → return null so the caller falls back), but once a
- * covering UNSPENT note is found the transfer is NOT swallowed — if it throws it
+ * covering UNSPENT note is found the transfer is NOT swallowed, if it throws it
  * propagates so the caller surfaces the error. Uses the FIRST unspent note whose
  * amount >= the send amount. Returns null ONLY when no covering unspent note exists.
  */

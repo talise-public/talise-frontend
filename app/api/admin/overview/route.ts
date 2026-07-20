@@ -5,13 +5,13 @@ import { requireAdminApi } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/admin/overview — top-level KPIs across the whole database.
+ * GET /api/admin/overview, top-level KPIs across the whole database.
  * One round of aggregate queries; resilient (a failed sub-query yields
  * 0 / [] rather than 500-ing the page).
  */
 
 // This page fans out ~26 aggregates via Promise.all over a small pool. The
-// route is meant to be resilient — a failed sub-query yields 0/[] rather than
+// route is meant to be resilient, a failed sub-query yields 0/[] rather than
 // 500-ing. But a HUNG query (e.g. a stale pooled connection that never
 // settles) isn't a failure: it would make Promise.all wait forever and wedge
 // the whole dashboard on "Loading…". So we bound every sub-query in time and
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 // Generous: this page fans 26 queries over a max:8 pool, so the heaviest
 // COUNT(*)s wait several seconds for a connection BEFORE running. The budget
 // is measured from dispatch, so it must cover (queue wait + query time). Its
-// only job is to stop an infinite hang — not to be the expected latency.
+// only job is to stop an infinite hang, not to be the expected latency.
 const SUBQUERY_TIMEOUT_MS = 20_000;
 
 async function withTimeout<T>(p: Promise<T>, fallback: T): Promise<T> {
@@ -60,7 +60,7 @@ async function groupCounts(
       const r = await db().execute({ sql, args });
       return r.rows.map((row) => {
         const vals = Object.values(row);
-        return { key: String(vals[0] ?? "—"), count: Number(vals[1] ?? 0) };
+        return { key: String(vals[0] ?? "-"), count: Number(vals[1] ?? 0) };
       });
     })(),
     []

@@ -96,7 +96,7 @@ function normalizeHandle(s: string): string | null {
   let t = s;
   if (/\s/.test(t) || /^http/i.test(t)) return null;
   const lower = t.toLowerCase();
-  // SuiNS names pass through verbatim — the server resolver keys on these.
+  // SuiNS names pass through verbatim, the server resolver keys on these.
   if (lower.endsWith(".sui") || lower.endsWith("@talise.sui")) return t;
   if (t.startsWith("@")) t = t.slice(1);
   // ≥3 chars of [alnum._-] so stray scanned text can't become a send target

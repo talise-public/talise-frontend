@@ -7,11 +7,11 @@ import { RequestPayView } from "./RequestPayView";
 export const dynamic = "force-dynamic";
 
 /**
- * PUBLIC payment-request view + pay page — NOT under /app, so it renders
+ * PUBLIC payment-request view + pay page, NOT under /app, so it renders
  * standalone without the AppShell chrome (no sidebar / nav). RequestPayView
  * applies the light-mint skin itself. Anyone with the link can view the request
  * and pay it; the "Pay" button routes into /app/pay (which signs the payer in
- * if needed). No secret gate — a request, unlike a cheque, is open by design.
+ * if needed). No secret gate, a request, unlike a cheque, is open by design.
  *
  * Server component: it reads the request preview directly (no public-API
  * round-trip), which resolves the requester's display + pay address and
@@ -23,15 +23,15 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { id } = await params;
   const preview = await previewRequest(id).catch(() => null);
-  if (!preview) return { title: "Payment request — Talise" };
+  if (!preview) return { title: "Payment request, Talise" };
   const title = `${preview.requesterDisplay} requests $${preview.amountUsd.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} — Talise`;
+  })}, Talise`;
   return {
     title,
     description:
-      preview.requesterNote || preview.note || "Pay this request with Talise — gasless digital dollars.",
+      preview.requesterNote || preview.note || "Pay this request with Talise, gasless digital dollars.",
     robots: { index: false, follow: false },
   };
 }

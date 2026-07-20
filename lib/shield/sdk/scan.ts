@@ -1,5 +1,5 @@
 /**
- * Talise shielded-pool SDK — trial-decrypt scanning.
+ * Talise shielded-pool SDK, trial-decrypt scanning.
  *
  * The recipient discovers incoming notes by fetching every emitted commitment
  * (+ its encrypted output ciphertext) from the indexer and trial-decrypting
@@ -7,11 +7,11 @@
  * commitment matches the on-chain commitment is one of the recipient's notes.
  *
  * The commitments feed is served by `/api/shield/commitments` (owned by the
- * indexer/merkle agent — Workstream C). This module only CONSUMES it; the exact
+ * indexer/merkle agent, Workstream C). This module only CONSUMES it; the exact
  * row shape is defined defensively here and adjusted when that route lands.
  *
  * The `viewingKey: bigint` parameter is the recipient's ECIES enc private
- * scalar (see keys.ts `deriveShieldEncScalar` + encrypt.ts) — the bigint key
+ * scalar (see keys.ts `deriveShieldEncScalar` + encrypt.ts), the bigint key
  * that trial-decrypts the `encrypted_output` blobs.
  *
  * CRYPTO STATUS: note ENCRYPTION is REAL (P-256 ECIES + AES-256-GCM, see
@@ -47,7 +47,7 @@ export type ScanOptions = {
 
 /**
  * Scan the commitments feed and return the notes that belong to `viewingKey`.
- * Pure consumer of the indexer — never signs, never holds spend authority.
+ * Pure consumer of the indexer, never signs, never holds spend authority.
  */
 export async function scanNotes(
   viewingKey: bigint,
@@ -96,7 +96,7 @@ export async function scanNotes(
 
 /**
  * Trial-decrypt one row. Returns the note iff (a) decrypt succeeds AND (b) the
- * recomputed commitment matches the on-chain commitment — the binding check
+ * recomputed commitment matches the on-chain commitment, the binding check
  * that turns a weak stub-decrypt accept into a real match.
  */
 export async function tryDecryptRow(
@@ -124,7 +124,7 @@ export async function tryDecryptRow(
  * Decode a `vector<u8>` blob to bytes. The on-chain `encrypted_output` reaches
  * us in MULTIPLE wire shapes depending on the fullnode/index path: `0x`-hex
  * (indexer array path), a base64 string (Sui JSON-RPC's vector<u8> rendering on
- * many fullnode versions — the shape that previously broke scan entirely), or
+ * many fullnode versions, the shape that previously broke scan entirely), or
  * null. Tolerate all; the downstream 221-byte length gate + commitment match
  * reject anything that decodes to garbage, so being permissive here is safe.
  */

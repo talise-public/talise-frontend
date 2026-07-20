@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * than the user's current tier are returned but marked `locked: true`.
  * iOS renders them at reduced opacity with the tier-required hint.
  *
- * The catalogue itself is hardcoded in lib/rewards/catalogue.ts — no
+ * The catalogue itself is hardcoded in lib/rewards/catalogue.ts, no
  * DB read, the only DB hit is the user row for `pointsTotal`.
  */
 export async function GET(req: Request) {
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     minTier: s.minTier ?? null,
     stackable: s.stackable ?? false,
     durationMs: s.durationMs ?? null,
-    // Affordability hint — iOS could derive this client-side but having
+    // Affordability hint, iOS could derive this client-side but having
     // the server compute it keeps the rendering logic dumb on the
     // mobile side (so future server-side promos like a Black Friday
     // discount work without an iOS release).

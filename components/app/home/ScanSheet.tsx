@@ -23,7 +23,7 @@ function parseScan(text: string): { to: string; amount?: string } | null {
     const m = u.pathname.match(/\/pay\/([^/]+)/);
     if (m) return { to: decodeURIComponent(m[1]), amount: u.searchParams.get("amount") ?? undefined };
   } catch {
-    /* not a URL — fall through */
+    /* not a URL, fall through */
   }
   // sui:0x… or a bare 0x address
   const addr = t.replace(/^sui:/i, "").split("?")[0].trim();

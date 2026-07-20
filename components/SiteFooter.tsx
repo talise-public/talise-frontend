@@ -5,7 +5,7 @@ export function SiteFooter() {
         <div>
           <div className="font-display text-2xl tracking-tight">talise</div>
           <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-[var(--color-fg-muted)]">
-            Talise — money home, in seconds. We&apos;re in private beta.
+            Talise, money home, in seconds. We&apos;re in private beta.
           </p>
         </div>
 

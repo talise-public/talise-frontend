@@ -5,7 +5,7 @@ import { ShieldProveHarness } from "./harness";
 export const dynamic = "force-dynamic";
 
 /**
- * /app/shield-prove — HIDDEN prover harness for the native iOS private-send flow.
+ * /app/shield-prove, HIDDEN prover harness for the native iOS private-send flow.
  *
  * This page is never shown to a human. The native `PrivateSendFlowView` mounts
  * it inside a 0×0 WKWebView (authenticated via the bearer→web-session bridge)
@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
  * `shield` script-message handler.
  *
  * STATUS: the native UI + the bridge + this harness are wired end to end. The
- * last mile — the in-browser WASM prove + non-custodial shield-key derivation
- * for zkLogin users (PRIVACY-BUILD-PLAN.md Workstream D) — is what makes a real
+ * last mile, the in-browser WASM prove + non-custodial shield-key derivation
+ * for zkLogin users (PRIVACY-BUILD-PLAN.md Workstream D), is what makes a real
  * send execute. Until that lands the harness reports an honest "finalizing"
  * status (it never fakes a success and never moves funds), so the native flow
  * fails cleanly rather than silently.

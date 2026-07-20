@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * /app/settings — the account & preferences surface.
+ * /app/settings, the account & preferences surface.
  *
  * Sections (each a GlassCard with an eyebrow title):
- *   1. Profile      — avatar, display name (editable → POST /api/settings),
+ *   1. Profile    , avatar, display name (editable → POST /api/settings),
  *                     claimed @handle OR the HandleClaimCard.
- *   2. Preferences  — display-currency picker, country, notify-on-receive.
- *   3. Wallet       — Sui address with copy + Suiscan, USDsui explainer.
- *   4. Account      — support, terms, and Sign out (→ /auth/logout).
+ *   2. Preferences, display-currency picker, country, notify-on-receive.
+ *   3. Wallet     , Sui address with copy + Suiscan, USDsui explainer.
+ *   4. Account    , support, terms, and Sign out (→ /auth/logout).
  *
  * All reads come from useMe(); writes go through api()/POST /api/settings.
  * The /api/me payload does not expose notify-on-receive, so we mirror the
@@ -95,7 +95,7 @@ export function SettingsScreen() {
     try {
       setNotify(localStorage.getItem(NOTIFY_KEY) === "1");
     } catch {
-      /* storage blocked — default off */
+      /* storage blocked, default off */
     }
   }, []);
 
@@ -262,7 +262,7 @@ export function SettingsScreen() {
         </GlassCard>
       </section>
 
-      {/* Business account switch — pulled from the beta surface for now
+      {/* Business account switch, pulled from the beta surface for now
           (2026-06-11). Re-add <BusinessAccountCard /> here when the business
           workspace is ready for testers. */}
 
@@ -271,7 +271,7 @@ export function SettingsScreen() {
         <Eyebrow>Preferences</Eyebrow>
         <GlassCard className="divide-y divide-[#15300c]/10 overflow-hidden p-0">
 
-          {/* Display currency — CurrencyPicker renders its own row markup */}
+          {/* Display currency, CurrencyPicker renders its own row markup */}
           <CurrencyPicker />
 
           {/* Country */}
@@ -318,7 +318,7 @@ export function SettingsScreen() {
             </span>
           </label>
 
-          {/* Notify on receive — UNAVAILABLE for now (2026-06-11): greyed,
+          {/* Notify on receive, UNAVAILABLE for now (2026-06-11): greyed,
               Soon-pilled, toggle disabled. Restore the live Toggle (on={notify}
               busy={savingNotify} onChange={toggleNotify}) when receive emails
               are back on. */}
@@ -447,7 +447,7 @@ export function SettingsScreen() {
   );
 }
 
-/** Compact toggle switch — matches Wise-style on/off for preferences. */
+/** Compact toggle switch, matches Wise-style on/off for preferences. */
 function Toggle({
   on,
   busy,
@@ -456,7 +456,7 @@ function Toggle({
 }: {
   on: boolean;
   busy?: boolean;
-  /** Hard-unavailable (feature not live) — distinct from a transient busy. */
+  /** Hard-unavailable (feature not live), distinct from a transient busy. */
   disabled?: boolean;
   onChange: (v: boolean) => void;
 }) {

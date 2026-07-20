@@ -55,7 +55,7 @@ export function RoundupCard() {
           <HugeiconsIcon icon={PiggyBankIcon} size={17} strokeWidth={1.8} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold tracking-[-0.01em] text-[#15300c]">Round-up &amp; Save</p>
+          <p className="text-[14px] font-semibold tracking-[-0.05em] text-[#15300c]">Round-up &amp; Save</p>
           <p className="text-[12px] text-[#3a5230]">
             Set aside a slice of every payment, automatically.
           </p>
@@ -89,12 +89,12 @@ export function RoundupCard() {
         </div>
       )}
 
-      {/* Saved tally — mint chip */}
+      {/* Saved tally, mint chip */}
       <div className="flex items-center justify-between rounded-xl bg-[#CAFFB8] px-3.5 py-2.5">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#3d7a29]">
           Saved via round-up
         </span>
-        <span className="text-[16px] font-medium tracking-[-0.02em] tabular-nums text-[#15300c]">
+        <span className="text-[16px] font-medium tracking-[-0.05em] tabular-nums text-[#15300c]">
           {formatUsd(savedUsd, { fixed: true })}
         </span>
       </div>

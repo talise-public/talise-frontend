@@ -44,13 +44,13 @@ export function AmountDisplay({
   return (
     <span className={`inline-flex flex-col ${className}`}>
       <span
-        className={`font-display font-semibold tabular-nums ${muted ? "text-[#3a5230]" : "text-[#15300c]"}`}
-        style={{ fontSize: size, lineHeight: 1.04, letterSpacing: size >= 30 ? "-0.03em" : "-0.02em" }}
+        className={`font-medium tabular-nums ${muted ? "text-[var(--color-fg-muted)]" : "text-[var(--color-fg)]"}`}
+        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontSize: size, lineHeight: 1.04, letterSpacing: "-0.02em" }}
       >
         {text}
       </span>
       {subAsset && (
-        <span className="mt-1 font-mono text-[11px] text-[#3d7a29] tabular-nums">{usdsui}</span>
+        <span className="mt-1 font-mono text-[11px] text-[var(--color-accent)] tabular-nums">{usdsui}</span>
       )}
     </span>
   );

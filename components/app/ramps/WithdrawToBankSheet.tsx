@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * WithdrawToBankSheet — the live USDSUI → NGN bank cash-out flow (web).
+ * WithdrawToBankSheet, the live USDSUI → NGN bank cash-out flow (web).
  *
  * Backed by the Linq off-ramp engine. Unlike the old treasury model, Linq
  * hands back a deposit wallet it watches: the user sends USDSUI there and Linq
- * pays the bank itself — so there's NO Talise treasury, NO on-chain receipt
+ * pays the bank itself, so there's NO Talise treasury, NO on-chain receipt
  * verification, and NO refund path here.
  *
  * Steps: form → review (display quote) → send + poll → result.
@@ -90,7 +90,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
   const [quote, setQuote] = useState<Quote | null>(null);
   const [finalStatus, setFinalStatus] = useState<"settled" | "remitting" | "failed" | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
-  // Auto-detected account holder (name-enquiry) — no manual entry.
+  // Auto-detected account holder (name-enquiry), no manual entry.
   const [resolvedName, setResolvedName] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
   const [resolveErr, setResolveErr] = useState<string | null>(null);
@@ -117,7 +117,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
   }, [onClose, reset]);
 
   // Detect the account holder name as soon as a bank + full 10-digit account
-  // are present (debounced) — the user never types their own name.
+  // are present (debounced), the user never types their own name.
   useEffect(() => {
     if (step !== "form") return;
     if (!bankCode || !/^\d{10}$/.test(account)) {
@@ -174,7 +174,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
   async function confirmWithdraw() {
     if (!quote) return;
     try {
-      // 1) Create the Linq order — returns the deposit wallet + locked NGN.
+      // 1) Create the Linq order, returns the deposit wallet + locked NGN.
       const order = await api<CreateResp>("/api/offramp/linq/create", {
         method: "POST",
         body: {
@@ -188,7 +188,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
 
       // 2) Send exactly `amountUsdsui` USDSUI to Linq's deposit wallet using
       //    the normal sponsored-send rail. Linq detects the deposit and pays
-      //    the bank — no treasury, no on-chain verification on our side.
+      //    the bank, no treasury, no on-chain verification on our side.
       await send({
         to: order.walletAddress,
         amountUsd: order.amountUsdsui,
@@ -204,7 +204,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
           if (s.phase === "completed") { settled = "settled"; break; }
           if (s.phase === "failed") { settled = "failed"; break; }
         } catch {
-          /* transient poll error — keep trying */
+          /* transient poll error, keep trying */
         }
       }
       setFinalStatus(settled);
@@ -246,7 +246,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
             />
           </Field>
 
-          {/* Auto-detected account holder — replaces manual name entry. */}
+          {/* Auto-detected account holder, replaces manual name entry. */}
           {resolving && (
             <p className="-mt-2 text-[13px] text-[#3d7a29]">Checking account…</p>
           )}
@@ -270,9 +270,9 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
       {step === "review" && quote && (
         <div className="space-y-5">
           {/* Quote summary card */}
-          <div className="rounded-[28px] bg-[#f7fcf2] p-5" style={{ boxShadow: "10px 10px 0 #15300c" }}>
+          <div className="rounded-[28px] bg-[#f7fcf2] p-5" style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}>
             <Eyebrow>They receive</Eyebrow>
-            <div className="mt-1 text-[28px] font-semibold tabular-nums tracking-[-0.03em] text-[#3d7a29]">
+            <div className="mt-1 text-[28px] font-semibold tabular-nums tracking-[-0.05em] text-[#3d7a29]">
               {ngn(quote.amountNgn)}
             </div>
             <div className="mt-4 divide-y divide-[#15300c]/10 text-[13px]">
@@ -314,7 +314,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
                 <HugeiconsIcon icon={Alert02Icon} size={24} strokeWidth={2} />
               </span>
               <div>
-                <h3 className="text-[18px] font-medium tracking-[-0.02em] text-[#15300c]">Payout failed</h3>
+                <h3 className="text-[18px] font-medium tracking-[-0.05em] text-[#15300c]">Payout failed</h3>
                 <p className="mt-1 text-[14px] leading-relaxed text-[#3a5230]">
                   {error ?? "The payout could not be completed."}
                 </p>
@@ -335,7 +335,7 @@ export function WithdrawToBankSheet({ open, onClose }: { open: boolean; onClose:
                 />
               </span>
               <div>
-                <h3 className="text-[18px] font-medium tracking-[-0.02em] text-[#15300c]">
+                <h3 className="text-[18px] font-medium tracking-[-0.05em] text-[#15300c]">
                   {finalStatus === "settled" ? "Paid out" : "On its way"}
                 </h3>
                 <p className="mt-1 text-[14px] leading-relaxed text-[#3a5230]">

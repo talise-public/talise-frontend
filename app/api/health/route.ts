@@ -17,9 +17,9 @@ export const dynamic = "force-dynamic";
  *   - Debugging which upstream is degraded during incidents.
  *
  * Legs:
- *   - db        — libSQL connection + schema check
- *   - sui       — Sui RPC reachability (getReferenceGasPrice)
- *   - onara     — Onara sponsor gateway (/status)
+ *   - db      , libSQL connection + schema check
+ *   - sui     , Sui RPC reachability (getReferenceGasPrice)
+ *   - onara   , Onara sponsor gateway (/status)
  *
  * All legs run in parallel so the worst-case latency is the slowest leg.
  */

@@ -52,7 +52,7 @@ const suiVisionTx = (digest: string) =>
 const shortAddr = (a: string) => `${a.slice(0, 8)}…${a.slice(-6)}`;
 
 /**
- * /app/work/invoices/[id] — the OWNER's detail view of one of their invoices.
+ * /app/work/invoices/[id], the OWNER's detail view of one of their invoices.
  * Renders the full bill (issuer's line items, totals, memo) in the same feel as
  * the public InvoicePayView, plus owner-only affordances: the payer address +
  * on-chain digest (SuiVision link) once paid, a copy-pay-link action, and void.
@@ -140,7 +140,7 @@ export default function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
+      <div className="flex min-h-full items-center justify-center py-20">
         <Spinner size={24} />
       </div>
     );
@@ -152,7 +152,7 @@ export default function InvoiceDetailPage() {
         <BackLink onClick={() => router.push("/app/work")} />
         <div
           className="rounded-[28px] bg-[#f7fcf2] p-2"
-          style={{ boxShadow: "10px 10px 0 #15300c" }}
+          style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
         >
           <EmptyState
             title="Invoice not found"
@@ -174,7 +174,7 @@ export default function InvoiceDetailPage() {
     invoice.status === "paid" ? "Paid" : invoice.status === "void" ? "Voided" : "Awaiting payment";
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-4">
+    <div className="app-main-center mx-auto min-h-full w-full max-w-xl space-y-4">
       <div className="flex items-center justify-between">
         <BackLink onClick={() => router.push("/app/work")} />
         <StatusPill label={statusLabel} tone={statusTone} />
@@ -182,7 +182,7 @@ export default function InvoiceDetailPage() {
 
       <div
         className="overflow-hidden rounded-[28px] bg-[#f7fcf2]"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         {/* Header, amount */}
         <div className="border-b border-[#15300c]/10 px-6 pb-5 pt-5">
@@ -193,10 +193,10 @@ export default function InvoiceDetailPage() {
             <div>
               <MicroLabel>Amount</MicroLabel>
               <div
-                className="mt-1 text-[38px] font-[800] leading-none text-[#15300c]"
+                className="mt-1 text-[38px] font-[600] leading-none text-[#15300c]"
                 style={{
-                  fontFamily: "var(--font-display-v2)",
-                  letterSpacing: "-0.03em",
+                  fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif',
+                  letterSpacing: "-0.02em",
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
@@ -255,19 +255,19 @@ export default function InvoiceDetailPage() {
                       <td className="px-4 py-3 text-[#15300c]">{li.description}</td>
                       <td
                         className="px-3 py-3 text-right text-[#3a5230]"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
+                        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                       >
                         {li.qty}
                       </td>
                       <td
                         className="px-3 py-3 text-right text-[#3a5230]"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
+                        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                       >
                         {formatUsd(li.unitUsd)}
                       </td>
                       <td
                         className="px-4 py-3 text-right font-medium text-[#15300c]"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
+                        style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
                       >
                         {formatUsd(Math.round(li.qty * li.unitUsd * 100) / 100)}
                       </td>
@@ -290,7 +290,7 @@ export default function InvoiceDetailPage() {
               <span className="text-[14px] font-medium text-[#3a5230]">Total</span>
               <span
                 className="text-[18px] font-semibold text-[#15300c]"
-                style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
               >
                 {formatUsd(invoice.amountUsd, { fixed: true })}
               </span>

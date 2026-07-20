@@ -116,7 +116,7 @@ export async function POST(req: Request) {
   }
 
   // Resolve the account holder name via Linq. A failure here means the
-  // account couldn't be verified — 422, persist nothing.
+  // account couldn't be verified, 422, persist nothing.
   let accountName: string;
   try {
     const verified = await verifyBank({ bankCode, accountNumber });

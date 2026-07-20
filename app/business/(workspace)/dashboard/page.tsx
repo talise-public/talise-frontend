@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /business — the business dashboard.
+ * /business, the business dashboard.
  *
  * Same wallet + data layer as /app, framed for a business: balance + payable
  * identity up top, then the three things a business does most (invoice a
@@ -22,17 +22,22 @@ export default function BusinessDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Page header — eyebrow + title + subtitle, tight and intentional. */}
+      {/* Page header, eyebrow + title + subtitle, tight and intentional. */}
       <header className="lg:pt-1">
         <Eyebrow>Business</Eyebrow>
         <h1
-          className="mt-1 text-[22px] font-medium text-fg sm:text-[24px]"
-          style={{ letterSpacing: "-0.025em" }}
+          className="mt-1 text-[22px] sm:text-[24px]"
+          style={{
+            fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif',
+            fontWeight: 500,
+            letterSpacing: "-0.03em",
+            color: "var(--color-fg)",
+          }}
         >
           {first ? `${first}'s workspace` : "Your workspace"}
         </h1>
         <p className="mt-0.5 text-[13px] text-fg-muted">
-          Invoice clients, pay your team, and move money — all in USDsui.
+          Invoice clients, pay your team, and move money, all in USDsui.
         </p>
       </header>
 
@@ -42,13 +47,13 @@ export default function BusinessDashboard() {
         <IdentityCard me={me} />
       </div>
 
-      {/* The three core business actions — compact Wise-style tiles. */}
+      {/* The three core business actions, compact Wise-style tiles. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <ActionTile
           href="/business/invoices"
           icon={Invoice01Icon as IconSvgElement}
           title="Invoice clients"
-          blurb="Send a pay link — money lands instantly."
+          blurb="Send a pay link, money lands instantly."
         />
         <ActionTile
           href="/business/team"
@@ -70,9 +75,9 @@ export default function BusinessDashboard() {
 }
 
 /**
- * Compact action tile — icon chip (accent-soft, rounded-xl) + title + blurb.
- * Follows the Wise pattern: flat white card, hairline border, hover accent
- * border. No heavy shadows, no gradients.
+ * Compact action tile, icon chip (accent-soft, rectangular hairline) + title
+ * + blurb. Engineering-blueprint pattern: flat white card, hairline border,
+ * hover accent border. No heavy shadows, no gradients.
  */
 function ActionTile({
   href,
@@ -88,13 +93,22 @@ function ActionTile({
   return (
     <Link
       href={href}
-      className="group rounded-xl border border-line bg-surface p-5 transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-accent-deep)_40%,var(--color-line))] active:translate-y-0 active:scale-[0.99]"
+      className="group rounded-[10px] border border-line bg-surface p-5 transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--color-accent-deep)_40%,var(--color-line))] active:translate-y-0 active:scale-[0.99]"
     >
-      {/* Icon chip — circular, accent-soft fill, accent icon colour. */}
-      <span className="flex size-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+      {/* Icon chip, rectangular, accent-soft fill, accent icon colour. */}
+      <span className="flex size-10 items-center justify-center rounded-[8px] bg-accent-soft text-accent">
         <HugeiconsIcon icon={icon} size={19} strokeWidth={1.9} />
       </span>
-      <h2 className="mt-3.5 text-[15px] font-medium tracking-[-0.015em] text-fg">{title}</h2>
+      <h2
+        className="mt-3.5 text-[15px] text-fg"
+        style={{
+          fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif',
+          fontWeight: 500,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {title}
+      </h2>
       <p className="mt-0.5 text-[13px] leading-snug text-fg-muted">{blurb}</p>
     </Link>
   );

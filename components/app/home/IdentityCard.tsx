@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Identity card — the user's payable name. If they've claimed a Talise handle
+ * Identity card, the user's payable name. If they've claimed a Talise handle
  * we show "@name" prominently; otherwise a "Claim your @name" CTA that links to
  * the username flow in Settings. Footer carries the brand promise:
  * "$0.00 fee · money lands instantly". Mirrors the iOS usernameCard.
@@ -18,7 +18,7 @@ export function IdentityCard({ me }: { me: Me | null }) {
   const [copied, setCopied] = useState(false);
 
   const address = me?.suiAddress ?? "";
-  const short = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "—";
+  const short = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "-";
   const handle = me?.taliseHandle ?? null;
 
   async function copyAddress() {
@@ -51,8 +51,8 @@ export function IdentityCard({ me }: { me: Me | null }) {
       {handle ? (
         <div className="mt-5 flex-1">
           <div
-            className="font-[800] uppercase text-[#15300c]"
-            style={{ fontFamily: "var(--font-display-v2)", fontSize: 26, letterSpacing: "-0.02em", lineHeight: 1.1 }}
+            className="font-[500] text-[#15300c]"
+            style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontSize: 26, letterSpacing: "-0.05em", lineHeight: 1.1 }}
           >
             {handle}@talise
           </div>
@@ -66,8 +66,8 @@ export function IdentityCard({ me }: { me: Me | null }) {
           className="group mt-5 flex-1"
         >
           <div
-            className="font-[800] uppercase text-[#15300c] transition-colors group-hover:text-[#3d7a29]"
-            style={{ fontFamily: "var(--font-display-v2)", fontSize: 24, letterSpacing: "-0.02em", lineHeight: 1.12 }}
+            className="font-[500] text-[#15300c] transition-colors group-hover:text-[#3d7a29]"
+            style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontSize: 24, letterSpacing: "-0.05em", lineHeight: 1.12 }}
           >
             Claim your @name
           </div>

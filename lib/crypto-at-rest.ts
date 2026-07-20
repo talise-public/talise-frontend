@@ -5,7 +5,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 /**
  * Application-level encryption for sensitive columns AT REST.
  *
- * Why: a few columns hold material that turns a DB read into a compromise —
+ * Why: a few columns hold material that turns a DB read into a compromise -
  * zkLogin `salt` (+ the JWT alongside it) is signing material; bank account
  * numbers are PII. Postgres access is already gated, but defense-in-depth says
  * a leaked dump / compromised pooler shouldn't hand over signing seeds or PANs.
@@ -17,7 +17,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
  *     is byte-for-byte identical to today until you deliberately turn it on.
  *  2. TRANSPARENT / BACKWARD-COMPATIBLE. decrypt() returns un-prefixed values
  *     unchanged, so already-stored plaintext rows keep working after the key is
- *     set — new writes encrypt, old rows migrate lazily (or via a backfill).
+ *     set, new writes encrypt, old rows migrate lazily (or via a backfill).
  *     This means wiring a read site you missed can't break anything: it just
  *     reads plaintext.
  *  3. AUTHENTICATED. AES-256-GCM (random 12-byte IV per value + 16-byte tag),
@@ -25,7 +25,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
  *
  * Key format: `DB_ENCRYPTION_KEY` is 32 bytes as base64 or hex. Generate with:
  *   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
- * Store it ONLY in .env.local (gitignored) and Vercel env — never in git.
+ * Store it ONLY in .env.local (gitignored) and Vercel env, never in git.
  */
 
 const PREFIX = "enc:v1:";

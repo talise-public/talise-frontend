@@ -31,16 +31,16 @@ const ADDRESS_RE = /^0x[a-f0-9]{1,64}$/i;
  * shielded `transact` PTB the CLIENT built (proof generated client-side; the
  * relayer is a gas sponsor + submitter only, NEVER a witness-holder):
  *
- *   1. Gate     — denyUnlessAppApproved + per-user rate limit (anti-abuse).
- *   2. Screen   — screenTransfer on the exit (withdraw) address. ExtData
+ *   1. Gate   , denyUnlessAppApproved + per-user rate limit (anti-abuse).
+ *   2. Screen , screenTransfer on the exit (withdraw) address. ExtData
  *                 carries no recipient by design, so a WITHDRAW must declare
  *                 its exit address here for the compliance screen; an internal
  *                 transfer / deposit has no exit address and skips it.
- *   3. Validate — THE security control: `validateTransactCommands` asserts the
+ *   3. Validate, THE security control: `validateTransactCommands` asserts the
  *                 PTB is exactly a pinned `shielded_pool::transact[_with_account]`
  *                 shape and that ExtData.relayer == ours + fee <= MAX. Reject =>
  *                 400, bytes NEVER forwarded.
- *   4. Sponsor  — set sender = relayer, relayer signs, Onara sponsors gas +
+ *   4. Sponsor, set sender = relayer, relayer signs, Onara sponsors gas +
  *                 executes.
  *
  * 503 when the relayer is not configured.
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── THE security control — command allowlist ──────────────────────────────
+  // ── THE security control, command allowlist ──────────────────────────────
   // Thread the already-screened exit address so the single allowed
   // TransferObjects (which delivers the transact RETURN coin) is pinned to it.
   // For deposit / internal-transfer legs there is no exit and the validator
@@ -171,12 +171,12 @@ export async function POST(req: Request) {
     tx.setSender(relayer);
     tx.setGasOwner(sponsor);
     // Explicit gas price + a generous fixed budget (0.06 SUI), mirroring
-    // /api/send/sponsor-prepare and goal-vault — without these the sponsor's
+    // /api/send/sponsor-prepare and goal-vault, without these the sponsor's
     // gas-coin selection could pick a dust coin and fail with "Insufficient gas".
     tx.setGasPrice(BigInt(gasPrice));
     tx.setGasBudget(60_000_000n);
     // Resolve the shielded PTB's object inputs (shared pool + zero-coin source)
-    // via JSON-RPC — the gRPC client mis-resolves the SHARED pool object, which
+    // via JSON-RPC, the gRPC client mis-resolves the SHARED pool object, which
     // made every relayer withdraw throw at build (relayer never submitted →
     // recipient never paid). Same proven resolver the CLI lifecycle uses.
     tx.addBuildPlugin(jsonRpcResolutionPlugin());
@@ -190,10 +190,10 @@ export async function POST(req: Request) {
       txSignature: signature,
     });
 
-    // Onara returns the raw gRPC TransactionResult — a discriminated union where
+    // Onara returns the raw gRPC TransactionResult, a discriminated union where
     // the digest sits one level deep (`{ $kind, Transaction: { digest, ... } }`).
     // The shielded SDK's submitRelay expects a top-level `digest`, so extract it
-    // here (mirrors /api/zk/sponsor-execute) — a missing digest is a real failure,
+    // here (mirrors /api/zk/sponsor-execute), a missing digest is a real failure,
     // never a fake success.
     const r = result as Record<string, unknown>;
     const kind = r.$kind as string | undefined;
@@ -205,7 +205,7 @@ export async function POST(req: Request) {
     // CRITICAL: Onara returns HTTP 200 with a FailedTransaction (which STILL
     // carries a digest) when the withdraw ABORTS on-chain (e.g. a TOCTOU
     // root-rotation / concurrent nullifier spend that passed simulation but
-    // failed at execution). NEVER report that as a delivered send — the
+    // failed at execution). NEVER report that as a delivered send, the
     // recipient was not paid and the input note must not be treated as consumed.
     if (kind === "FailedTransaction" || (failed && !okTx)) {
       const failDigest = failed?.digest ?? "";
@@ -215,7 +215,7 @@ export async function POST(req: Request) {
       );
       return NextResponse.json(
         {
-          error: "withdraw failed on chain (aborted) — funds not delivered",
+          error: "withdraw failed on chain (aborted), funds not delivered",
           code: "WITHDRAW_ABORTED",
           ...(failDigest ? { digest: failDigest } : {}),
         },
@@ -226,7 +226,7 @@ export async function POST(req: Request) {
     const digest = (r.digest as string | undefined) ?? okTx?.digest ?? "";
     if (!digest) {
       console.error(
-        "[shield/relay] no digest in Onara response — shape:",
+        "[shield/relay] no digest in Onara response, shape:",
         JSON.stringify(Object.keys(r))
       );
       return NextResponse.json(

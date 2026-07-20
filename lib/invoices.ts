@@ -6,17 +6,17 @@ import { isUsdsui } from "@/lib/usdsui";
 import { readActivitySnapshot } from "@/lib/snapshots";
 
 /**
- * Invoices v2 — the Work hub's "get paid for work" backend.
+ * Invoices v2, the Work hub's "get paid for work" backend.
  *
  * The original B2C-checkout invoice lived in the legacy `invoices` table
  * (web/lib/db.ts: createInvoice / invoicesFor / invoiceBySlug /
  * markInvoicePaid), keyed to a `business_user_id` and a flat `amount_usdc`
- * string. That path stays untouched and keeps working — the legacy POST in
+ * string. That path stays untouched and keeps working, the legacy POST in
  * /api/invoices is preserved for business accounts.
  *
  * This module adds a RICHER, account-type-agnostic invoice that ANY signed-in
  * user can issue: line items, a memo, a customer name/email, a currency the
- * invoice is denominated in (display only — money still moves as 1:1 USDsui),
+ * invoice is denominated in (display only, money still moves as 1:1 USDsui),
  * and a public pay slug. It lives in its OWN table (`work_invoices`) created by
  * `ensureWorkSchema()` so it never collides with the legacy `invoices` table
  * or any other agent's schema.
@@ -36,7 +36,7 @@ let _workSchemaReadyP: Promise<void> | null = null;
 /**
  * Idempotent CREATE TABLE IF NOT EXISTS for the Work area's own tables:
  * `work_invoices` (rich invoices) and `work_contracts` (streamed work pay).
- * Safe to call on every request — it's a no-op after the first call on an
+ * Safe to call on every request, it's a no-op after the first call on an
  * instance. Postgres DDL.
  */
 export function ensureWorkSchema(): Promise<void> {
@@ -79,7 +79,7 @@ export function ensureWorkSchema(): Promise<void> {
          ON work_invoices (pay_digest) WHERE pay_digest IS NOT NULL`
     );
 
-    // One row per work contract — an employment/freelance arrangement that
+    // One row per work contract, an employment/freelance arrangement that
     // pays via an underlying stream (streams.id is the fk). The contract row
     // holds the human-facing metadata (role, rate, cadence) so the UI can
     // render "pays @alice $X every week" without re-deriving it from the
@@ -230,7 +230,7 @@ export function projectInvoice(row: WorkInvoiceRow): WorkInvoice {
     const parsed = JSON.parse(row.line_items || "[]");
     if (Array.isArray(parsed)) lineItems = parsed as WorkInvoiceLineItem[];
   } catch {
-    /* tolerate a corrupt blob — render an empty list rather than 500 */
+    /* tolerate a corrupt blob, render an empty list rather than 500 */
   }
   return {
     id: row.id,
@@ -321,7 +321,7 @@ export async function voidWorkInvoice(id: string): Promise<void> {
 
 /**
  * Replay guard: true if a DIFFERENT invoice has already been settled with this
- * exact on-chain digest. One payment digest may close at most one invoice — so
+ * exact on-chain digest. One payment digest may close at most one invoice, so
  * a payment to a merchant can't be reused to clear a second same-amount invoice.
  */
 export async function workInvoiceDigestUsed(
@@ -350,7 +350,7 @@ export type SettleInvoiceResult =
   | { ok: false; status: number; error: string };
 
 /**
- * Verify a payment on-chain and authoritatively close the invoice — the single
+ * Verify a payment on-chain and authoritatively close the invoice, the single
  * source of truth shared by the public settle route and the owner's "mark paid"
  * action.
  *
@@ -365,7 +365,7 @@ export type SettleInvoiceResult =
  *   7. Authoritative close via markWorkInvoicePaid (the partial-unique index on
  *      pay_digest wins any concurrent race).
  *
- * `trustOwner` does NOT skip on-chain verification — the digest is ALWAYS
+ * `trustOwner` does NOT skip on-chain verification, the digest is ALWAYS
  * verified to exist, succeed, and credit the issuer. It only relaxes the
  * amount-binding's lower bound: an owner asserting "this got paid" may record a
  * payment that credited the issuer at least 1 micro-unit of USDsui (e.g. paid
@@ -413,7 +413,7 @@ export async function settleInvoiceByDigest(
   try {
     tx = await getNormalizedTransaction(digest);
   } catch (e) {
-    // RPC indexing lag is common right after broadcast — the caller retries.
+    // RPC indexing lag is common right after broadcast, the caller retries.
     return {
       ok: false,
       status: 400,
@@ -481,13 +481,13 @@ export async function settleInvoiceByDigest(
 // ── Auto-settle sweep ────────────────────────────────────────────────────────
 
 /**
- * Cap on on-chain verifications per sweep — each is one RPC round-trip, and
+ * Cap on on-chain verifications per sweep, each is one RPC round-trip, and
  * the sweep runs inline on the owner's invoice-list load.
  */
 const AUTO_SETTLE_MAX_VERIFICATIONS = 4;
 
 /**
- * Detect direct payments against OPEN invoices automatically — there is no
+ * Detect direct payments against OPEN invoices automatically, there is no
  * manual "Mark paid" anymore (founder directive, 2026-06-11: "if it's paid,
  * it should automatically reflect that").
  *
@@ -495,15 +495,15 @@ const AUTO_SETTLE_MAX_VERIFICATIONS = 4;
  * invoice trustlessly (the page submits the digest). This sweep covers the
  * payer who paid the issuer DIRECTLY (handle/address send) and never touched
  * the invoice page: it scans the issuer's activity snapshot for incoming
- * USDsui credits that match an open invoice — same amount (the settle core's
- * exact-amount ±0.5% bound), received after the invoice was created — and
+ * USDsui credits that match an open invoice, same amount (the settle core's
+ * exact-amount ±0.5% bound), received after the invoice was created, and
  * runs each candidate through `settleInvoiceByDigest`, which re-verifies the
  * tx ON-CHAIN and enforces the one-digest-one-invoice replay guard. A wrong
  * candidate simply fails verification; nothing here trusts the snapshot.
  *
  * Oldest invoice first (deterministic when two open invoices share an
  * amount), bounded to a few verifications per call. Returns the number of
- * invoices settled — callers re-fetch the list when > 0.
+ * invoices settled, callers re-fetch the list when > 0.
  */
 export async function autoSettleOpenInvoices(
   userId: number,
@@ -552,7 +552,7 @@ export async function autoSettleOpenInvoices(
         if (r.ok) {
           used.add(c.digest);
           settled++;
-          break; // this invoice is closed — next invoice
+          break; // this invoice is closed, next invoice
         }
       } catch (err) {
         console.warn(

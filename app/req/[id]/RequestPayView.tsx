@@ -66,7 +66,7 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
         const r = data?.rates?.[request.currency];
         if (!cancelled && typeof r === "number" && r > 0) setRate(r);
       } catch {
-        /* keep 1:1 — better than a broken figure */
+        /* keep 1:1, better than a broken figure */
       }
     })();
     return () => {
@@ -136,7 +136,7 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      /* clipboard blocked — silently ignore */
+      /* clipboard blocked, silently ignore */
     }
   };
 
@@ -145,18 +145,21 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
   const noteText = request.note || request.requesterNote;
 
   return (
-    <main
-      className="relative min-h-dvh overflow-hidden px-5 py-10 text-[#15300c] sm:py-16"
-      style={{ background: "radial-gradient(120% 90% at 15% 0%, #e6f9d6 0%, #f7fcf2 45%, #ffeede 100%)" }}
-    >
-      <div className="relative z-10 mx-auto w-full max-w-xl">
+    <main className="bp-page relative min-h-dvh overflow-hidden px-5 py-10 sm:py-16">
+      <div className="bp-frame relative mx-auto flex min-h-full w-full flex-col" style={{ maxWidth: 640 }}>
+        <span aria-hidden className="bp-tick bp-tick-tl" />
+        <span aria-hidden className="bp-tick bp-tick-tr" />
+        <span aria-hidden className="bp-tick bp-tick-bl" />
+        <span aria-hidden className="bp-tick bp-tick-br" />
+
+        <div className="relative z-10 mx-auto w-full max-w-xl px-4">
         {/* Brand row */}
         <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-[#15300c]">
+          <Link href="/" className="flex items-center gap-2 text-[var(--color-fg)]">
             <Diamond />
             <span
-              className="text-[18px] font-[800] lowercase tracking-[-0.03em]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="text-[18px] lowercase tracking-[-0.03em]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontWeight: 500 }}
             >
               talise
             </span>
@@ -172,11 +175,11 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
               aria-hidden
             >
               <span
-                className="inline-block -rotate-12 rounded-md border-2 px-3 py-1 font-mono text-[16px] font-bold uppercase opacity-45 sm:text-[18px]"
+                className="inline-block -rotate-12 rounded-[6px] border-2 px-3 py-1 font-mono text-[16px] font-bold uppercase opacity-45 sm:text-[18px]"
                 style={{
                   letterSpacing: "0.28em",
-                  color: request.status === "paid" ? "#3d7a29" : "#c0532f",
-                  borderColor: request.status === "paid" ? "#3d7a29" : "#c0532f",
+                  color: request.status === "paid" ? "var(--color-accent)" : "#c0532f",
+                  borderColor: request.status === "paid" ? "var(--color-accent)" : "#c0532f",
                 }}
               >
                 {request.status === "paid" ? "Paid" : request.status === "expired" ? "Expired" : "Void"}
@@ -184,90 +187,90 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
             </div>
           )}
 
-          {/* Document header — big heading, requester underneath */}
+          {/* Document header, big heading, requester underneath */}
           <div className="px-5 pb-6 pt-7 sm:px-8">
             <h1
-              className="text-[34px] font-[800] uppercase leading-none tracking-[-0.02em] text-[#15300c] sm:text-[40px]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="text-[34px] uppercase leading-none tracking-[-0.02em] text-[var(--color-fg)] sm:text-[40px]"
+              style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif', fontWeight: 500 }}
             >
               Payment request
             </h1>
-            <p className="mt-2.5 text-[15px] font-medium text-[#15300c]">
+            <p className="mt-2.5 text-[15px] font-medium text-[var(--color-fg)]">
               {requester.display} is requesting a payment
             </p>
 
-            {/* Amount — the headline figure */}
+            {/* Amount, the headline figure */}
             <div className="mt-6">
               <Eyebrow>Amount requested</Eyebrow>
               <p
-                className="mt-1 text-[40px] font-semibold leading-none text-[#15300c]"
-                style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
+                className="mt-1 text-[40px] leading-none text-[var(--color-fg)]"
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", fontWeight: 500 }}
               >
                 {money(request.amountUsd)}
               </p>
               {request.currency !== "USD" && (
-                <p className="mt-1.5 font-mono text-[11px] text-[#3d7a29]">
+                <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--color-accent)]">
                   Settles as {request.amountUsd.toFixed(2)} USDsui · 1:1 USD
                 </p>
               )}
             </div>
 
-            {/* Meta — date / request no / expiry */}
+            {/* Meta, date / request no / expiry */}
             <dl className="mt-6 space-y-1.5 text-[13px]">
               <div className="flex gap-2">
-                <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[#3d7a29]">
+                <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[var(--color-accent)]">
                   Created
                 </dt>
-                <dd className="text-[#15300c]">{createdLabel}</dd>
+                <dd className="text-[var(--color-fg)]">{createdLabel}</dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[#3d7a29]">
+                <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[var(--color-accent)]">
                   Request no.
                 </dt>
-                <dd className="break-all font-mono text-[12px] leading-[1.6] text-[#3a5230]">
+                <dd className="break-all font-mono text-[12px] leading-[1.6] text-[var(--color-fg-muted)]">
                   {request.id}
                 </dd>
               </div>
               {expiresLabel && (
                 <div className="flex gap-2">
-                  <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[#3d7a29]">
+                  <dt className="w-[88px] shrink-0 font-mono text-[10px] font-medium uppercase leading-[1.7] tracking-wider text-[var(--color-accent)]">
                     Expires
                   </dt>
-                  <dd className="text-[#15300c]">{expiresLabel}</dd>
+                  <dd className="text-[var(--color-fg)]">{expiresLabel}</dd>
                 </div>
               )}
             </dl>
 
             {/* Note from the requester */}
             {noteText && (
-              <div className="mt-6 border-t border-[#15300c]/10 pt-5">
+              <div className="mt-6 border-t border-[var(--color-line)] pt-5">
                 <Eyebrow>Note</Eyebrow>
-                <p className="mt-1.5 whitespace-pre-wrap text-[14px] text-[#3a5230]">{noteText}</p>
+                <p className="mt-1.5 whitespace-pre-wrap text-[14px] text-[var(--color-fg-muted)]">{noteText}</p>
               </div>
             )}
           </div>
 
           {/* Pay CTA / status block */}
-          <div className="border-t border-[#15300c]/10 px-5 py-5 sm:px-8">
+          <div className="border-t border-[var(--color-line)] px-5 py-5 sm:px-8">
             {request.status === "open" ? (
               <>
                 <PrimaryButton href={payHref} full>
                   <HugeiconsIcon icon={ArrowRight02Icon} size={18} strokeWidth={2} />
                   Pay {money(request.amountUsd)}
                 </PrimaryButton>
-                <p className="mt-3 text-center text-[12px] text-[#3d7a29]">
+                <p className="mt-3 text-center font-mono text-[11px] text-[var(--color-fg-dim)]">
                   Sign in with Google to pay, no gas, no wallet setup. Money moves as USDsui.
                 </p>
 
-                {/* Scan-to-pay QR — share-friendly on any phone. */}
-                <div className="mt-6 flex flex-col items-center gap-3 border-t border-[#15300c]/10 pt-6">
+                {/* Scan-to-pay QR, share-friendly on any phone. */}
+                <div className="mt-6 flex flex-col items-center gap-3 border-t border-[var(--color-line)] pt-6">
                   <MicroLabel>Scan to open this request</MicroLabel>
                   <QrImage value={shareUrl} size={180} />
                 </div>
               </>
             ) : request.status === "paid" ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-center gap-2 rounded-xl bg-[#CAFFB8] py-3 text-[14px] text-[#15300c]">
+                <div className="flex items-center justify-center gap-2 rounded-[10px] bg-[var(--color-accent-light)] py-3 text-[14px] text-[#1c3d12]">
                   <HugeiconsIcon icon={CheckmarkCircle02Icon} size={18} strokeWidth={2} />
                   Paid
                   {request.paidAt
@@ -280,24 +283,24 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
                   . Thank you.
                 </div>
                 {request.payDigest && (
-                  <div className="rounded-xl border border-[#15300c]/10 px-4 py-3.5">
+                  <div className="rounded-[10px] border border-[var(--color-line)] px-4 py-3.5">
                     <MicroLabel>On-chain receipt</MicroLabel>
                     <a
                       href={`https://suiscan.xyz/mainnet/tx/${request.payDigest}`}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="mt-1.5 block break-all font-mono text-[12px] text-[#3d7a29] underline-offset-2 hover:underline"
+                      className="mt-1.5 block break-all font-mono text-[12px] text-[var(--color-accent)] underline-offset-2 hover:underline"
                     >
                       {request.payDigest}
                     </a>
-                    <p className="mt-1.5 text-[11px] text-[#3d7a29]">
-                      Settled on Sui — verify this payment on-chain.
+                    <p className="mt-1.5 font-mono text-[11px] text-[var(--color-fg-dim)]">
+                      Settled on Sui, verify this payment on-chain.
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-[#15300c]/15 bg-white/60 py-3 text-[14px] text-[#3d7a29] backdrop-blur-sm">
+              <div className="flex items-center justify-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-2)] py-3 text-[14px] text-[var(--color-fg-muted)]">
                 <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={2} />
                 {request.status === "expired"
                   ? "This request has expired."
@@ -312,19 +315,20 @@ export function RequestPayView({ request, requester, origin }: RequestPayViewPro
           <button
             type="button"
             onClick={copyLink}
-            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] text-[#3d7a29] transition-colors hover:text-[#15300c]"
+            className="inline-flex items-center gap-2 rounded-[6px] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--color-fg-dim)] transition-colors hover:text-[var(--color-fg)]"
           >
             <HugeiconsIcon icon={Copy01Icon} size={14} strokeWidth={2} />
             {copied ? "Link copied" : "Copy request link"}
           </button>
         </div>
-        <p className="mt-5 text-center text-[12px] text-[#3d7a29]">
+        <p className="mt-5 text-center font-mono text-[11px] text-[var(--color-fg-dim)]">
           Powered by{" "}
-          <Link href="/" className="text-[#3a5230] underline-offset-2 hover:underline">
+          <Link href="/" className="text-[var(--color-accent)] underline-offset-2 hover:underline">
             Talise
           </Link>{" "}
-          — money that moves like a message.
+        , money that moves like a message.
         </p>
+        </div>
       </div>
     </main>
   );

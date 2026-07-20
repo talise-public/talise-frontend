@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   // Reject anything that isn't a strict same-origin path. `startsWith("/")`
   // alone would let protocol-relative `//evil.com` through → open redirect
   // after sign-in. `safeReturnPath` blocks `//`, `/\`, backslashes, and
-  // control chars. (setReturnTo re-validates too — fail loudly here.)
+  // control chars. (setReturnTo re-validates too, fail loudly here.)
   const path = safeReturnPath((body.returnTo ?? "").trim());
   if (!path) {
     return NextResponse.json({ error: "must be a same-origin path" }, { status: 400 });

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { encryptAtRest, decryptAtRest } from "@/lib/crypto-at-rest";
 
 /**
- * Talise database layer — Postgres.
+ * Talise database layer, Postgres.
  *
  * The application historically used libsql; this module preserves the
  * libsql-style API (`db().execute({sql, args})`, `db().batch([...], "write")`)
@@ -11,7 +11,7 @@ import { encryptAtRest, decryptAtRest } from "@/lib/crypto-at-rest";
  * Internally everything runs against Postgres via the `postgres` driver.
  *
  *   • `?` placeholders are auto-rewritten to `$1, $2, ...` at execute time
- *   • `execute()` returns `{ rows, rowsAffected }` — the shape callers expect
+ *   • `execute()` returns `{ rows, rowsAffected }`, the shape callers expect
  *   • `batch()` runs the array of statements inside a single transaction
  *
  * Connection details come from `DATABASE_URL` (a standard
@@ -73,7 +73,7 @@ import { encryptAtRest, decryptAtRest } from "@/lib/crypto-at-rest";
  *   float_pools         Per-corridor, per-currency, per-leg treasury
  *                       float inventory (fiat_in / fiat_out / usdc) with
  *                       a `segregated` safeguarding flag and reconcile
- *                       timestamp. Master plan §6. MODEL ONLY — no live
+ *                       timestamp. Master plan §6. MODEL ONLY, no live
  *                       money moves through it yet.
  *                       Primary writer: web/lib/treasury.ts.
  *
@@ -86,12 +86,12 @@ import { encryptAtRest, decryptAtRest } from "@/lib/crypto-at-rest";
  *                       above-threshold transfer metadata: route, obligation,
  *                       IVMS-101 payload, Travel Rule network transfer id.
  *                       Primary writer: web/lib/travel-rule.ts
- *                       (recordTravelRuleTransfer). Schema only — NOT yet
+ *                       (recordTravelRuleTransfer). Schema only, NOT yet
  *                       wired into the send path.
  */
 
 // ───────────────────────────────────────────────────────────────────
-// Adapter — libsql-shaped API on top of postgres.js
+// Adapter, libsql-shaped API on top of postgres.js
 
 type ExecuteArg = string | { sql: string; args?: ReadonlyArray<unknown> };
 
@@ -111,7 +111,7 @@ interface DbAdapter {
 // the postgres pool on globalThis makes each reload REUSE it instead of
 // opening a fresh pool of `max` connections and orphaning the old one. Without
 // this, repeated edits leak connections until the Postgres (PgBouncer) pooler
-// saturates and every DB query hangs — which surfaces as /admin and any
+// saturates and every DB query hangs, which surfaces as /admin and any
 // DB-backed route getting stuck on "Loading…". In production there is no HMR,
 // so this is purely a dev-safety measure (the branch is a plain singleton).
 const _pgGlobal = globalThis as unknown as { __talisePgPool?: Sql };
@@ -145,7 +145,7 @@ function getSql(): Sql {
       return "prefer";
     })(),
     // PgBouncer in TRANSACTION mode (Supabase pooled :6543) does not support
-    // named prepared statements — postgres.js uses them by default, which
+    // named prepared statements, postgres.js uses them by default, which
     // breaks with "prepared statement … does not exist" under the pooler.
     // Auto-disable when the URL is a transaction pooler; direct/session
     // connections keep prepared statements for speed.
@@ -155,7 +155,7 @@ function getSql(): Sql {
       if (u.hostname.endsWith("pooler.supabase.com") && u.port === "6543") return false;
       return true;
     })(),
-    // Modest per-instance pool — the platform pooler (PgBouncer) multiplexes
+    // Modest per-instance pool, the platform pooler (PgBouncer) multiplexes
     // across lambdas, so each instance stays small while total concurrency
     // scales. Adjust if function concurrency rises.
     max: 8,
@@ -167,17 +167,17 @@ function getSql(): Sql {
     // queries hang indefinitely (observed: the whole /admin board wedged on
     // "Loading…"). max_lifetime forces a fresh connect well before that bites.
     max_lifetime: 60 * 10,
-    // Don't transform — keep snake_case column names exactly as queried.
+    // Don't transform, keep snake_case column names exactly as queried.
     transform: { undefined: null },
     // Silence NOTICE chatter from idempotent migrations. CREATE TABLE
     // IF NOT EXISTS / ALTER TABLE ADD COLUMN IF NOT EXISTS each emit
-    // a NOTICE on every cold start once the DB is migrated — useful
+    // a NOTICE on every cold start once the DB is migrated, useful
     // information once, pure log spam after that. Real warnings and
     // errors still propagate as exceptions on the query path.
     onnotice: () => {},
     // Parse BIGINT (oid 20) as a plain JS Number instead of postgres.js's
     // default (BigInt or string). Our BIGINT columns hold millisecond
-    // timestamps (~1.78e12) — well under Number.MAX_SAFE_INTEGER (9e15) —
+    // timestamps (~1.78e12), well under Number.MAX_SAFE_INTEGER (9e15) -
     // and downstream code (`new Date(row.created_at).toISOString()`,
     // formatLocal(), etc.) treats them as numbers. Returning strings was
     // surfacing as "Invalid time value" on /api/rewards/insights and the
@@ -207,7 +207,7 @@ function rewritePlaceholders(sql: string): string {
   let n = 1;
   while (i < sql.length) {
     const ch = sql[i];
-    // Single-quoted string — skip until the closing quote (handle doubled '').
+    // Single-quoted string, skip until the closing quote (handle doubled '').
     if (ch === "'") {
       out += ch;
       i++;
@@ -222,7 +222,7 @@ function rewritePlaceholders(sql: string): string {
       }
       continue;
     }
-    // Double-quoted identifier — skip until closing.
+    // Double-quoted identifier, skip until closing.
     if (ch === '"') {
       out += ch;
       i++;
@@ -300,11 +300,11 @@ export function db(): DbAdapter {
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Schema migrations — Postgres flavor
+// Schema migrations, Postgres flavor
 
 /**
  * Max time to wait for the (idempotent) schema-ensure before giving up.
- * Generous for the DDL itself — its real job is to bound a HANG: if the DB
+ * Generous for the DDL itself, its real job is to bound a HANG: if the DB
  * connection is wedged, doEnsureSchema() never settles, and because the
  * promise is memoized below, EVERY caller of ensureSchema() (i.e. every
  * route) would hang forever until the process restarts. Racing a timeout
@@ -325,7 +325,7 @@ export function ensureSchema(): Promise<void> {
             () =>
               reject(
                 new Error(
-                  `ensureSchema timed out after ${SCHEMA_READY_TIMEOUT_MS}ms — DB unreachable or connection stale`
+                  `ensureSchema timed out after ${SCHEMA_READY_TIMEOUT_MS}ms, DB unreachable or connection stale`
                 )
               ),
             SCHEMA_READY_TIMEOUT_MS
@@ -351,10 +351,10 @@ async function doEnsureSchema(): Promise<void> {
   //   1. CREATE TABLE IF NOT EXISTS for every table the section owns.
   //   2. ALTER TABLE ADD COLUMN IF NOT EXISTS in chronological order
   //      (each ALTER is harmless on a fresh DB because the CREATE above
-  //      already includes the column — they exist for old deployments).
+  //      already includes the column, they exist for old deployments).
   //   3. CREATE INDEX IF NOT EXISTS, scoped to this section's tables.
   //
-  // Every statement is idempotent — ensureSchema() is called on every
+  // Every statement is idempotent, ensureSchema() is called on every
   // cold start and from dbHealth() repeatedly.
   const stmts: string[] = [
     // ─── auth / users ────────────────────────────────────────────────
@@ -362,7 +362,7 @@ async function doEnsureSchema(): Promise<void> {
     // user's zkLogin-derived address; `salt` is fetched from Shinami on
     // mainnet and never leaves the server in plaintext. Profile and
     // monetization columns (referral, points, vault id) are bolted on
-    // via ALTER — see below.
+    // via ALTER, see below.
     `CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       google_sub TEXT UNIQUE NOT NULL,
@@ -391,7 +391,7 @@ async function doEnsureSchema(): Promise<void> {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS spot_bm_id TEXT`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS talise_username TEXT`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_registry_id TEXT`,
-    // Avatar override — an NFT (or any image URL) the user picked as their
+    // Avatar override, an NFT (or any image URL) the user picked as their
     // display picture; null falls back to the Google `picture`.
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS pfp_url TEXT`,
     // Referral + points.
@@ -412,7 +412,7 @@ async function doEnsureSchema(): Promise<void> {
     `ALTER TABLE savings_goals ADD COLUMN IF NOT EXISTS yield_on INTEGER NOT NULL DEFAULT 0`,
     // AUDIT_PENDING (2026-05-29): the autoswap system was archived to
     // `web/_archive/autoswap-2026-05-29/`. The columns below are
-    // dormant — no active code path writes them — but we keep them in
+    // dormant, no active code path writes them, but we keep them in
     // the schema so historical `talise_vault_id` values are preserved
     // for any future re-activation or data migration. Do not drop
     // without a separate audit + backup of populated rows.
@@ -423,7 +423,7 @@ async function doEnsureSchema(): Promise<void> {
     // follow-up schema migration should: (1) NULL every
     // `users.talise_vault_id`, (2) drop `talise_vault_subname_repointed`,
     // (3) drop any vault-only dependent tables / indexes. Do not drop
-    // in this commit — the drain must complete on-chain first so we
+    // in this commit, the drain must complete on-chain first so we
     // retain one revert window.
     //
     // Original purpose: TaliseVault + AutoSwap Path-C. `talise_vault_id`
@@ -473,7 +473,7 @@ async function doEnsureSchema(): Promise<void> {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_tx_user ON tx_history(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_tx_created ON tx_history(created_at DESC)`,
-    // Composite covers `WHERE user_id = ? ORDER BY created_at DESC` —
+    // Composite covers `WHERE user_id = ? ORDER BY created_at DESC` -
     // the only shape `userTxs()` and the activity routes issue. Without
     // it Postgres falls back to idx_tx_user + a sort.
     `CREATE INDEX IF NOT EXISTS idx_tx_user_created ON tx_history(user_id, created_at DESC)`,
@@ -545,7 +545,7 @@ async function doEnsureSchema(): Promise<void> {
     // ─── waitlist (legacy + canonical) ───────────────────────────────
     // DEAD as of 2026-05-29; superseded by `waitlist_signups` below.
     // No queries remain in web/app or web/lib (verified by grep). Kept
-    // in ensureSchema() because pre-launch prod rows are still present —
+    // in ensureSchema() because pre-launch prod rows are still present -
     // safe to drop in a P2 cleanup once the export is taken.
     // AUDIT_PENDING: confirm zero new writes for 30 days, then DROP.
     `CREATE TABLE IF NOT EXISTS waitlist (
@@ -575,13 +575,13 @@ async function doEnsureSchema(): Promise<void> {
       confirmation_sent BOOLEAN NOT NULL DEFAULT false,
       confirmation_sent_at BIGINT
     )`,
-    // Handle-claim columns — Strategy A (reserve-in-DB).
+    // Handle-claim columns, Strategy A (reserve-in-DB).
     // `suins-operator.ts` ships only `mintSubname()` (one PTB: mint +
     // set target + transfer to user). It does NOT have a "mint to
     // operator now, transfer later" helper, which would be needed for
     // Strategy B. So at claim time we reserve in DB; the actual
     // on-chain mint runs on first sign-in when we know the user's Sui
-    // address — zero gas until users actually show up.
+    // address, zero gas until users actually show up.
     `ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS claimed_handle TEXT`,
     `ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS handle_claimed_at BIGINT`,
     `ALTER TABLE waitlist_signups ADD COLUMN IF NOT EXISTS handle_object_id TEXT`,
@@ -633,7 +633,7 @@ async function doEnsureSchema(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_transfers_parked ON transfers(parked_funds, created_at DESC) WHERE parked_funds = TRUE`,
 
     // ─── team / batch payouts ────────────────────────────────────────
-    // One row per batch payout — paying many recipients USDsui in ONE
+    // One row per batch payout, paying many recipients USDsui in ONE
     // atomic Onara-sponsored PTB ("pay your whole team in one signature").
     // `status` walks 'prepared' (bytes built, awaiting client sign) →
     // 'broadcast' (digest landed). `total_usd` is the summed USDsui across
@@ -649,7 +649,7 @@ async function doEnsureSchema(): Promise<void> {
       digest TEXT,
       created_at BIGINT
     )`,
-    // The team this batch paid (when it came from a saved team) — lets the
+    // The team this batch paid (when it came from a saved team), lets the
     // activity feed label the row "Paid {team}" with a team icon instead of
     // naming one arbitrary recipient. NULL for ad-hoc (non-team) batches.
     `ALTER TABLE payout_batches ADD COLUMN IF NOT EXISTS team_name TEXT`,
@@ -673,7 +673,7 @@ async function doEnsureSchema(): Promise<void> {
 
     // ─── roundup_queue (deferred spend-and-save) ─────────────────────
     // When a USDsui send takes the gasless rail (the only USDsui rail
-    // now — see sponsor-prepare/route.ts), the round-up NAVI supply
+    // now, see sponsor-prepare/route.ts), the round-up NAVI supply
     // leg can NOT be bundled atomically (gasless PTBs are restricted
     // to a single `0x2::coin::send_funds<T>` move call). Instead the
     // submit endpoint enqueues a row here and a cron drains the queue,
@@ -716,16 +716,16 @@ async function doEnsureSchema(): Promise<void> {
     //
     // One row per (corridor, currency, leg). A pool tracks three
     // inventory buckets:
-    //   • fiat_in_pool   — fiat collected on the send (funding) leg
-    //   • fiat_out_pool  — fiat pre-positioned for the payout leg
-    //   • usdc_pool      — native USDC inventory used for the on-chain
+    //   • fiat_in_pool , fiat collected on the send (funding) leg
+    //   • fiat_out_pool, fiat pre-positioned for the payout leg
+    //   • usdc_pool    , native USDC inventory used for the on-chain
     //                      net-settlement hop between legs (master plan
     //                      §3: corridor inventory in native USDC, NOT
-    //                      USDsui — caps de-peg exposure)
+    //                      USDsui, caps de-peg exposure)
     //
     // `segregated` flags safeguarded CLIENT money. SG MAS MPI / JP FSA
     // safeguarding obligations mean client balances must be held in
-    // segregated client-money accounts and — critically — CANNOT be
+    // segregated client-money accounts and, critically, CANNOT be
     // lent into NAVI (master plan §5/§6/§9). Only Talise's OWN operating
     // float (segregated=false) is NAVI-eligible. The treasury helper
     // `assertNotLendable()` enforces this invariant in code.
@@ -733,7 +733,7 @@ async function doEnsureSchema(): Promise<void> {
     // `reconciled_at` is the wall-clock ms of the last reconciliation
     // pass; `needsRebalance()` reads it together with the inventory
     // buckets. Balances here are a MOCK model + invariants, not live
-    // treasury ops — no real money moves through this table yet.
+    // treasury ops, no real money moves through this table yet.
     //
     // Writers: web/lib/treasury.ts (recordInflow / recordOutflow /
     // getPoolState / needsRebalance). Mirrors the same idempotent
@@ -765,7 +765,7 @@ async function doEnsureSchema(): Promise<void> {
     // row per POST /api/kyc. `ekyc_ref` is the opaque reference the
     // (mock) eKYC provider hands back; `ekyc_status` is the provider's
     // verdict at intent time (pending|approved|rejected). Recording an
-    // intent NEVER mutates users.kyc_tier — promotion is a separate,
+    // intent NEVER mutates users.kyc_tier, promotion is a separate,
     // reviewed write (lib/kyc.ts setUserTier), so a self-service POST
     // can't grant itself a higher limit. The tier model lives in
     // lib/kyc.ts; the eKYC adapter in lib/ekyc.ts.
@@ -802,7 +802,7 @@ async function doEnsureSchema(): Promise<void> {
       monthly_limit_cents BIGINT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
-    // Bridge KYC-Links id (link.id) — the stable poll handle while the Bridge
+    // Bridge KYC-Links id (link.id), the stable poll handle while the Bridge
     // customer_id is still null (it's null until the user starts KYC). Added
     // via ALTER so existing onramp_kyc rows pick it up too.
     `ALTER TABLE onramp_kyc ADD COLUMN IF NOT EXISTS kyc_link_id TEXT`,
@@ -815,7 +815,7 @@ async function doEnsureSchema(): Promise<void> {
     // ─── linq_offramps (USDSUI → NGN bank payout via Linq) ───────────
     // Replaces paga_offramps. Linq hands back a deposit wallet it watches and
     // pays the bank itself, so there's no treasury/on-chain-verify/refund
-    // state here — just the order record + its mirrored status. `id` is our
+    // state here, just the order record + its mirrored status. `id` is our
     // uuid (also the Linq idempotencyKey); `linq_order_id` is Linq's order id
     // (used by the webhook + status poll).
     `CREATE TABLE IF NOT EXISTS linq_offramps (
@@ -848,7 +848,7 @@ async function doEnsureSchema(): Promise<void> {
     // user consented to the link). Phase 3 (Send "to bank" toggle) reads
     // this table via getLinkedBankAccounts() so sending to @them can
     // target the linked bank. `user_id` is TEXT (mirrors linq_offramps,
-    // which stores String(userId)) — the app id is numeric but we keep
+    // which stores String(userId)), the app id is numeric but we keep
     // the same column shape as the sibling off-ramp table.
     `CREATE TABLE IF NOT EXISTS user_bank_accounts (
       id TEXT PRIMARY KEY,
@@ -861,14 +861,14 @@ async function doEnsureSchema(): Promise<void> {
       created_at BIGINT NOT NULL,
       updated_at BIGINT NOT NULL
     )`,
-    // Off-ramp Phase 3: one account per user is the PRIMARY payout target —
+    // Off-ramp Phase 3: one account per user is the PRIMARY payout target -
     // the bank a sender hits when they choose "pay to their bank" against a
     // @handle. Additive ALTER for installs that pre-date the column; existing
     // rows default to false (no primary) until one is explicitly set.
     `ALTER TABLE user_bank_accounts ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`,
     `CREATE INDEX IF NOT EXISTS idx_user_bank_accounts_user
        ON user_bank_accounts (user_id)`,
-    // One row per (user, bank, account) — re-linking the same account is
+    // One row per (user, bank, account), re-linking the same account is
     // an idempotent UPSERT (refreshes name + attestation), never a dup.
     `CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_bank_accounts
        ON user_bank_accounts (user_id, bank_code, account_number)`,
@@ -876,12 +876,12 @@ async function doEnsureSchema(): Promise<void> {
     // ─── travel_rule_records (FATF Travel Rule audit log) ────────────
     // Master plan §7: above the ~$1,000 Travel Rule threshold, external
     // transfers must exchange IVMS-101 originator/beneficiary data. This
-    // table is the audit log of that compliance metadata — route
+    // table is the audit log of that compliance metadata, route
     // (INTERNAL / EXTERNAL_VASP / UNHOSTED), the obligation that applied,
     // the IVMS-101 payload (JSON), and the Travel Rule network transfer
     // id once a message has been submitted. Written by
     // `recordTravelRuleTransfer` in web/lib/travel-rule.ts. ADDITIVE only
-    // — NOT yet wired into the send path (see TRAVEL_RULE_INTEGRATION_POINT
+    //, NOT yet wired into the send path (see TRAVEL_RULE_INTEGRATION_POINT
     // in that module).
     `CREATE TABLE IF NOT EXISTS travel_rule_records (
       id SERIAL PRIMARY KEY,
@@ -904,10 +904,10 @@ async function doEnsureSchema(): Promise<void> {
     // last-known value in one indexed PK read (~10-50ms) instead of a live
     // Sui chain read (USDsui balance ~600-1800ms, activity scan ~1-3s). The
     // perf-cache.ts memoTtl is in-process only, so cold/other serverless
-    // instances re-pay full chain latency — these tables survive cold starts.
+    // instances re-pay full chain latency, these tables survive cold starts.
     //
     // HARD INVARIANT: these are DISPLAY-ONLY. Nothing here may be consulted
-    // for a send/withdraw/sweep build or any limit/eligibility check — those
+    // for a send/withdraw/sweep build or any limit/eligibility check, those
     // stay on the live chain + the authoritative send_limit ledger. A stale
     // snapshot can only ever mislead a pixel, never the bytes of a tx.
     // `*_refreshed_at` (epoch ms) drives staleness; `*_source` marks where
@@ -937,7 +937,7 @@ async function doEnsureSchema(): Promise<void> {
     )`,
     // insights_json mirrors the exact MonthInsights payload /api/rewards/
     // insights serialises, so serving from cache is a verbatim replay. Only
-    // ever written from a COMPLETE activity read (complete: true) — a
+    // ever written from a COMPLETE activity read (complete: true), a
     // timed-out read must never become the last-known value (2026-06-11
     // incident principle: a failed read is not a genuine zero).
     `CREATE TABLE IF NOT EXISTS user_insights_snapshot (
@@ -982,7 +982,7 @@ async function doEnsureSchema(): Promise<void> {
   // ms-precision timestamps; `Date.now()` is ~1.78 trillion today, well
   // beyond int4's ~2.15B limit, so inserts blow up with:
   //   ERROR: value "1779729508821" is out of range for type integer
-  // `CREATE TABLE IF NOT EXISTS` won't fix an already-narrow column —
+  // `CREATE TABLE IF NOT EXISTS` won't fix an already-narrow column -
   // need an explicit ALTER. Gate each on `information_schema.columns`
   // so the migration is a no-op once columns are already int8.
   // (Declared BEFORE the version gate below so the hash covers it.)
@@ -999,7 +999,7 @@ async function doEnsureSchema(): Promise<void> {
     ["redemptions", "created_at"],
     ["redemptions", "fulfilled_at"],
     // mobile_sessions is created out-of-band in lib/mobile-sessions.ts
-    // but suffers from the same int4 issue — fold it in here so the
+    // but suffers from the same int4 issue, fold it in here so the
     // widener covers it on first cold start.
     ["mobile_sessions", "created_at"],
     ["mobile_sessions", "expires_at"],
@@ -1009,7 +1009,7 @@ async function doEnsureSchema(): Promise<void> {
   // ─── Schema-version fast path ───────────────────────────────────────
   // The DDL below is ~114 sequential round-trips. Against a remote box at
   // ~180ms RTT that is ~20 SECONDS on EVERY cold start (each dev restart,
-  // each cold serverless lambda) — the dominant cold-start cost we measured.
+  // each cold serverless lambda), the dominant cold-start cost we measured.
   // The statements are pure data, so hash them: if the stored marker matches,
   // the DB is already at exactly this schema and we skip the entire replay
   // for the cost of ONE SELECT. Any edit to the DDL (or the widener spec)
@@ -1028,7 +1028,7 @@ async function doEnsureSchema(): Promise<void> {
     });
     if ((mark.rows[0]?.v_text as string | undefined) === schemaHash) return;
   } catch {
-    /* global_kv not created yet — fresh DB, run the full DDL below */
+    /* global_kv not created yet, fresh DB, run the full DDL below */
   }
 
   for (const stmt of stmts) {
@@ -1036,7 +1036,7 @@ async function doEnsureSchema(): Promise<void> {
       await c.execute(stmt);
     } catch {
       /* idempotent; ALTERs against missing tables on first cold start
-         will throw harmlessly — the CREATE above eventually wins. */
+         will throw harmlessly, the CREATE above eventually wins. */
     }
   }
 
@@ -1054,7 +1054,7 @@ async function doEnsureSchema(): Promise<void> {
         );
       }
     } catch {
-      /* table not yet created — fresh DBs get BIGINT from CREATE above */
+      /* table not yet created, fresh DBs get BIGINT from CREATE above */
     }
   }
 
@@ -1075,7 +1075,7 @@ async function doEnsureSchema(): Promise<void> {
 /**
  * One-SELECT schema-version gate for the self-bootstrapping FEATURE schemas
  * (cheques / streams / mobile-sessions), mirroring the main ensureSchema fast
- * path above. `hashInput` should be the feature's DDL joined into one string —
+ * path above. `hashInput` should be the feature's DDL joined into one string -
  * any DDL edit changes the hash, so the next cold start replays once and
  * re-stamps. Returns `upToDate: true` when the stored marker matches (caller
  * skips its DDL), plus a `stamp()` to call after a successful replay.
@@ -1095,7 +1095,7 @@ export async function schemaVersionGate(
       return { upToDate: true, stamp: async () => {} };
     }
   } catch {
-    /* global_kv missing — fall through to replay */
+    /* global_kv missing, fall through to replay */
   }
   return {
     upToDate: false,
@@ -1107,7 +1107,7 @@ export async function schemaVersionGate(
           args: [key, hash, Date.now()],
         });
       } catch {
-        /* non-fatal — next cold start just replays the idempotent DDL */
+        /* non-fatal, next cold start just replays the idempotent DDL */
       }
     },
   };
@@ -1117,7 +1117,7 @@ export async function schemaVersionGate(
  * Sum of a user's off-ramp USDsui (≈ USD 1:1) in the trailing window, from the
  * `linq_offramps` ledger. Powers the per-account DAILY cash-out cap. Terminal-
  * failure rows are excluded so a bounced/cancelled order doesn't burn the
- * allowance. `manual_requested` (concierge) rows are also excluded — concierge
+ * allowance. `manual_requested` (concierge) rows are also excluded, concierge
  * is the manually-reviewed "do more" path (the KYC escape hatch), so it neither
  * consumes nor is bounded by the automated self-serve daily cap.
  */
@@ -1152,7 +1152,7 @@ export async function dbHealth(): Promise<{ ok: boolean; latencyMs: number; erro
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Domain types + query helpers — unchanged from the libsql version
+// Domain types + query helpers, unchanged from the libsql version
 
 export type AccountType = "personal" | "business";
 
@@ -1200,7 +1200,7 @@ export type User = {
  * the user-signed `vault::create()` tx confirms on chain.
  *
  * Idempotent: a second call with the same vault id is a no-op. A second
- * call with a *different* id throws — we expect exactly one vault per
+ * call with a *different* id throws, we expect exactly one vault per
  * user. Callers can pass `{ force: true }` to bypass that check during
  * v1 mainnet migration (re-pointing legacy users to a fresh vault).
  */
@@ -1337,7 +1337,7 @@ export async function setAccountType(
 }
 
 /**
- * Set ONLY the user's country (ISO alpha-2). Additive + idempotent — does NOT
+ * Set ONLY the user's country (ISO alpha-2). Additive + idempotent, does NOT
  * touch account_type, so it's safe to call from the onboarding country step
  * and a profile edit without interfering with account completion.
  */
@@ -1430,7 +1430,7 @@ export async function upsertUser(input: {
   }
 
   // Default new users to a 'personal' account_type. Onboarding/KYC was
-  // removed — a new user signs in and goes STRAIGHT into the app, so the
+  // removed, a new user signs in and goes STRAIGHT into the app, so the
   // KYC step that used to set this never runs. A populated account_type
   // also keeps the client's phase logic on the `.ready` path (a null type
   // routed to the old `.onboarding`/KYC screen). Users can still upgrade
@@ -1487,7 +1487,7 @@ export async function userById(id: number): Promise<User | null> {
   const u = hydrateUser((r.rows[0] as unknown as User) ?? null);
   // A deleted account no longer exists for any authed surface. The web
   // session cookie is stateless (no server-side store to revoke), but every
-  // authed route resolves the user through here — so filtering deleted rows
+  // authed route resolves the user through here, so filtering deleted rows
   // is the chokepoint that retires any still-circulating cookie after an
   // in-app account deletion (markUserDeleted). Mobile bearers are revoked
   // explicitly in the delete route.
@@ -1496,7 +1496,7 @@ export async function userById(id: number): Promise<User | null> {
 }
 
 /**
- * Raw row read that does NOT filter deleted accounts — needed by
+ * Raw row read that does NOT filter deleted accounts, needed by
  * markUserDeleted's idempotency check (and any future admin tooling).
  */
 export async function userByIdIncludingDeleted(id: number): Promise<User | null> {
@@ -1518,7 +1518,7 @@ export async function userByGoogleSub(sub: string): Promise<User | null> {
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Apple zkLogin salts — LOCAL fallback for Sign in with Apple.
+// Apple zkLogin salts, LOCAL fallback for Sign in with Apple.
 //
 // The primary salt source is Shinami's zkLogin Wallet service (keyed per
 // iss+sub on their side). If Shinami rejects an apple-issuer JWT (unknown
@@ -1527,7 +1527,7 @@ export async function userByGoogleSub(sub: string): Promise<User | null> {
 // INSERT ... ON CONFLICT DO NOTHING, then SELECT the canonical row.
 //
 // Self-bootstrapping schema, same memoized-promise + version-gate idiom as
-// mobile-sessions (this is NOT on the hot auth path — only the Apple
+// mobile-sessions (this is NOT on the hot auth path, only the Apple
 // sign-in exchange touches it).
 
 const APPLE_SALTS_DDL = `
@@ -1573,7 +1573,7 @@ export async function localAppleSalt(issSub: string): Promise<string | null> {
  * Store `candidateSalt` for `iss_sub` ONLY if no salt exists yet, then return
  * the canonical stored salt. Concurrent first sign-ins race safely: ON
  * CONFLICT DO NOTHING means exactly one INSERT wins and both callers read
- * back the same winning row — the salt for a subject can never change.
+ * back the same winning row, the salt for a subject can never change.
  */
 export async function getOrCreateLocalAppleSalt(
   issSub: string,
@@ -1599,7 +1599,7 @@ export async function getOrCreateLocalAppleSalt(
 }
 
 /**
- * Look up a user by their Sui address (UNIQUE). Case-insensitive — send
+ * Look up a user by their Sui address (UNIQUE). Case-insensitive, send
  * paths lowercase the recipient, but the stored address may be mixed case.
  * Used to resolve the RECIPIENT of an inbound transfer so we can notify them.
  * Returns null for an external (non-Talise) address.
@@ -1616,30 +1616,30 @@ export async function userBySuiAddress(address: string): Promise<User | null> {
 /**
  * In-app account deletion (App Store Guideline 5.1.1(v)).
  *
- * Soft delete + PII redaction, NOT a row drop — dozens of financial tables
+ * Soft delete + PII redaction, NOT a row drop, dozens of financial tables
  * FK onto users(id) and those records must survive for bookkeeping + AML
  * record-keeping obligations. What happens:
  *
- *   • google_sub  → `deleted:<id>:<ts>`  — breaks the Google→account link,
+ *   • google_sub  → `deleted:<id>:<ts>`, breaks the Google→account link,
  *     so a future sign-in with the same Google account creates a FRESH row
  *     instead of resurrecting this one. (The wallet is self-custodial: the
  *     same Google identity re-derives the same zkLogin address via Shinami,
- *     so funds are never lost — only the Talise profile is gone.)
- *   • sui_address → `deleted:<id>:<addr>` — frees the UNIQUE constraint for
+ *     so funds are never lost, only the Talise profile is gone.)
+ *   • sui_address → `deleted:<id>:<addr>`, frees the UNIQUE constraint for
  *     that fresh re-signup row while keeping the address inside the value
  *     for audit. Lookups (userBySuiAddress) no longer match.
  *   • email/name/picture + business profile + talise_username → redacted.
  *     Clearing talise_username releases the server-side handle mapping
  *     (the on-chain SuiNS subname stays with the user's wallet).
- *   • salt → 'deleted' — Shinami remains the salt source of truth.
- *   • PII side tables — linked bank accounts, push tokens, display
- *     snapshots, savings goals — are deleted outright.
+ *   • salt → 'deleted', Shinami remains the salt source of truth.
+ *   • PII side tables, linked bank accounts, push tokens, display
+ *     snapshots, savings goals, are deleted outright.
  *
  * KEPT: tx_history, transfers, invoices, linq_offramps, rewards ledger,
  * KYC/travel-rule artifacts (legally retained), cheques/streams escrows
  * (claimable by recipients independent of the issuer's profile).
  *
- * Idempotent — a second call on an already-deleted row is a no-op.
+ * Idempotent, a second call on an already-deleted row is a no-op.
  * Callers must also revoke sessions (revokeAllMobileSessions + cookie).
  */
 export async function markUserDeleted(userId: number): Promise<void> {
@@ -1676,12 +1676,12 @@ export async function markUserDeleted(userId: number): Promise<void> {
     ],
   });
 
-  // PII side tables — hard-delete. Each is independent; a failure on one
+  // PII side tables, hard-delete. Each is independent; a failure on one
   // (e.g. a table that predates this feature) must not abort the rest.
   const cleanups: Array<{ sql: string; args: (string | number)[] }> = [
     // Linked NGN bank accounts (account numbers + names). TEXT user_id.
     { sql: `DELETE FROM user_bank_accounts WHERE user_id = ?`, args: [String(userId)] },
-    // APNs push tokens — device must stop receiving pushes post-delete.
+    // APNs push tokens, device must stop receiving pushes post-delete.
     { sql: `DELETE FROM device_token WHERE user_id = ?`, args: [userId] },
     // Display-only snapshot caches.
     { sql: `DELETE FROM user_balance_snapshot WHERE user_id = ?`, args: [userId] },
@@ -1694,14 +1694,14 @@ export async function markUserDeleted(userId: number): Promise<void> {
     try {
       await c.execute(stmt);
     } catch {
-      /* best-effort PII cleanup — never abort the deletion itself */
+      /* best-effort PII cleanup, never abort the deletion itself */
     }
   }
 }
 
 /**
  * Register (upsert) an APNs/push device token for a user. `token` is UNIQUE,
- * so re-registering the same device — or moving it to a new account —
+ * so re-registering the same device, or moving it to a new account -
  * rebinds it rather than duplicating.
  */
 export async function registerDeviceToken(
@@ -1773,6 +1773,23 @@ export async function updateUserProfile(
         : null,
       userId,
     ],
+  });
+}
+
+/**
+ * Overwrite a user's email. Used only to replace an Apple "Hide My Email"
+ * relay address (`@privaterelay.appleid.com`, which can't complete Bridge KYC)
+ * with a real email the user supplies at verification time. `email` is a
+ * non-unique index, so this is a plain lower-cased update.
+ */
+export async function updateUserEmail(
+  userId: number,
+  email: string
+): Promise<void> {
+  await ensureSchema();
+  await db().execute({
+    sql: "UPDATE users SET email = ? WHERE id = ?",
+    args: [email.trim().toLowerCase(), userId],
   });
 }
 
@@ -2035,7 +2052,7 @@ export async function userByReferralCode(code: string): Promise<User | null> {
 
 /**
  * Resolve a user by their claimed Talise handle (`users.talise_username`,
- * UNIQUE). Case-insensitive — handles are stored lowercased but we normalize
+ * UNIQUE). Case-insensitive, handles are stored lowercased but we normalize
  * the lookup so a shared `/u/Alice` link still resolves. Powers the public
  * profile page + its OG card.
  */
@@ -2051,7 +2068,7 @@ export async function userByHandle(handle: string): Promise<User | null> {
 }
 
 /**
- * Waitlist position for a user, ranked among the WAITLIST COHORT — members
+ * Waitlist position for a user, ranked among the WAITLIST COHORT, members
  * who have claimed a Talise handle (`talise_username IS NOT NULL`), which is
  * exactly who sees this dashboard. (Ranking over all `users` would fold in
  * fully-onboarded / business accounts and make the line meaningless.) Order is
@@ -2059,7 +2076,7 @@ export async function userByHandle(handle: string): Promise<User | null> {
  * you toward the front; ties break by who joined first. Returns a 1-based
  * `position` (1 = front of the line) and the cohort `total`.
  *
- * Single correlated query — `ahead` counts cohort members strictly in front of
+ * Single correlated query, `ahead` counts cohort members strictly in front of
  * `me`, so position = ahead + 1. COALESCE guards the nullable referral_count.
  * Cheap at waitlist scale; move to a materialized rank past ~1M rows.
  */
@@ -2188,7 +2205,7 @@ export async function getRewardsSummary(userId: number): Promise<{
   const pointsTotal = Number(row?.points_total ?? 0) || 0;
 
   const ev = await c.execute({
-    // Goal deposits/withdrawals are NOT earning events — they move a tracked
+    // Goal deposits/withdrawals are NOT earning events, they move a tracked
     // envelope, mint no points, and only cluttered the feed with "+0" rows.
     // Excluded here so they never appear in Earning History (past or future).
     sql: `SELECT * FROM rewards_events WHERE user_id = ?
@@ -2270,11 +2287,26 @@ export async function markRoundupProcessed(
 
 // ─── App allowlist (private-beta access gate) ───────────────────────────────
 
-/** Env bootstrap — comma-separated emails that ALWAYS have access (founders),
- *  even if the DB allowlist is unreachable. */
+/** Env bootstrap, comma-separated emails that ALWAYS have access, even if the
+ *  DB allowlist is unreachable (fail-open only for these explicit entries).
+ *
+ *  Two env vars, unioned, so intent stays legible and each is independently
+ *  revocable:
+ *    • APP_ALLOWED_EMAILS, founders / long-lived team bootstrap.
+ *    • APP_REVIEW_EMAILS , App Store / Play reviewer demo account(s). Add the
+ *                            reviewer email here to fully enable the account
+ *                            (skips the waiting room AND passes every money-API
+ *                            403 guardrail, both route through this function).
+ *                            Delete the entry to revoke the instant review ends;
+ *                            it never widens access for anyone else.
+ */
 function envAllowedEmails(): Set<string> {
+  const raw = [
+    process.env.APP_ALLOWED_EMAILS ?? "",
+    process.env.APP_REVIEW_EMAILS ?? "",
+  ].join(",");
   return new Set(
-    (process.env.APP_ALLOWED_EMAILS ?? "")
+    raw
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean)
@@ -2283,15 +2315,19 @@ function envAllowedEmails(): Set<string> {
 
 /** Is this email allowed into the gated app surfaces?
  *
- *  PUBLIC BETA: access is OPEN to everyone — Talise has gone live, so any
+ *  PUBLIC BETA: access is OPEN to everyone, Talise has gone live, so any
  *  signed-in account can move money. The allowlist mechanism below is left
  *  intact and can be re-enabled by setting `APP_ACCESS_OPEN=false` (which
  *  reverts to env-bootstrap + app_allowlist gating, fail-closed on DB error).
  */
 export async function isAppAccessAllowed(email: string): Promise<boolean> {
-  if (process.env.APP_ACCESS_OPEN !== "false") return true;
   const norm = email.trim().toLowerCase();
+  // Explicit env allowlist (founders + reviewers) ALWAYS passes, independent of
+  // the open/closed toggle, so an added reviewer email keeps working even if
+  // APP_ACCESS_OPEN is later flipped to "false" mid-review. Checked first and
+  // costs no DB round-trip.
   if (envAllowedEmails().has(norm)) return true;
+  if (process.env.APP_ACCESS_OPEN !== "false") return true;
   try {
     await ensureSchema();
     const r = await db().execute({

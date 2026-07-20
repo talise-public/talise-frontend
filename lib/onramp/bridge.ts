@@ -31,10 +31,10 @@ import {
 import { verifyBridgeWebhook, parseBridgeWebhook } from "@/lib/bridge/webhook";
 
 /**
- * Bridge on-ramp adapter — DEFAULT provider.
+ * Bridge on-ramp adapter, DEFAULT provider.
  *
  * Bridge (a Stripe company) is the issuer of USDsui ("Sui Dollar"), so this
- * adapter delivers USDSUI DIRECTLY on Sui — no swap step. It supports bank
+ * adapter delivers USDSUI DIRECTLY on Sui, no swap step. It supports bank
  * + card funding.
  *
  * STUB: with no `BRIDGE_API_KEY` set, every method returns deterministic,
@@ -45,7 +45,7 @@ import { verifyBridgeWebhook, parseBridgeWebhook } from "@/lib/bridge/webhook";
  */
 
 const NAME: OnrampProviderName = "bridge";
-// Bridge delivers USDC on Sui (currency "usdc" / rail "sui"), NOT USDsui — so
+// Bridge delivers USDC on Sui (currency "usdc" / rail "sui"), NOT USDsui, so
 // the existing USDC→USDsui sweep (AutoConvertBanner) finishes money-in.
 const DELIVER: DeliverAsset = "USDC";
 
@@ -142,7 +142,7 @@ export const bridgeAdapter: OnrampProvider = {
       ? (input.sourceCurrency as BridgeFiatCurrency)
       : "usd";
     // Reuse an existing matching virtual account if the customer already has
-    // one (created here before, or in the Bridge dashboard) — this returns the
+    // one (created here before, or in the Bridge dashboard), this returns the
     // SAME persistent deposit instructions and avoids minting duplicates.
     let va: Awaited<ReturnType<typeof createVirtualAccount>> | null = null;
     try {
@@ -157,7 +157,7 @@ export const bridgeAdapter: OnrampProvider = {
             (v.status === "activated" || v.status === "active")
         ) ?? null;
     } catch {
-      va = null; // list failed — fall through to create
+      va = null; // list failed, fall through to create
     }
     if (!va) {
       va = await createVirtualAccount({
@@ -200,7 +200,7 @@ export const bridgeAdapter: OnrampProvider = {
   ): Promise<OnrampWebhookEvent> {
     // Bridge signs with RSA (X-Webhook-Signature: t=<ms>,v0=<base64>) over
     // `${t}.${rawBody}`, verified with the per-endpoint public key. Verify
-    // BEFORE parsing — the real scheme, not the old HMAC placeholder.
+    // BEFORE parsing, the real scheme, not the old HMAC placeholder.
     const v = verifyBridgeWebhook(rawBody, headers);
     const evt = parseBridgeWebhook(rawBody);
     const obj = (evt.event_object ?? {}) as Record<string, unknown>;
@@ -279,32 +279,40 @@ export async function refreshBridgeKyc(input: {
   customerId: string | null;
   kycStatus?: string;
   tosStatus?: string;
+  kycUrl?: string;
+  tosUrl?: string;
 }> {
   let customerId: string | null = null;
   let statusStr: string | undefined;
   let kycStatus: string | undefined;
   let tosStatus: string | undefined;
+  let kycUrl: string | undefined;
+  let tosUrl: string | undefined;
 
   if (input.kycLinkId) {
-    // The link is the stable handle — it carries kyc_status + the (eventual)
-    // customer_id, which is null until the user actually starts KYC.
+    // The link is the stable handle, it carries kyc_status + the (eventual)
+    // customer_id, which is null until the user actually starts KYC. It also
+    // carries the hosted kyc_link + tos_link, which the client re-surfaces so
+    // the "accept terms" step stays reachable while KYC is pending.
     const link = await getKycLink(input.kycLinkId);
     kycStatus = link.kyc_status;
     tosStatus = link.tos_status;
+    kycUrl = link.kyc_link;
+    tosUrl = link.tos_link;
     customerId = link.customer_id ?? null;
     statusStr = link.kyc_status;
   }
 
   if (customerId) {
-    // A real customer exists — its status is authoritative over the link's.
+    // A real customer exists, its status is authoritative over the link's.
     const c = await getCustomer(customerId);
     statusStr = c.status;
   } else if (!input.kycLinkId && input.providerCustomerId) {
-    // No link on record, but we have a customer id (older flow) — poll it.
+    // No link on record, but we have a customer id (older flow), poll it.
     const c = await getCustomer(input.providerCustomerId);
     statusStr = c.status;
     customerId = input.providerCustomerId;
   }
 
-  return { status: mapBridgeKycStatus(statusStr), customerId, kycStatus, tosStatus };
+  return { status: mapBridgeKycStatus(statusStr), customerId, kycStatus, tosStatus, kycUrl, tosUrl };
 }

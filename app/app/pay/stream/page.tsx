@@ -92,7 +92,7 @@ export default function StreamPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
-      {/* Keep the Pay sub-nav visible on this sibling route too — without it
+      {/* Keep the Pay sub-nav visible on this sibling route too, without it
           mobile users who tapped into Stream lost the way back to
           Send/Request/Cheques. */}
       <PaySubNav />
@@ -101,8 +101,8 @@ export default function StreamPage() {
           Streaming
         </span>
         <h1
-          className="text-[clamp(26px,5vw,32px)] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[clamp(26px,5vw,32px)] font-[500] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Money over time
         </h1>
@@ -221,14 +221,14 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
   }, [query]);
 
   const statusMessage = useMemo(() => {
-    if (!query.trim()) return "Enter a recipient — an @handle or a 0x address.";
+    if (!query.trim()) return "Enter a recipient, an @handle or a 0x address.";
     if (resolving) return "Looking up that recipient…";
     if (!resolved) return "Enter a recipient we can find before streaming.";
     if (totalUsd <= 0) return "Enter an amount to stream.";
     if (trancheUsd < 0.01)
-      return `Each payment works out to $${trancheUsd.toFixed(4)} — below the $0.01 minimum. Raise the total or stream less often.`;
+      return `Each payment works out to $${trancheUsd.toFixed(4)}, below the $0.01 minimum. Raise the total or stream less often.`;
     if (numTranches > 5000)
-      return `That's ${numTranches} payments — too many. Stream less often or over a shorter window.`;
+      return `That's ${numTranches} payments, too many. Stream less often or over a shorter window.`;
     return "Set a recipient, amount and schedule to start.";
   }, [query, resolving, resolved, totalUsd, trancheUsd, numTranches]);
 
@@ -262,7 +262,7 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
       }
 
       // Record against the SERVER's authoritative plan (amounts + start time)
-      // so the stored row matches the on-chain Stream object exactly — never
+      // so the stored row matches the on-chain Stream object exactly, never
       // the client's locally-recomputed figures.
       const plan = prep.plan;
       const recordBody = {
@@ -277,7 +277,7 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
         startMs: plan?.startMs ?? Date.now(),
         intervalMs: plan?.intervalMs ?? intervalMs,
       };
-      // The funding tx is already on-chain at this point — if the server's
+      // The funding tx is already on-chain at this point, if the server's
       // read of the digest lags indexing (409 STREAM_OBJECT_UNCONFIRMED),
       // retry the record itself rather than telling the user it failed.
       for (let attempt = 0; ; attempt++) {
@@ -308,7 +308,7 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
       {/* Recipient + amount grouped in one card */}
       <div
         className="divide-y divide-[#15300c]/10 overflow-hidden rounded-[28px] bg-[#f7fcf2]"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         {/* Recipient */}
         <div className="px-5 py-4">
@@ -353,14 +353,14 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
             Total (USDsui)
           </label>
           <div className="mt-2 flex items-center gap-1.5">
-            <span className="text-[22px] text-[#3a5230]" style={{ fontFamily: "var(--font-display-v2)" }}>$</span>
+            <span className="text-[22px] text-[#3a5230]" style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}>$</span>
             <input
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="0.00"
-              className="w-full bg-transparent text-[28px] font-[800] tracking-[-0.02em] text-[#15300c] tabular-nums outline-none placeholder:text-[#3d7a29]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="w-full bg-transparent text-[28px] font-[800] tracking-[-0.05em] text-[#15300c] tabular-nums outline-none placeholder:text-[#3d7a29]"
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif' }}
             />
           </div>
         </div>
@@ -369,7 +369,7 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
       {/* Schedule */}
       <div
         className="space-y-5 rounded-[28px] bg-[#f7fcf2] p-5"
-        style={{ boxShadow: "10px 10px 0 #15300c" }}
+        style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
       >
         <ScheduleSelect label="Over" options={DURATIONS} value={durationMin} onChange={setDurationMin} />
         <ScheduleSelect label="Every" options={INTERVALS} value={intervalMin} onChange={setIntervalMin} />
@@ -379,7 +379,7 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
       {validSchedule ? (
         <div
           className="space-y-1.5 rounded-[28px] bg-[#CAFFB8] p-5"
-          style={{ boxShadow: "10px 10px 0 #15300c" }}
+          style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
         >
           <div className="flex items-center gap-2">
             <HugeiconsIcon icon={FlashIcon} size={15} className="text-[#15300c]" />
@@ -413,7 +413,7 @@ function SetupTab({ onStarted }: { onStarted: () => void }) {
   );
 }
 
-// Labelled wrapper around the shared glass <Segmented> control — keeps the
+// Labelled wrapper around the shared glass <Segmented> control, keeps the
 // schedule selectors (duration + interval) consistent with the rest of the
 // design system instead of bespoke chip buttons.
 function ScheduleSelect({
@@ -499,7 +499,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
   );
 
   // Recipient pulls every tranche the on-chain Clock says is due, via the
-  // sponsored, permissionless stream::claim_accrued — no scheduler, gas-free.
+  // sponsored, permissionless stream::claim_accrued, no scheduler, gas-free.
   const claim = useCallback(
     async (s: ProjectedStream) => {
       setClaiming(s.id);
@@ -517,7 +517,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
             window.dispatchEvent(new CustomEvent("talise:tx", { detail: { kind: "stream-claim" } }));
           }
         } else if (r.nothingToClaim) {
-          setClaimError("Nothing has accrued yet — check back after the next payment.");
+          setClaimError("Nothing has accrued yet, check back after the next payment.");
         }
         await load();
       } catch (e) {
@@ -530,7 +530,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
   );
 
   // Sender-only pause/resume. Unlike create/claim/cancel these are pure state
-  // flips on the DB row (the escrow keeps the funds) — the routes return a
+  // flips on the DB row (the escrow keeps the funds), the routes return a
   // plain `{ ok, state }` with no sponsor-ready bytes, so there's nothing to
   // sign: just POST, toast, and refresh the projected list.
   const pauseResume = useCallback(
@@ -584,7 +584,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
       <EmptyState
         icon={<HugeiconsIcon icon={RadioIcon} size={26} />}
         title="No streams yet"
-        subtitle="Start one to drip money over time — fund once, it settles on schedule."
+        subtitle="Start one to drip money over time, fund once, it settles on schedule."
         action={<PrimaryButton onClick={onNew}>New stream</PrimaryButton>}
       />
     );
@@ -599,7 +599,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
         const progress = s.totalUsd > 0 ? Math.min(1, s.releasedUsd / s.totalUsd) : 0;
         const canCancel = s.role !== "recipient" && (s.state === "active" || s.state === "paused");
         const canClaim = s.role === "recipient" && s.state === "active" && s.releasedUsd < s.totalUsd;
-        // Sender can pause an active stream or resume a paused one — same
+        // Sender can pause an active stream or resume a paused one, same
         // ownership + non-terminal gate the backend enforces.
         const canPauseResume =
           s.role !== "recipient" && (s.state === "active" || s.state === "paused");
@@ -608,7 +608,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
           <div
             key={s.id}
             className="space-y-4 rounded-[28px] bg-[#f7fcf2] p-5"
-            style={{ boxShadow: "10px 10px 0 #15300c" }}
+            style={{ boxShadow: "0 1px 2px rgba(18,26,15,0.04), 0 14px 34px -22px rgba(18,26,15,0.22)" }}
           >
             {/* Header row */}
             <div className="flex items-start justify-between gap-3">
@@ -627,7 +627,7 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
             <div>
               <span
                 className="block font-[800] tabular-nums text-[#15300c]"
-                style={{ fontFamily: "var(--font-display-v2)", fontSize: 26, letterSpacing: "-0.02em", lineHeight: 1 }}
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontSize: 26, letterSpacing: "-0.02em", lineHeight: 1 }}
               >
                 ${s.releasedUsd.toFixed(2)}
               </span>
@@ -732,6 +732,6 @@ function streamTone(state: string): StatusTone {
 }
 
 function shortAddr(a: string): string {
-  if (!a || a.length <= 12) return a || "—";
+  if (!a || a.length <= 12) return a || "-";
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }

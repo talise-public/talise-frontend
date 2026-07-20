@@ -7,7 +7,7 @@ import { sendApnsPush } from "@/lib/apns";
 /**
  * Format a USD amount for notification copy: "$0.2", "$5", "$12.34". We show
  * the ACTUAL USD value received (USDsui is dollar-denominated), NOT a
- * local-currency conversion — converting was the source of a wrong figure in
+ * local-currency conversion, converting was the source of a wrong figure in
  * the push (a $0.36 credit displayed as "₦597"). USD is exact and matches the
  * dollars the user actually holds.
  */
@@ -18,7 +18,7 @@ function formatUsd(n: number): string {
 }
 
 /**
- * Whether to email the recipient when they receive money. OFF by default —
+ * Whether to email the recipient when they receive money. OFF by default -
  * the push notification is the credit alert; receive-emails are paused. Flip
  * with `RECEIVE_EMAIL_ENABLED=true` in Vercel to turn them back on.
  */
@@ -39,7 +39,7 @@ function senderLabel(raw: string): string {
 /**
  * Notify the RECIPIENT that an inbound transfer settled on chain.
  *
- * Fire-and-forget by contract: this NEVER throws — a notification failure
+ * Fire-and-forget by contract: this NEVER throws, a notification failure
  * must never affect the send that already landed. Today it emails the
  * recipient via Resend; the push (APNs) leg hooks in here once device-token
  * registration + the Apple Push key are wired (see docs/hackathon/PLAN.md).
@@ -54,9 +54,9 @@ export async function notifyInboundSettlement(input: {
 }): Promise<void> {
   try {
     const recipient = await userBySuiAddress(input.recipientAddress);
-    if (!recipient) return; // external (non-Talise) address — nothing to notify
+    if (!recipient) return; // external (non-Talise) address, nothing to notify
 
-    // Email on receive — OFF by default; the push below is the primary credit
+    // Email on receive, OFF by default; the push below is the primary credit
     // notification. Toggle back on with RECEIVE_EMAIL_ENABLED=true in Vercel.
     if (recipient.email && receiveEmailEnabled()) {
       const res = await sendInboundReceivedEmail({
@@ -71,7 +71,7 @@ export async function notifyInboundSettlement(input: {
       }
     }
 
-    // Push (APNs) — fire to every registered device. No-ops cleanly when APNs
+    // Push (APNs), fire to every registered device. No-ops cleanly when APNs
     // isn't configured (sendApnsPush returns { skipped: true }).
     try {
       const tokens = await deviceTokensForUser(recipient.id);

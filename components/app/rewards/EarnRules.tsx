@@ -15,7 +15,7 @@ const DEFAULTS: PointRates = { send: 1, invest: 3, withdraw: 0, roundup: 5, goal
 /**
  * Transparent "how you earn" explainer. Reads from the server's
  * `pointRates` so the numbers never drift from the engine; falls back to
- * the documented defaults on an older server build. Uniform rows — the
+ * the documented defaults on an older server build. Uniform rows, the
  * accent rate value on the right is the only thing that varies.
  */
 export function EarnRules({ rates }: { rates: PointRates | null }) {

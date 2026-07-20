@@ -3,34 +3,34 @@ import "server-only";
 import { db, ensureSchema } from "@/lib/db";
 
 /**
- * Talise KYC tier engine (cross-border master plan §7 — compliance P0).
+ * Talise KYC tier engine (cross-border master plan §7, compliance P0).
  *
  * A four-tier model gates how much value a user can move and which
  * corridors they can use, scaled to the strength of identity evidence
  * they've cleared. Tier is persisted as `users.kyc_tier` (INTEGER,
  * default 0); see web/lib/db.ts ensureSchema.
  *
- *   Tier 0 — email-only. Can RECEIVE into the wallet, can hold a
+ *   Tier 0, email-only. Can RECEIVE into the wallet, can hold a
  *            balance, but cannot send/off-ramp. This is the implicit
  *            floor for every account the moment it's created via
  *            zkLogin: an email exists, nothing else is verified.
  *
- *   Tier 1 — basic ID. A single government-ID document check (the
- *            cheapest eKYC pass). Unlocks low-value sending — roughly
- *            ~$1k/month — enough for day-to-day remittance test drives
+ *   Tier 1, basic ID. A single government-ID document check (the
+ *            cheapest eKYC pass). Unlocks low-value sending, roughly
+ *            ~$1k/month, enough for day-to-day remittance test drives
  *            without triggering enhanced-diligence obligations.
  *
- *   Tier 2 — full ID + proof of address + a clean sanctions/PEP
+ *   Tier 2, full ID + proof of address + a clean sanctions/PEP
  *            screen. Unlocks the headline cross-border corridors at
  *            their full per-tx / monthly limits.
  *
- *   Tier 3 — enhanced due diligence (EDD): documented source of funds
+ *   Tier 3, enhanced due diligence (EDD): documented source of funds
  *            on top of everything in tier 2. For high-value users; the
  *            limits here are "effectively uncapped" relative to retail
  *            flow and reviewed case-by-case.
  *
  * This module is the single source of truth for the tier model and its
- * limits. It is deliberately NOT wired into the send path yet — the send
+ * limits. It is deliberately NOT wired into the send path yet, the send
  * pipeline (web/app/api/send/sponsor-prepare/route.ts) is untouched. The
  * limits are exposed so the UI and a future enforcement layer can read
  * one consistent table.
@@ -52,17 +52,17 @@ export const MAX_TIER: KycTier = 3;
 /**
  * Per-tier limit envelope, all amounts in USD.
  *
- *   canReceive       — may funds land in this user's wallet?
- *   canSend          — may this user initiate an outbound transfer?
- *   perTxUsd         — max value of a single send (null = no cap).
- *   monthlyUsd       — rolling 30-day outbound cap (null = no cap).
- *   corridorAccess   — which corridors this tier may use. "none" = no
+ *   canReceive     , may funds land in this user's wallet?
+ *   canSend        , may this user initiate an outbound transfer?
+ *   perTxUsd       , max value of a single send (null = no cap).
+ *   monthlyUsd     , rolling 30-day outbound cap (null = no cap).
+ *   corridorAccess , which corridors this tier may use. "none" = no
  *                      outbound; "domestic" = same-country only;
  *                      "all" = every supported cross-border corridor.
- *   sanctionsCleared — does reaching this tier require a clean
+ *   sanctionsCleared, does reaching this tier require a clean
  *                      sanctions/PEP screen? (informational; the actual
  *                      screen runs in the eKYC flow.)
- *   sourceOfFunds    — does this tier require documented source of funds
+ *   sourceOfFunds  , does this tier require documented source of funds
  *                      (EDD)?
  */
 export type TierLimits = {
@@ -181,7 +181,7 @@ export function canUseCorridor(tier: KycTier, sameCountry: boolean): boolean {
 
 /**
  * Read the persisted tier for a user. Returns 0 when the row is missing
- * or the column is NULL — i.e. unverified accounts (and any account that
+ * or the column is NULL, i.e. unverified accounts (and any account that
  * predates the column) read as the email-only floor.
  */
 export async function getUserTier(userId: number): Promise<KycTier> {
@@ -207,7 +207,7 @@ export async function getUserTierWithLimits(
  * post-verification webhook (or admin action) would call once eKYC
  * returns `approved`. It is intentionally separate from the POST route's
  * "intent" recording so that recording an upgrade request never silently
- * grants the tier — promotion is an explicit, reviewed step.
+ * grants the tier, promotion is an explicit, reviewed step.
  */
 export async function setUserTier(
   userId: number,

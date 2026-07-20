@@ -60,7 +60,7 @@ export async function completeSignIn(opts: {
   // Pick the salt source. Shinami manages salt server-side on mainnet
   // (their prover requires the address they assign), so we always resolve
   // through them when the key is configured. Otherwise fall back to a
-  // locally-derived salt — fine for testnet, broken for mainnet.
+  // locally-derived salt, fine for testnet, broken for mainnet.
   const existing = await userByGoogleSub(claims.sub);
 
   let salt: string;
@@ -93,7 +93,7 @@ export async function completeSignIn(opts: {
   }
 
   // Attribute a waitlist referral on the user's FIRST sign-in. Idempotent and
-  // best-effort — never wedge sign-in.
+  // best-effort, never wedge sign-in.
   if (isNew) {
     try {
       const refCode = ((await readReferralCookie()) ?? "").trim().toUpperCase();
@@ -110,7 +110,7 @@ export async function completeSignIn(opts: {
     }
   }
 
-  // Waitlist handle bind — same wallet on web and iOS, so either surface can
+  // Waitlist handle bind, same wallet on web and iOS, so either surface can
   // trigger the on-chain mint. Helper swallows errors internally.
   try {
     const { bindWaitlistHandleIfAny } = await import("@/lib/handle-claim");

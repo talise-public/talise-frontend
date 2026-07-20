@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   }
 
   const token = typeof body.token === "string" ? body.token : "";
-  // Constant-time compare — a plain `!==` is a timing oracle that leaks
+  // Constant-time compare, a plain `!==` is a timing oracle that leaks
   // ADMIN_TOKEN byte-by-byte (F12). tokenMatches is length-guarded + CT.
   if (!tokenMatches(token)) {
     return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 401 });

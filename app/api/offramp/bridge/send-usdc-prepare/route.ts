@@ -21,8 +21,8 @@ export const runtime = "nodejs";
  * POST /api/offramp/bridge/send-usdc-prepare
  *
  * Step 2 of the decoupled cash-out: a PLAIN USDC transfer from the user's USDC
- * pocket to their Bridge cash-out address (resolved server-side — never sent by
- * the client). No swap, no fee leg — just `transferObjects(usdc, bridgeAddr)`,
+ * pocket to their Bridge cash-out address (resolved server-side, never sent by
+ * the client). No swap, no fee leg, just `transferObjects(usdc, bridgeAddr)`,
  * Onara-sponsored. Bridge then wires USD to the user's bank. This is the simple
  * send the founder asked for in place of the combined swap-and-send PTB.
  *
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
       owner: user.sui_address,
       coinType: COIN_TYPES.USDC,
     });
-    // gRPC shape: { balance: { balance: "<raw u64>" } } — not `totalBalance`.
+    // gRPC shape: { balance: { balance: "<raw u64>" } }, not `totalBalance`.
     const have = BigInt((bal as { balance?: { balance?: string } }).balance?.balance ?? "0");
     if (have < amountMicros) {
       return NextResponse.json(
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
       );
     }
   } catch {
-    /* balance read failed — fall through and let the build surface it */
+    /* balance read failed, fall through and let the build surface it */
   }
 
   try {
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     // bare native transfer has none and gets rejected at execute. The standard
     // Talise receipt (`processRegistryPayment`, a non-transfer "withdraw" kind =
     // 1-micro self-ping marker, NOT money to a third party) supplies that
-    // MoveCall and tags the tx — same primitive every other sponsored flow uses.
+    // MoveCall and tags the tx, same primitive every other sponsored flow uses.
     appendPaymentKitReceipt(tx, {
       kind: "withdraw",
       sender: user.sui_address,

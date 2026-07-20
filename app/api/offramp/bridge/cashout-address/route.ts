@@ -19,7 +19,7 @@ import { sui, COIN_TYPES } from "@/lib/sui";
 async function usdcPocketMicros(address: string): Promise<string> {
   try {
     // gRPC getBalance returns { balance: { balance: "<raw u64>" } } (NOT
-    // `totalBalance` like the JSON-RPC client) — see balances route.
+    // `totalBalance` like the JSON-RPC client), see balances route.
     const b = await sui().getBalance({ owner: address, coinType: COIN_TYPES.USDC });
     return String((b as { balance?: { balance?: string } }).balance?.balance ?? "0");
   } catch {
@@ -38,7 +38,7 @@ export const runtime = "nodejs";
  * sends USDsui to the address to cash out.
  *
  * Reuses the Bridge customer minted during on-ramp KYC (`onramp_kyc`); the
- * customer must exist (KYC started) — Bridge off-ramp can't run for an
+ * customer must exist (KYC started), Bridge off-ramp can't run for an
  * unverified user. 503 when Bridge isn't configured (env-gated, like every
  * Talise ramp partner). Does NOT touch any send/balance/limit path.
  *
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. CREATE: no route yet — register the payout account from the form, then
+    // 2. CREATE: no route yet, register the payout account from the form, then
     //    create a persistent static transfer template (the "payment route"
     //    shape) and return its Sui deposit address.
     if (!body.accountOwnerName) {

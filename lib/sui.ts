@@ -20,7 +20,7 @@ export { USDSUI_TYPE };
  * `suix_getCoinMetadata` for `0x44f838…::usdsui::USDSUI`). Keep in sync if
  * the registry ever changes.
  * TODO: verify against `suix_getCoinMetadata` at runtime if/when the deploy
- * changes — defaulting to 6 to match every other Sui-native USD stable.
+ * changes, defaulting to 6 to match every other Sui-native USD stable.
  */
 export const USDSUI_DECIMALS = 6;
 
@@ -50,12 +50,12 @@ function defaultGrpcBaseUrl(net: Network): string {
 // fallback chain tries Mysten primary → Mysten archival → Shinami → Dwellir
 // → QuickNode in order, walking past any endpoint that returns
 // UNAVAILABLE / DEADLINE_EXCEEDED / 5xx. On the happy path (Mysten healthy)
-// it's a single network call — the fallback only kicks in on failure.
+// it's a single network call, the fallback only kicks in on failure.
 //
 // This replaces the prior single-endpoint singleton + the `SUI_GRPC_URL`
 // env-override band-aid we shipped during the 2026-05-28 Mysten outage.
 // Callers don't change: `sui().getBalance(...)`, `sui().ledgerService.getEpoch(...)`,
-// `tx.build({ client: sui() })` — all still work because the proxy
+// `tx.build({ client: sui() })`, all still work because the proxy
 // preserves the shape of the underlying client.
 
 let _grpc: SuiGrpcClient | null = null;
@@ -64,7 +64,7 @@ let _grpc: SuiGrpcClient | null = null;
  * Whitelist of top-level RPC method names on `SuiGrpcClient` that should be
  * routed through the fallback chain. Any other property access (including
  * SDK-internal hooks like `resolveTransactionPlugin`, `transport`, `network`,
- * etc.) passes through to the underlying client UNMODIFIED — wrapping those
+ * etc.) passes through to the underlying client UNMODIFIED, wrapping those
  * breaks the SDK's `client?.X ?? defaultX` fallback patterns (which is what
  * `tx.build()` uses to look up `resolveTransactionPlugin`).
  */
@@ -91,7 +91,7 @@ const TOP_LEVEL_RPC_METHODS = new Set<string>([
  * go straight to a direct fullnode: writes (`executeTransaction`,
  * `signAndExecuteTransaction`) and the non-cacheable, state-dependent dry-run
  * (`simulateTransaction`). Hayabusa forbids writes (PERMISSION_DENIED) and 502s
- * on simulate, and neither error is fallback-eligible — so without this they'd
+ * on simulate, and neither error is fallback-eligible, so without this they'd
  * die on Hayabusa and never reach the fullnode behind it (the Save-OFF gasless
  * send bug). Routed through `suiGrpcBroadcast`; everything else keeps the
  * Hayabusa-first read chain. See lib/sui-endpoints.ts:suiGrpcBroadcast.
@@ -125,7 +125,7 @@ const SERVICE_NAMES = new Set<string>([
 ]);
 
 function buildFallbackProxy(): SuiGrpcClient {
-  // Template client for shape probing — picks the first non-empty entry
+  // Template client for shape probing, picks the first non-empty entry
   // from the registry. Methods are never CALLED through this instance;
   // it's only used so `Reflect.get(target, prop)` returns the right shape
   // for properties OUTSIDE our whitelist. Actual RPC calls go through
@@ -138,7 +138,7 @@ function buildFallbackProxy(): SuiGrpcClient {
   }
   if (!template) {
     throw new Error(
-      "sui(): no gRPC endpoint URL available — every entry in MAINNET_GRPC_ENDPOINTS was empty or missing its API key"
+      "sui(): no gRPC endpoint URL available, every entry in MAINNET_GRPC_ENDPOINTS was empty or missing its API key"
     );
   }
 
@@ -156,7 +156,7 @@ function buildFallbackProxy(): SuiGrpcClient {
       }
       const name = prop as string;
 
-      // Whitelisted top-level RPC method — wrap with fallback. Writes +
+      // Whitelisted top-level RPC method, wrap with fallback. Writes +
       // simulate bypass the Hayabusa read proxy (suiGrpcBroadcast); everything
       // else uses the Hayabusa-first read chain (suiGrpcWithFallback).
       if (TOP_LEVEL_RPC_METHODS.has(name)) {
@@ -173,7 +173,7 @@ function buildFallbackProxy(): SuiGrpcClient {
         };
       }
 
-      // Service-level property — return a nested proxy where every method
+      // Service-level property, return a nested proxy where every method
       // call goes through the fallback chain. The transaction-execution
       // service is writes by definition, so it bypasses the Hayabusa read
       // proxy (suiGrpcBroadcast); read services keep the Hayabusa-first chain.
@@ -220,7 +220,7 @@ export function sui(): SuiGrpcClient {
 // the template client + the fallback proxy on the hot path. Safe: `sui()` is
 // idempotent and synchronous (no network); the fallback chain only ever
 // fires on actual RPC method calls. Wrapped in try/catch so a missing env
-// in a build-time import doesn't blow up the whole module — the real call
+// in a build-time import doesn't blow up the whole module, the real call
 // will throw clearly later if endpoints are still misconfigured.
 try {
   void sui();
@@ -238,7 +238,7 @@ export const COIN_TYPES = {
   SUI: "0x2::sui::SUI",
   // Native Circle USDC on Sui mainnet (verified against @mysten/deepbook-v3 constants)
   USDC: "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
-  // DEEP — DeepBook governance / fee discount
+  // DEEP, DeepBook governance / fee discount
   DEEP: "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
 } as const;
 
@@ -291,7 +291,7 @@ export async function getUsdcBalance(address: string): Promise<{
 
 /**
  * USDsui balance for an address. Mirrors `getUsdcBalance` but queries the
- * Sui-native USDsui coin type — our canonical settlement asset.
+ * Sui-native USDsui coin type, our canonical settlement asset.
  */
 export async function getUsdsuiBalance(address: string): Promise<{
   raw: string;
@@ -301,7 +301,7 @@ export async function getUsdsuiBalance(address: string): Promise<{
     return await getUsdsuiBalanceStrict(address);
   } catch (err) {
     // Soft-fail variant for non-display callers. Never let a swallowed
-    // failure be MISTAKEN for a genuine $0 in anything user-facing —
+    // failure be MISTAKEN for a genuine $0 in anything user-facing -
     // display paths should use the strict variant and handle the throw.
     console.warn(
       `[sui] getUsdsuiBalance failed for ${address.slice(0, 10)}…: ${(err as Error)?.message ?? err}`
@@ -313,7 +313,7 @@ export async function getUsdsuiBalance(address: string): Promise<{
 /**
  * Like `getUsdsuiBalance` but THROWS on a failed read instead of returning 0.
  * The headline-balance path must distinguish "the chain says zero" from "we
- * couldn't read the chain" — on 2026-06-11 a transient gRPC failure was
+ * couldn't read the chain", on 2026-06-11 a transient gRPC failure was
  * swallowed to 0, write-through'd into the balance snapshot as source="chain",
  * and displayed as ₦0 to a user holding $22.84.
  */

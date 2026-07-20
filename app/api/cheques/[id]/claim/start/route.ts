@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * Authed claimer entry point. Validates the secret + cheque state and tells the
  * client which checks the claim will run (captcha always; an IP-country gate if
  * the cheque has an allowlist). The checks themselves run server-side at
- * /claim/release — this is just so the UI can present the captcha.
+ * /claim/release, this is just so the UI can present the captcha.
  */
 export async function POST(
   req: Request,

@@ -10,11 +10,11 @@ import { FX } from "@/lib/fx";
 export const runtime = "nodejs";
 
 /**
- * POST /api/offramp/request — CONCIERGE cash-out (closed-alpha off-ramp).
+ * POST /api/offramp/request, CONCIERGE cash-out (closed-alpha off-ramp).
  *
  * The automated Linq off-ramp (quote → create → send → poll) is the primary
  * path; this concierge route is the manual fallback for the web closed alpha.
- * We capture a payout *request* here — bank coordinates + amount — record it in
+ * We capture a payout *request* here, bank coordinates + amount, record it in
  * `linq_offramps` with `status='manual_requested'`, and ping the founder, who
  * fulfils the NGN payout by hand (collecting the USDsui out-of-band).
  *
@@ -38,7 +38,7 @@ async function notifyFounder(lines: Record<string, string | number>) {
   const summary = Object.entries(lines)
     .map(([k, v]) => `${k}=${v}`)
     .join(" ");
-  console.error(`[CONCIERGE-PAYOUT] manual NGN payout requested — ${summary}`);
+  console.error(`[CONCIERGE-PAYOUT] manual NGN payout requested, ${summary}`);
 
   const key = process.env.RESEND_API_KEY;
   const to = process.env.OFFRAMP_NOTIFY_EMAIL;
@@ -54,10 +54,10 @@ async function notifyFounder(lines: Record<string, string | number>) {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from, to, subject: "Talise — cash-out request", html }),
+      body: JSON.stringify({ from, to, subject: "Talise, cash-out request", html }),
     });
   } catch {
-    /* email is a bonus — the log + the admin queue are the source of truth */
+    /* email is a bonus, the log + the admin queue are the source of truth */
   }
 }
 
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Notional NGN at the reference rate — the founder confirms the live rate at
+  // Notional NGN at the reference rate, the founder confirms the live rate at
   // payout. amount_ngn / rate are NOT NULL on the table, so we fill both.
   const fxRate = FX.NGN;
   const ngn = Math.round(amountUsdsui * fxRate);
@@ -167,18 +167,18 @@ export async function POST(req: Request) {
   await notifyFounder({
     id,
     user: user.email ?? String(userId),
-    handle: user.talise_username ? `@${user.talise_username}` : "—",
+    handle: user.talise_username ? `@${user.talise_username}` : "-",
     usdsui: amountUsdsui,
     ngn,
     bank: bank.name,
     account: accountNumber,
-    name: accountName ?? "—",
+    name: accountName ?? "-",
   });
 
   return NextResponse.json({
     ok: true,
     id,
     status: "manual_requested",
-    message: `Cash-out request received — we'll confirm the live rate and send your naira to your ${bank.name} account shortly.`,
+    message: `Cash-out request received, we'll confirm the live rate and send your naira to your ${bank.name} account shortly.`,
   });
 }

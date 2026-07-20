@@ -6,7 +6,7 @@ import { denyUnlessAppApproved } from "@/lib/app-access";
 export const runtime = "nodejs";
 
 /**
- * Shield note-master ESCROW — the OAuth-bound recovery rail (Workstream D).
+ * Shield note-master ESCROW, the OAuth-bound recovery rail (Workstream D).
  *
  * The note master is the root of a user's shielded notes. The PRIMARY copy
  * lives on-device (iCloud-synchronizable Keychain); this endpoint is the
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  * the keychain, a user recovers by: re-sign-in → restore master → re-scan.
  *
  * PILOT TRUST NOTE: the master is stored keyed to the account id (operator-
- * readable) — consistent with the operator-trusted pilot posture. The
+ * readable), consistent with the operator-trusted pilot posture. The
  * non-custodial hardening (client-side wrap under a passkey/recovery-code so the
  * server can't read it) is a fast-follow; documented in PRIVACY-BUILD-PLAN.md.
  */
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
 
   await ensureEscrowTable();
   const now = Date.now();
-  // INSERT … ON CONFLICT DO NOTHING — first write wins, so a re-derived or
+  // INSERT … ON CONFLICT DO NOTHING, first write wins, so a re-derived or
   // re-generated master can never overwrite the recovery copy.
   await db().execute({
     sql: `INSERT INTO shield_key_escrow (user_id, note_master, created_at, updated_at)

@@ -15,7 +15,7 @@ import { verifyTurnstile, turnstileConfigured } from "@/lib/turnstile";
 import { sealAndStoreNote } from "@/lib/cheque-note";
 
 /**
- * Talise Cheques — claimable USDsui links presented as real-life cheques.
+ * Talise Cheques, claimable USDsui links presented as real-life cheques.
  *
  * TWO interchangeable rails, picked at RUNTIME by an env flag:
  *
@@ -41,7 +41,7 @@ import { sealAndStoreNote } from "@/lib/cheque-note";
  *
  * Both rails share the SAME off-chain gates (captcha + optional
  * country allowlist) and the SAME `cheques` table. The on-chain path is
- * purely additive, behind the env flag — an unset `CHEQUE_PACKAGE_ID` leaves
+ * purely additive, behind the env flag, an unset `CHEQUE_PACKAGE_ID` leaves
  * the escrow path 100% unchanged.
  *
  * µUSDsui = BIGINT, 6 decimals.
@@ -51,6 +51,33 @@ const CHEQUE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days default expiry
 
 /** The shared Sui Clock object id (immutable, network-wide). */
 const SUI_CLOCK_ID = "0x6";
+
+/**
+ * Bound a hanging Sui/Walrus RPC call: reject with a clear Error if it hasn't
+ * settled within `ms`. The timeout rejection flows into the SAME try/catch the
+ * call already sits in — it does NOT change what happens on failure, it only
+ * caps how long we wait. Reads use 5s; build/execute use 15s.
+ */
+function withRpcTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      ms
+    );
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
+const RPC_READ_TIMEOUT_MS = 5_000;
+const RPC_WRITE_TIMEOUT_MS = 15_000;
 
 export type ChequeStatus =
   | "draft"
@@ -68,7 +95,7 @@ export type ChequeStatus =
  * ALWAYS enforced at claim on the web (native claims are App-Attested). The only
  * configurable gate is an optional IP-geolocated country allowlist
  * (empty = claimable from any country). All checks are off-chain, evaluated at
- * release — the claim API is the sole authority that can release the funds.
+ * release, the claim API is the sole authority that can release the funds.
  */
 export type ChequeGate = { kind: "country"; allowed: string[] };
 
@@ -103,7 +130,7 @@ export type ChequeRow = {
 // ─── Schema ─────────────────────────────────────────────────────────────────
 
 let _schemaReady: Promise<void> | null = null;
-// Bump this whenever ANY DDL statement below changes — the one-SELECT version
+// Bump this whenever ANY DDL statement below changes, the one-SELECT version
 // gate skips the whole replay (≈12 round-trips, seconds on a remote DB) on
 // every cold start while the stored marker matches.
 const CHEQUES_SCHEMA_VERSION = "2026-06-24.1";
@@ -277,7 +304,7 @@ let _escrow: Ed25519Keypair | null = null;
 function escrowKeypair(): Ed25519Keypair {
   if (_escrow) return _escrow;
   const k = process.env.CHEQUE_ESCROW_SK;
-  if (!k) throw new Error("CHEQUE_ESCROW_SK missing — the cheque escrow/worker key");
+  if (!k) throw new Error("CHEQUE_ESCROW_SK missing, the cheque escrow/worker key");
   _escrow = Ed25519Keypair.fromSecretKey(k);
   return _escrow;
 }
@@ -294,7 +321,7 @@ export function escrowAddress(): string {
 /**
  * The published `talise::cheque` package id, when configured. Returns null
  * (on-chain rail gated off) when unset, so an absent id never breaks anything
- * — the escrow + scheduler rail keeps running.
+ *, the escrow + scheduler rail keeps running.
  */
 export function chequePackageId(): string | null {
   return process.env.CHEQUE_PACKAGE_ID ?? null;
@@ -323,7 +350,7 @@ export function chequeOnchainEnabled(): boolean {
 /**
  * Whether NEW cheques are MINTED on-chain (the sponsored `cheque::create` rail).
  *
- * The on-chain create funds the cheque with a COMBINED sponsored PTB —
+ * The on-chain create funds the cheque with a COMBINED sponsored PTB -
  * an accumulator `Balance<USDSUI>` withdrawal AND `cheque::create` in one tx.
  * That combined tx proved flaky in production: it aborts at execution, and
  * since sponsor-execute now (correctly) rejects a FailedTransaction instead of
@@ -340,9 +367,9 @@ export function chequeOnchainCreateEnabled(): boolean {
   // PAUSED (2026-06-22): the on-chain `cheque::create` is a shared-object
   // sponsored tx, and the gas station submits through the public fullnode,
   // where shared-object txs are slow enough to blow the sponsor-execute window
-  // — the user just sees "Couldn't issue the cheque". Force the proven ESCROW
+  //, the user just sees "Couldn't issue the cheque". Force the proven ESCROW
   // rail (a plain gasless send to the escrow, then a server-key release at
-  // claim — which works) regardless of the env flag, until the gas station
+  // claim, which works) regardless of the env flag, until the gas station
   // moves to a faster RPC (BlockVision gRPC). Re-enable by restoring the
   // env-gated line below once that ships.
   return false;
@@ -371,7 +398,7 @@ export async function createCheque(input: {
   payeeLabel?: string | null;
   memo?: string | null;
   signatureName?: string | null;
-  /** Optional private message — encrypted with the claim secret + stored on Walrus. */
+  /** Optional private message, encrypted with the claim secret + stored on Walrus. */
   note?: string | null;
   gates: ChequeGate[];
   ttlMs?: number;
@@ -383,7 +410,7 @@ export async function createCheque(input: {
   const expiresAt = now + (input.ttlMs ?? CHEQUE_TTL_MS);
   // Best-effort: a private note is encrypted with the claim secret and stored on
   // Walrus. If Walrus is slow/unavailable we still create the cheque (note just
-  // omitted) — the money link must never fail because of an attached message.
+  // omitted), the money link must never fail because of an attached message.
   let noteBlobId: string | null = null;
   if (input.note && input.note.trim()) {
     try {
@@ -528,7 +555,7 @@ export type ChequeSummary = {
   reclaimable: boolean;
 };
 
-/** List a creator's cheques, newest first — powers the "My cheques" reclaim list. */
+/** List a creator's cheques, newest first, powers the "My cheques" reclaim list. */
 export async function listChequesForCreator(
   creatorUserId: number,
   limit = 50
@@ -570,11 +597,11 @@ export async function markFunded(input: {
   if (chequeOnchainEnabled()) {
     // The funding tx already SUCCEEDED (the client got a digest back from
     // sponsor-execute), so the Cheque object exists on chain. We must NOT block
-    // the user here waiting on the fullnode to index the tx's objectChanges —
+    // the user here waiting on the fullnode to index the tx's objectChanges -
     // that's what made confirm-funded take ~30s. Do a quick best-effort parse
     // (2 tries) to capture the object id when it's already indexed; if it isn't
     // yet, flip to `funded` with the digest and a null object id, and reconcile
-    // the id lazily at claim time (releaseCheque) — by then it's long-indexed.
+    // the id lazily at claim time (releaseCheque), by then it's long-indexed.
     // Terminal parse failures (sender mismatch / misconfig) still hard-fail.
     const TERMINAL = /sender_mismatch|onchain_disabled|missing_digest/i;
     let parsed = await parseCreatedChequeObjectId(input.digest, {
@@ -718,11 +745,11 @@ async function lookupIp(ip: string | null): Promise<IpInfo | null> {
 /**
  * Gate a claim, evaluated server-side at release (the API is the sole authority
  * that releases funds):
- *   1) CAPTCHA — a valid Turnstile token (when Turnstile is configured).
- *   2) COUNTRY — if the cheque has a country allowlist, the IP must geolocate
+ *   1) CAPTCHA, a valid Turnstile token (when Turnstile is configured).
+ *   2) COUNTRY, if the cheque has a country allowlist, the IP must geolocate
  *      into it. No allowlist → any country.
  *
- * NOTE (2026-06-10): the VPN/proxy/datacenter block was REMOVED by request —
+ * NOTE (2026-06-10): the VPN/proxy/datacenter block was REMOVED by request -
  * Turnstile (Cloudflare) is the anti-bot line, and a VPN is a normal part of
  * many legitimate users' setups. The ip-api lookup now only runs when a
  * cheque actually carries a country allowlist, which also drops an external
@@ -737,17 +764,23 @@ export async function checkClaimEligibility(input: {
   skipCaptcha?: boolean;
 }): Promise<ClaimEligibility> {
   // 1) Anti-bot captcha (web claims only; native is App-Attested).
-  if (!input.skipCaptcha && turnstileConfigured()) {
-    const ok = await verifyTurnstile(input.turnstileToken ?? "", input.ip ?? undefined);
-    if (!ok) return { ok: false, reason: "captcha" };
-  }
-  const allowed = await countryAllowlist(input.chequeId);
-  // 2) Country gate — only cheques with an allowlist need IP intelligence.
+  //    The captcha verify and the allowlist read are independent, so fire both
+  //    in parallel — but keep the SAME result semantics: a failed captcha
+  //    still short-circuits (returns "captcha") before the allowlist matters.
+  const doCaptcha = !input.skipCaptcha && turnstileConfigured();
+  const [captchaOk, allowed] = await Promise.all([
+    doCaptcha
+      ? verifyTurnstile(input.turnstileToken ?? "", input.ip ?? undefined)
+      : Promise.resolve(true),
+    countryAllowlist(input.chequeId),
+  ]);
+  if (doCaptcha && !captchaOk) return { ok: false, reason: "captcha" };
+  // 2) Country gate, only cheques with an allowlist need IP intelligence.
   if (allowed.length === 0) return { ok: true, country: null };
   const geo = await lookupIp(input.ip);
   if (!geo) {
     // No geo signal (localhost/dev or lookup down): can't verify the country
-    // gate the sender asked for — fail closed.
+    // gate the sender asked for, fail closed.
     return { ok: false, reason: "geo_unavailable", country: null };
   }
   if (!allowed.includes(geo.country)) {
@@ -794,7 +827,7 @@ export async function recordClaimAttempt(input: {
  * Two rails:
  *   • ON-CHAIN: the cheque worker key signs `cheque::claim(recipient)` (pays
  *     its own SUI gas). The contract transfers the whole escrow to the
- *     claimer and flips its one-shot `claimed` flag — a second worker call
+ *     claimer and flips its one-shot `claimed` flag, a second worker call
  *     would abort on chain (E_ALREADY_CLAIMED), so the DB lock + the on-chain
  *     flag are belt-and-braces.
  *   • ESCROW: a gasless escrow→claimer USDsui transfer signed by the escrow
@@ -909,7 +942,7 @@ export async function releaseCheque(input: {
  *     on its own.
  *
  *   • ON-CHAIN rail (a `cheque_object_id` exists): the escrow holds NO funds
- *     for this cheque — the money lives in the per-cheque on-chain
+ *     for this cheque, the money lives in the per-cheque on-chain
  *     `Cheque<USDSUI>` object. Calling `escrowTransfer` here would either
  *     fail (empty accumulator) or, worse, mis-pay from another cheque's
  *     escrow balance. The Move `cheque::reclaim` is CREATOR-ONLY (it asserts
@@ -935,7 +968,7 @@ export async function voidCheque(input: {
   if (!cq) return { ok: false, reason: "not_found" };
   if (cq.creatorUserId !== input.creatorUserId) return { ok: false, reason: "not_voidable" };
   if (cq.chequeObjectId) {
-    // On-chain rail — creator-only reclaim, no escrow funds to move.
+    // On-chain rail, creator-only reclaim, no escrow funds to move.
     return { ok: false, reason: "onchain_creator_reclaim_required" };
   }
 
@@ -974,7 +1007,7 @@ export async function voidCheque(input: {
  *     permissionless `cheque::reclaim_expired`, which returns the on-chain
  *     `Cheque<USDSUI>` escrow to the cheque's recorded `creator`. The worker
  *     CANNOT choose the destination (the contract always pays `creator`), and
- *     the contract asserts `now ≥ expiry` + `!claimed` — so this is a safe,
+ *     the contract asserts `now ≥ expiry` + `!claimed`, so this is a safe,
  *     trust-minimized refund. Before Track C this was impossible (the old
  *     `cheque::reclaim` was creator-only with no expiry gate), so expired
  *     on-chain cheques used to be stranded in `funded` until the creator acted.
@@ -995,7 +1028,7 @@ export async function sweepExpiredCheques(limit = 50): Promise<number> {
     let objectId = (row.cheque_object_id as string | null) ?? null;
     const fundDigest = (row.fund_digest as string | null) ?? null;
 
-    // Per-cheque rail (NOT the global flag — escrow cheques exist while the
+    // Per-cheque rail (NOT the global flag, escrow cheques exist while the
     // on-chain rail stays configured). Object id present → on-chain; otherwise
     // probe the funding tx: a created Cheque<T> object means on-chain (capture
     // the id), "cheque_object_not_found" means an escrow deposit. Unresolved
@@ -1016,7 +1049,7 @@ export async function sweepExpiredCheques(limit = 50): Promise<number> {
       } else if (parsed.reason === "cheque_object_not_found") {
         isOnchain = false;
       } else {
-        continue; // couldn't classify the rail this pass — retry next cron tick
+        continue; // couldn't classify the rail this pass, retry next cron tick
       }
     } else {
       isOnchain = false; // no funding digest → escrow rail
@@ -1062,8 +1095,8 @@ export async function sweepExpiredCheques(limit = 50): Promise<number> {
 /**
  * Pay USDsui out of the escrow to `toAddress`, signed by the escrow key. Uses
  * the proven gasless `0x2::balance::send_funds<USDSUI>` accumulator recipe
- * (gasPrice/budget 0, ValidDuring, setGasPayment([])) — same as the app's
- * gasless send branch in send/sponsor-prepare — so releases cost the escrow no
+ * (gasPrice/budget 0, ValidDuring, setGasPayment([])), same as the app's
+ * gasless send branch in send/sponsor-prepare, so releases cost the escrow no
  * gas, provided the escrow's USDsui sits in its Address Balance accumulator
  * (which it does when cheques are funded via the gasless rail).
  */
@@ -1093,12 +1126,20 @@ async function escrowTransfer(toAddress: string, micros: bigint): Promise<string
   });
   tx.setGasPayment([]);
   const client = sui();
-  const bytes = await tx.build({ client: client as never });
+  const bytes = await withRpcTimeout(
+    tx.build({ client: client as never }),
+    RPC_WRITE_TIMEOUT_MS,
+    "escrowTransfer tx.build"
+  );
   const { signature } = await kp.signTransaction(bytes);
-  const result = (await client.executeTransaction({
-    transaction: fromBase64(Buffer.from(bytes).toString("base64")),
-    signatures: [signature],
-  })) as Record<string, unknown>;
+  const result = (await withRpcTimeout(
+    client.executeTransaction({
+      transaction: fromBase64(Buffer.from(bytes).toString("base64")),
+      signatures: [signature],
+    }),
+    RPC_WRITE_TIMEOUT_MS,
+    "escrowTransfer executeTransaction"
+  )) as Record<string, unknown>;
   const inner =
     (result.Transaction as { digest?: string } | undefined) ??
     (result.FailedTransaction as { digest?: string } | undefined);
@@ -1114,11 +1155,11 @@ async function escrowTransfer(toAddress: string, micros: bigint): Promise<string
 
 /**
  * Build the Onara-SPONSORED `cheque::create` funding PTB. The user signs it,
- * Onara pays gas (a custom Move call is NOT gasless-eligible — only
- * `0x2::balance::send_funds` is — so the create MUST be sponsored, mirroring
+ * Onara pays gas (a custom Move call is NOT gasless-eligible, only
+ * `0x2::balance::send_funds` is, so the create MUST be sponsored, mirroring
  * the SPONSORED branch of /api/send/sponsor-prepare).
  *
- * Funds source: `tx.balance({ type: USDSUI_TYPE, balance: amountMicros })` —
+ * Funds source: `tx.balance({ type: USDSUI_TYPE, balance: amountMicros })` -
  * the SAME accumulator-withdrawal primitive the gasless branch hands to
  * `balance::send_funds`. Here it's passed straight as the `funds` arg of
  * `cheque::create<USDSUI>`, so the user's USDsui flows from their Address
@@ -1138,8 +1179,8 @@ export async function buildChequeCreateSponsored(input: {
   /**
    * v2 trust-minimized claim conditions (cheque.move ≥ Track C). At least one
    * MUST be set or the contract aborts (ENoClaimCondition):
-   *   • boundRecipient: a Sui address — claim can ONLY pay this address.
-   *   • hashlockHex: a 32-byte sha2-256 digest hex — claim must present the
+   *   • boundRecipient: a Sui address, claim can ONLY pay this address.
+   *   • hashlockHex: a 32-byte sha2-256 digest hex, claim must present the
    *     matching secret. For Talise's shareable-link cheques this is exactly
    *     `secret_hash` (sha256 of the claim secret already in the link).
    */
@@ -1172,13 +1213,17 @@ export async function buildChequeCreateSponsored(input: {
   // Sponsor address + reference gas price in parallel (same as sponsor-prepare).
   const [{ address: sponsor }, gasPrice] = await Promise.all([
     onaraClient.status(),
-    client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
+    withRpcTimeout(
+      client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
+      RPC_READ_TIMEOUT_MS,
+      "getReferenceGasPrice (cheque create)"
+    ),
   ]);
 
   const tx = new Transaction();
   tx.setSender(input.creatorAddress);
 
-  // Matches the DEPLOYED cheque::create — (registry, Balance, expiry, clock).
+  // Matches the DEPLOYED cheque::create, (registry, Balance, expiry, clock).
   // The on-chain package has no binding/hashlock args; the claim secret +
   // recipient gating are enforced off-chain at /claim/release. `bound`/
   // `hashlockBytes` above still drive the DB-side claim condition + display.
@@ -1187,7 +1232,7 @@ export async function buildChequeCreateSponsored(input: {
     typeArguments: [USDSUI_TYPE],
     arguments: [
       tx.object(registry),
-      // Pull the Balance<USDSUI> straight from the creator's accumulator —
+      // Pull the Balance<USDSUI> straight from the creator's accumulator -
       // the same primitive the gasless send uses, here fed to cheque::create.
       tx.balance({ type: USDSUI_TYPE, balance: input.amountMicros }),
       tx.pure.u64(BigInt(Math.trunc(input.expiryMs))),
@@ -1209,7 +1254,7 @@ export async function buildChequeCreateSponsored(input: {
  * (optionally) that the sender matches the expected creator, then returns the
  * single created object whose type starts with `${PKG}::cheque::Cheque<`.
  *
- * Never throws — returns `{ ok:false, reason }` so the caller can decide.
+ * Never throws, returns `{ ok:false, reason }` so the caller can decide.
  */
 export async function parseCreatedChequeObjectId(
   digest: string,
@@ -1219,7 +1264,11 @@ export async function parseCreatedChequeObjectId(
   if (!pkg) return { ok: false, reason: "onchain_disabled" };
   if (!digest) return { ok: false, reason: "missing_digest" };
   try {
-    const tx = await getNormalizedTransaction(digest);
+    const tx = await withRpcTimeout(
+      getNormalizedTransaction(digest),
+      RPC_READ_TIMEOUT_MS,
+      "getNormalizedTransaction"
+    );
     if (tx.status !== "success") {
       return { ok: false, reason: `tx_failed:${tx.errorMessage ?? "unknown"}` };
     }
@@ -1253,7 +1302,7 @@ export async function parseCreatedChequeObjectId(
  *
  * v2: `secret` is the claim-code preimage. For Talise's shareable-link cheques
  * (hashlocked, not address-bound) the contract enforces
- * `sha2_256(secret) == hashlock` — so the worker key alone cannot drain a
+ * `sha2_256(secret) == hashlock`, so the worker key alone cannot drain a
  * cheque without the secret from the link. The secret bytes are the UTF-8 of
  * the hex claim string, so `sha2_256` matches `sha256hex(secret)` (the DB
  * `secret_hash` and the on-chain hashlock are the same 32 bytes). Pass `""`
@@ -1262,7 +1311,7 @@ export async function parseCreatedChequeObjectId(
  * Returns the tx digest on success; throws with the validator's reason on
  * failure (so releaseCheque rolls the DB lock back).
  */
-/** Direct fullnode gRPC client for cheque tx.build — bypasses the Hayabusa
+/** Direct fullnode gRPC client for cheque tx.build, bypasses the Hayabusa
  *  read-proxy, which 502s ("Bad Gateway") on tx.build's simulate/dry-run step.
  *  Same gRPC API as `sui()`. Broadcast still goes over JSON-RPC (Hayabusa). */
 function chequeChainClient(): SuiGrpcClient {
@@ -1287,7 +1336,7 @@ export async function claimOnChain(
 
   const tx = new Transaction();
   tx.setSender(kp.getPublicKey().toSuiAddress());
-  // Matches the DEPLOYED cheque::claim — (registry, cheque, recipient, clock).
+  // Matches the DEPLOYED cheque::claim, (registry, cheque, recipient, clock).
   // No on-chain secret/hashlock arg: the secret + country gates are validated
   // off-chain at /claim/release BEFORE this worker-signed claim runs.
   tx.moveCall({
@@ -1300,11 +1349,11 @@ export async function claimOnChain(
       tx.object(SUI_CLOCK_ID),
     ],
   });
-  // Worker pays its own gas (it is funded) — the SDK auto-selects gas + budget.
+  // Worker pays its own gas (it is funded), the SDK auto-selects gas + budget.
   const bytes = await tx.build({ client: client as never });
   const { signature } = await kp.signTransaction(bytes);
 
-  // Broadcast over JSON-RPC HTTP via Hayabusa — the ONLY write path that
+  // Broadcast over JSON-RPC HTTP via Hayabusa, the ONLY write path that
   // works reliably. The web's gRPC chain 502s ("Bad Gateway") on the public
   // fullnode's executeTransaction and Hayabusa refuses gRPC writes; the
   // JSON-RPC `sui_executeTransactionBlock` path works (it's how Onara
@@ -1347,7 +1396,7 @@ async function broadcastSignedTxViaHayabusa(
         json = JSON.parse(text);
       } catch {
         lastErr = `${url}: non-JSON (HTTP ${resp.status})`;
-        continue; // transport/gateway error — try next endpoint
+        continue; // transport/gateway error, try next endpoint
       }
       if (json.error) {
         lastErr = `${url}: ${json.error.message ?? "rpc error"}`;
@@ -1355,7 +1404,7 @@ async function broadcastSignedTxViaHayabusa(
       }
       const eff = json.result?.effects?.status;
       if (eff?.status && eff.status !== "success") {
-        // Deterministic on-chain failure (MoveAbort, etc.) — don't retry.
+        // Deterministic on-chain failure (MoveAbort, etc.), don't retry.
         throw new Error(`cheque::claim failed on-chain: ${eff.error ?? "unknown"}`);
       }
       const digest = json.result?.digest;
@@ -1368,7 +1417,7 @@ async function broadcastSignedTxViaHayabusa(
       const m = (e as Error).message ?? String(e);
       if (m.startsWith("cheque::claim failed on-chain")) throw e; // propagate real failure
       lastErr = `${url}: ${m}`;
-      continue; // transport error — try next endpoint
+      continue; // transport error, try next endpoint
     }
   }
   throw new Error(`cheque::claim broadcast failed: ${lastErr}`);
@@ -1377,7 +1426,7 @@ async function broadcastSignedTxViaHayabusa(
 /**
  * Permissionless `cheque::reclaim_expired(cheque, clock, ctx)`, cranked by the
  * worker key (it pays its own SUI gas). The contract returns the escrow to the
- * cheque's on-chain `creator` — the caller CANNOT choose a destination — so
+ * cheque's on-chain `creator`, the caller CANNOT choose a destination, so
  * this is safe to run from the server cron for ANY expired, unclaimed on-chain
  * cheque WITHOUT the creator's signature. This is what lets the expiry sweep
  * settle on-chain cheques (the old creator-only `reclaim` couldn't be cron'd).
@@ -1430,7 +1479,7 @@ export async function reclaimExpiredOnChain(chequeObjectId: string): Promise<str
  * Build the Onara-SPONSORED `cheque::reclaim` PTB. CREATOR-signed (the
  * contract asserts `ctx.sender() == cheque.creator`), Onara pays gas (a custom
  * Move call isn't gasless-eligible). The contract returns the `Coin<T>` to the
- * creator — we transfer it back to them in the same PTB.
+ * creator, we transfer it back to them in the same PTB.
  *
  *   cheque::reclaim<T>(cheque: &mut Cheque<T>, clock, ctx): Coin<T>
  *
@@ -1473,7 +1522,7 @@ export async function reclaimChequeBuilder(input: {
   chequeObjectId: string;
   creatorAddress: string;
 }): Promise<{ bytes: string; sponsor: string }> {
-  // Reclaim must target the cheque's OWN package (not CHEQUE_PACKAGE_ID) —
+  // Reclaim must target the cheque's OWN package (not CHEQUE_PACKAGE_ID) -
   // old cheques live on an earlier package and would TypeMismatch otherwise.
   // reclaim is CREATOR-signed (no worker needed), so old cheques ARE
   // reclaimable even though they can't be claimed.
@@ -1487,7 +1536,11 @@ export async function reclaimChequeBuilder(input: {
   const client = chequeChainClient();
   const [{ address: sponsor }, gasPrice] = await Promise.all([
     onaraClient.status(),
-    client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
+    withRpcTimeout(
+      client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
+      RPC_READ_TIMEOUT_MS,
+      "getReferenceGasPrice (cheque reclaim)"
+    ),
   ]);
 
   const tx = new Transaction();
@@ -1511,7 +1564,7 @@ export async function reclaimChequeBuilder(input: {
  * Mark a cheque reclaimed by the creator once the on-chain `cheque::reclaim`
  * tx confirms. CREATOR-only: the caller verifies `creator_user_id` before
  * calling. Atomically flips funded→reclaimed (guards against a double reclaim
- * or a claim/reclaim race — the matching on-chain `!claimed` assert is the
+ * or a claim/reclaim race, the matching on-chain `!claimed` assert is the
  * real guard, this is the DB mirror). `digest` is the reclaim tx, recorded
  * for audit.
  */

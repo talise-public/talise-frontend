@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Admin allowlist — the small set of identities permitted to (a) bypass
+ * Admin allowlist, the small set of identities permitted to (a) bypass
  * KYC/tier gates for testing (e.g. cross-border before identity
  * verification ships) and (b) access the local admin dashboard.
  *

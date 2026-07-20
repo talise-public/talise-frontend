@@ -18,7 +18,7 @@ import { getEarnSnapshot } from "@/lib/yield";
 export const runtime = "nodejs";
 
 /**
- * Per-leg timeout wrapper — mirrors `withTimeout` in `lib/activity.ts`
+ * Per-leg timeout wrapper, mirrors `withTimeout` in `lib/activity.ts`
  * and `withdraw/prepare/route.ts`. Returns `fallback` on timeout/error
  * and logs which leg wedged.
  */
@@ -60,7 +60,7 @@ const BUILD_FAILED: Uint8Array = new Uint8Array(0);
  * Withdraws ONLY the accrued yield from the user's NAVI USDsui position,
  * leaving the principal supplied to keep earning. The server computes
  * `earned = currentValue − principalSupplied` at request time so the
- * value is always fresh-on-chain — the client never sends an amount.
+ * value is always fresh-on-chain, the client never sends an amount.
  *
  * Today this only supports `venue: "navi"`. DeepBook redeems shares, not
  * USDsui units, so a partial yield-only withdraw isn't a clean primitive
@@ -91,11 +91,11 @@ export async function POST(req: Request) {
   const venue = (body.venue ?? "navi").toLowerCase();
   if (venue !== "navi") {
     // DeepBook's withdraw redeems supplier shares, not a typed USDsui
-    // amount — a partial yield-only redeem isn't trivially expressible
+    // amount, a partial yield-only redeem isn't trivially expressible
     // until we wire share-to-USDsui conversion. Surface this clearly
     // so the iOS UI can hide the button for non-navi venues.
     return NextResponse.json(
-      { error: 'venue "navi" only — partial yield-only withdraw isn\'t supported on deepbook yet' },
+      { error: 'venue "navi" only, partial yield-only withdraw isn\'t supported on deepbook yet' },
       { status: 400 }
     );
   }
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
     // Fetch the position + activity in parallel. Each leg has its
     // own timeout so a sluggish RPC on one leg doesn't drag the whole
     // pipeline past the outer 10s cap. Fallbacks match the previous
-    // `.catch()` behaviour — empty / null / 0 — keeping the downstream
+    // `.catch()` behaviour, empty / null / 0, keeping the downstream
     // math identical when a leg flakes.
     const [snap, apyLive, activity, fallbackCurrent] = await Promise.all([
       withTimeout(getEarnSnapshot(user.sui_address), 5_000, "earn-snapshot", null),
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
 
     // Pass the exact earned USDsui amount to Navi's withdraw entry.
     // The adapter takes a USDsui amount (positive number, human
-    // units) — same path the partial-withdraw uses. Pyth refresh
+    // units), same path the partial-withdraw uses. Pyth refresh
     // for the health check is appended internally.
     //
     // Wrapped in withTimeout because the NAVI adapter does an internal
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Withdraw is taking longer than usual — try again in a few seconds.",
+            "Withdraw is taking longer than usual, try again in a few seconds.",
         },
         { status: 504 }
       );
@@ -201,7 +201,7 @@ export async function POST(req: Request) {
 
     // Tag the tx with a typed Payment-Kit memo so the activity
     // classifier later subtracts THIS withdraw from the principal
-    // replay correctly — `kind: withdraw, venue: navi`, amount =
+    // replay correctly, `kind: withdraw, venue: navi`, amount =
     // the earned USDsui. The receipt nonce is the source of truth
     // the next position-detail read uses.
     const { nonce } = appendPaymentKitReceipt(tx, {
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Withdraw is taking longer than usual — try again in a few seconds.",
+            "Withdraw is taking longer than usual, try again in a few seconds.",
         },
         { status: 504 }
       );
@@ -233,7 +233,7 @@ export async function POST(req: Request) {
     console.log(
       `[earn/withdraw-earned-prepare] position=${tPosition - t0}ms rewards=${tRewards - tPosition}ms build=${tBuild - tRewards}ms total=${tBuild - t0}ms`
     );
-    // Verification log — per the 2026-05-29 sponsorship-matrix directive.
+    // Verification log, per the 2026-05-29 sponsorship-matrix directive.
     // gasOwner + gasPrice get set in /api/zk/sponsor (see its log line
     // with the full `mode=sponsored sponsor=<addr> gasPrice=<n>` shape).
     console.log(
@@ -265,7 +265,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Withdraw is taking longer than usual — try again in a few seconds.",
+          "Withdraw is taking longer than usual, try again in a few seconds.",
       },
       { status: 504 }
     );

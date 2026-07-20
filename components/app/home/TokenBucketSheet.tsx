@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Token bucket (web) — the web counterpart of iOS TokenBucketView. Lists every
+ * Token bucket (web), the web counterpart of iOS TokenBucketView. Lists every
  * token the user holds BESIDES USDsui (the verified, swappable coins from
  * /api/wallet/balances), with its amount + USD value, a total hero, and a
  * one-tap "Swap to USDsui" per coin (POST /api/swap/prepare → sign). Coins
@@ -102,15 +102,15 @@ export function TokenBucketSheet({ open, onClose }: { open: boolean; onClose: ()
         <EmptyState
           icon={<HugeiconsIcon icon={Coins01Icon} size={24} strokeWidth={1.6} />}
           title="No other tokens yet"
-          subtitle="Tokens you hold besides USDsui show up here — swap any of them to USDsui in one tap."
+          subtitle="Tokens you hold besides USDsui show up here, swap any of them to USDsui in one tap."
         />
       ) : (
         <div className="space-y-5">
           {/* Total value hero */}
           <div className="text-center">
             <div
-              className="text-[40px] font-[800] tabular-nums tracking-[-0.02em] text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)" }}
+              className="text-[40px] font-[800] tabular-nums tracking-[-0.05em] text-[#15300c]"
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif' }}
             >
               {formatUsd(total, { fixed: true })}
             </div>

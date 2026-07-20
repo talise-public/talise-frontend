@@ -6,7 +6,7 @@
  * `/api/activity` endpoint actually emits six directions
  * (sent | received | invest | withdraw | swap | autoswap) and a richer
  * `otherCoin` object (`{ coinType, symbol, amount, decimals }`). We widen the
- * row to its real runtime shape here — without touching the Foundation hook —
+ * row to its real runtime shape here, without touching the Foundation hook -
  * so the UI can render every category the server produces. The fields the
  * narrow type omits are read defensively (they may be absent on older rows).
  */
@@ -58,7 +58,7 @@ export const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "swap", label: "Swap" },
 ];
 
-/** Visual category — collapses the six server directions into five looks. */
+/** Visual category, collapses the six server directions into five looks. */
 export type Category =
   | "sent"
   | "received"
@@ -132,11 +132,11 @@ const VENUE_NAMES: Record<string, string> = {
 };
 
 export function displayVenue(venue: string | null | undefined): string {
-  if (!venue) return "—";
+  if (!venue) return "-";
   return VENUE_NAMES[venue.toLowerCase()] ?? venue.toUpperCase();
 }
 
-/** Row title — "Sent" / "Received" / "Invested in NAVI" / coin / swap. */
+/** Row title, "Sent" / "Received" / "Invested in NAVI" / coin / swap. */
 export function titleOf(row: ActivityRow): string {
   const coin = otherCoinOf(row);
   if (coin && coin.symbol.toUpperCase() !== "USDSUI") {

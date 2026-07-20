@@ -21,7 +21,7 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 type Network = "testnet" | "mainnet";
 
 /**
- * Local network() — copy of `./sui` so this module has no import cycle with
+ * Local network(), copy of `./sui` so this module has no import cycle with
  * the canonical client wiring. Kept tiny on purpose; if the canonical
  * `sui()` ever changes its env-var contract, mirror that change here too.
  */
@@ -57,18 +57,18 @@ export type SuiGrpcEndpoint = {
  * The ordering is biased toward (a) free + already-default and (b)
  * providers we already have a working key for. Anything paid-with-no-key
  * is included for completeness but is INERT until the relevant env var is
- * set — the wrapper skips it cleanly.
+ * set, the wrapper skips it cleanly.
  */
 export const MAINNET_GRPC_ENDPOINTS: ReadonlyArray<SuiGrpcEndpoint> = [
   {
-    // Hayabusa (unconfirmedlabs) — a transparent Sui gRPC-Web PROXY that races
+    // Hayabusa (unconfirmedlabs), a transparent Sui gRPC-Web PROXY that races
     // requests to multiple fullnodes (hedged) and serves immutable responses
     // from a two-tier cache, returning the fastest result. It's drop-in: any
     // SuiGrpcClient works unmodified by pointing baseUrl at it. Placed FIRST so
     // every gRPC read + the broadcast leg go through it; on any transient
     // failure the chain falls straight through to the direct fullnodes below.
     // Env-overridable kill switch: set HAYABUSA_GRPC_URL="" to bypass it.
-    // (Hayabusa is a query/transport accelerator — NOT a gas sponsor; Onara
+    // (Hayabusa is a query/transport accelerator, NOT a gas sponsor; Onara
     // still signs sponsorship. See docs/integrations/hayabusa.md.)
     url:
       process.env.HAYABUSA_GRPC_URL ??
@@ -83,11 +83,11 @@ export const MAINNET_GRPC_ENDPOINTS: ReadonlyArray<SuiGrpcEndpoint> = [
   },
   // NOTE (2026-05-31): `https://archive.mainnet.sui.io:443` was REMOVED from
   // this chain. It was sitting at position #2 but does NOT serve the gRPC
-  // API — every method (getReferenceGasPrice, getObject, getServiceInfo)
+  // API, every method (getReferenceGasPrice, getObject, getServiceInfo)
   // returns `RpcError { code: "NOT_FOUND", message: "Not Found" }` and a
   // plain `curl` of the host root returns HTTP 404. With it here, a primary
-  // (`fullnode`) outage fell THROUGH to this dead host and — because
-  // `NOT_FOUND` wasn't fallback-eligible — the wrapper threw "Not Found"
+  // (`fullnode`) outage fell THROUGH to this dead host and, because
+  // `NOT_FOUND` wasn't fallback-eligible, the wrapper threw "Not Found"
   // instead of advancing to Shinami/Dwellir, defeating the entire point of
   // the fallback chain during the very outage it exists to survive. The
   // chain now goes straight from the public fullnode to the keyed providers.
@@ -95,7 +95,7 @@ export const MAINNET_GRPC_ENDPOINTS: ReadonlyArray<SuiGrpcEndpoint> = [
   // `UNIMPLEMENTED` gRPC status as eligible so any future host that 404s the
   // gRPC service is skipped rather than killing the chain.
   {
-    // Shinami — we already use them for zkLogin + gas station and have a
+    // Shinami, we already use them for zkLogin + gas station and have a
     // mainnet US1 key in .env.local under SHINAMI_API_KEY.
     url: "https://api.us1.shinami.com/sui/node/v1",
     provider: "shinami",
@@ -104,7 +104,7 @@ export const MAINNET_GRPC_ENDPOINTS: ReadonlyArray<SuiGrpcEndpoint> = [
     apiKeyHeader: "X-Api-Key",
   },
   {
-    // Dwellir — header auth via `x-api-key`. Requires DWELLIR_API_KEY.
+    // Dwellir, header auth via `x-api-key`. Requires DWELLIR_API_KEY.
     url: "https://api-sui-mainnet-full.n.dwellir.com:443",
     provider: "dwellir",
     requiresAuth: true,
@@ -112,7 +112,7 @@ export const MAINNET_GRPC_ENDPOINTS: ReadonlyArray<SuiGrpcEndpoint> = [
     apiKeyHeader: "x-api-key",
   },
   {
-    // QuickNode — token is baked into the URL host (e.g.
+    // QuickNode, token is baked into the URL host (e.g.
     // `https://<token>.sui-mainnet.quiknode.pro:9000`). We expect the
     // operator to paste the FULL URL into QUICKNODE_SUI_GRPC_URL rather
     // than re-implementing token-in-URL composition here.
@@ -132,7 +132,7 @@ export const MAINNET_GRPC_ENDPOINTS: ReadonlyArray<SuiGrpcEndpoint> = [
  * `@protobuf-ts/runtime-rpc` throws `RpcError` with a string `code` field
  * (e.g. `"UNAVAILABLE"`, `"DEADLINE_EXCEEDED"`). Fetch / network errors
  * surface as plain `Error` / `TypeError` whose message contains `503`,
- * `502`, `504`, or `fetch failed`. Be liberal about both — fallback is the
+ * `502`, `504`, or `fetch failed`. Be liberal about both, fallback is the
  * safe direction.
  */
 export function isFallbackEligible(err: unknown): boolean {
@@ -142,7 +142,7 @@ export function isFallbackEligible(err: unknown): boolean {
   if (code === "unavailable" || code === "deadline_exceeded") return true;
   // `NOT_FOUND` / `UNIMPLEMENTED` as a TRANSPORT-level gRPC status (i.e. the
   // RpcError `.code` field is set) means "this host doesn't speak our gRPC
-  // service" — a per-endpoint capability problem, NOT a bad request. The
+  // service", a per-endpoint capability problem, NOT a bad request. The
   // dead `archive.mainnet.sui.io` host returned exactly this
   // (`RpcError { code: "NOT_FOUND", message: "Not Found" }`). Skip to the
   // next provider. A LEGITIMATE missing object from a healthy fullnode does
@@ -165,7 +165,7 @@ export function isFallbackEligible(err: unknown): boolean {
     msg.includes("502") ||
     msg.includes("504") ||
     msg.includes("500") ||
-    // Gateways return the STATUS TEXT, not the number — the public fullnode
+    // Gateways return the STATUS TEXT, not the number, the public fullnode
     // 502s on executeTransaction as a bare "Bad Gateway", which contains no
     // "502" substring, so the chain never failed over (the cheque-claim
     // broadcast bug). Match the text forms too.
@@ -189,7 +189,7 @@ export function isFallbackEligible(err: unknown): boolean {
 /**
  * Build a one-off `SuiGrpcClient` against a specific endpoint. Returns
  * `null` when the endpoint requires auth and the env var is unset (or the
- * URL itself is empty — QuickNode's case).
+ * URL itself is empty, QuickNode's case).
  *
  * The `meta` field is `@protobuf-ts/grpcweb-transport`'s metadata bag,
  * which translates to HTTP headers on the wire. Per-provider header
@@ -198,31 +198,44 @@ export function isFallbackEligible(err: unknown): boolean {
  *   - Dwellir: `x-api-key`
  *   - QuickNode: token baked into the URL, no header needed.
  */
+// One SuiGrpcClient per (network, endpoint URL). The client wraps a gRPC-web
+// transport; rebuilding it on every RPC threw away HTTP/2 connection reuse, so
+// gas-price / simulate / broadcast each paid a fresh handshake. The headers are
+// derived from stable per-process env, so (net,url) uniquely identifies a
+// client, and gRPC transports reconnect internally — safe to keep hot.
+const grpcClientCache = new Map<string, SuiGrpcClient>();
+
 export function buildClientForEndpoint(
   endpoint: SuiGrpcEndpoint,
   net: Network,
 ): SuiGrpcClient | null {
   if (!endpoint.url || endpoint.url.trim().length === 0) return null;
 
+  const cacheKey = `${net}|${endpoint.url}`;
+  const cached = grpcClientCache.get(cacheKey);
+  if (cached) return cached;
+
   let meta: Record<string, string> | undefined;
   if (endpoint.requiresAuth) {
     const envName = endpoint.apiKeyEnv;
     const key = envName ? process.env[envName] : undefined;
     if (!key || key.trim().length === 0) {
-      // Endpoint declared paid but no key configured — skip it.
+      // Endpoint declared paid but no key configured, skip it.
       return null;
     }
     if (endpoint.apiKeyHeader) {
       meta = { [endpoint.apiKeyHeader]: key };
     }
-    // QuickNode's "key" IS the URL — no header to set in that path.
+    // QuickNode's "key" IS the URL, no header to set in that path.
   }
 
-  return new SuiGrpcClient({
+  const client = new SuiGrpcClient({
     network: net,
     baseUrl: endpoint.url,
     ...(meta ? { meta } : {}),
   });
+  grpcClientCache.set(cacheKey, client);
+  return client;
 }
 
 // ─── Fallback wrapper ─────────────────────────────────────────────────────────
@@ -242,7 +255,7 @@ export function buildClientForEndpoint(
  */
 /**
  * Per-endpoint deadline. Without it, a *hung* upstream (slow, not erroring)
- * never triggers the fallback — the await just blocks, and a single bad
+ * never triggers the fallback, the await just blocks, and a single bad
  * provider hangs the whole request for tens of seconds. With it, a slow
  * endpoint is treated as transient and we fail over to the next. Env-tunable
  * via SUI_GRPC_ENDPOINT_TIMEOUT_MS.
@@ -318,7 +331,7 @@ export async function suiGrpcWithFallback<T>(
  * reads; it flatly `PERMISSION_DENIED` ("Forbidden")s `executeTransaction` and
  * 502s ("Bad Gateway") on `simulateTransaction`. Worse, neither error is
  * `isFallbackEligible`, so a write/simulate routed through the normal chain
- * dies on Hayabusa and never reaches the direct fullnode behind it — which is
+ * dies on Hayabusa and never reaches the direct fullnode behind it, which is
  * exactly why Save-OFF gasless sends failed while the sponsored rail (Onara
  * HTTP, no gRPC) worked. Empirically proven: scripts/probe-hayabusa-execute.mjs.
  */
@@ -331,7 +344,7 @@ const WRITE_INELIGIBLE_PROVIDERS = new Set<string>(["hayabusa"]);
  * sending the call straight to the direct fullnodes (mysten-fullnode → Shinami
  * → Dwellir → QuickNode) with the usual transient-error fallback between them.
  *
- * A broadcast must never even be ATTEMPTED on a caching/racing read layer —
+ * A broadcast must never even be ATTEMPTED on a caching/racing read layer -
  * both because it just fails there and because we never want a cache anywhere
  * near a transaction submission. Excluding it up front is correct and cheaper
  * than failing-then-falling-through.

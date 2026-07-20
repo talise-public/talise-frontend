@@ -14,7 +14,7 @@ import { getChainIdentifier, getCurrentEpoch } from "@/lib/sui-epoch";
  * The Linq off-ramp owns deposit detection, the payout timeout, and any
  * failure handling itself (the user sends USDSUI to Linq's deposit wallet and
  * Linq pays the bank), so Talise no longer runs an off-ramp refund path. What
- * remains here is the reusable gasless treasury send — `treasurySendUsdsui` —
+ * remains here is the reusable gasless treasury send, `treasurySendUsdsui` -
  * used by the admin tester-seed path (closed-alpha money-in) to credit invited
  * testers a small balance to transact with.
  *
@@ -31,7 +31,7 @@ export function offrampRefundEnabled(): boolean {
 function treasuryKeypair(): Ed25519Keypair {
   if (_treasury) return _treasury;
   const k = process.env.OFFRAMP_TREASURY_SK;
-  if (!k) throw new Error("OFFRAMP_TREASURY_SK missing — the off-ramp treasury key");
+  if (!k) throw new Error("OFFRAMP_TREASURY_SK missing, the off-ramp treasury key");
   _treasury = Ed25519Keypair.fromSecretKey(k);
   return _treasury;
 }
@@ -43,7 +43,7 @@ function usdToMicros(usd: number): bigint {
 /**
  * Pay USDsui out of the treasury to `toAddress`, signed by the treasury key.
  * Mirrors lib/cheques.ts `escrowTransfer` (gasless send_funds accumulator
- * recipe — gasPrice/budget 0, ValidDuring, empty gas payment). Returns the
+ * recipe, gasPrice/budget 0, ValidDuring, empty gas payment). Returns the
  * on-chain digest.
  */
 async function treasuryTransfer(toAddress: string, micros: bigint): Promise<string> {
@@ -96,7 +96,7 @@ async function treasuryTransfer(toAddress: string, micros: bigint): Promise<stri
 }
 
 /**
- * Pay USDsui out of the treasury to any address — the reusable form of
+ * Pay USDsui out of the treasury to any address, the reusable form of
  * `treasuryTransfer`. Used by the admin tester-seed path (closed-alpha
  * money-in) to credit invited testers a small balance to transact with.
  * Returns the on-chain digest. Requires `OFFRAMP_TREASURY_SK` (the same

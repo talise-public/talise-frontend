@@ -70,6 +70,7 @@ const MAX_API_BODY_BYTES = 1_048_576;
  * callback still lands on www, and the session it mints is readable on app.
  */
 const APP_HOST = "app.talise.io";
+const PERPS_HOST = "perps.talise.io";
 const MARKETING_HOSTS = new Set(["talise.io", "www.talise.io"]);
 
 function withSecurityHeaders(res: NextResponse): NextResponse {
@@ -182,6 +183,27 @@ export function middleware(req: NextRequest) {
 
   const host = (req.headers.get("host") ?? "").toLowerCase().split(":")[0];
 
+  // perps.talise.io → the dedicated Perps terminal. Serve the /perps route tree
+  // at the subdomain root; the backend (api/auth/assets) and public money links
+  // keep serving so sign-in + trading work. A stray /app link on this host bounces
+  // to the wallet host. Auth cookies are Domain=.talise.io, so the session that
+  // signs in here is the same one the wallet uses.
+  if (host === PERPS_HOST) {
+    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|req|admin|_next|_vercel)(\/|$)/;
+    if (keepAlive.test(pathname)) {
+      return withSecurityHeaders(NextResponse.next());
+    }
+    if (pathname === "/app" || pathname.startsWith("/app/")) {
+      return withSecurityHeaders(NextResponse.redirect(`https://${APP_HOST}${pathname === "/app" ? "/" : pathname.slice(4)}`, 307));
+    }
+    if (!pathname.startsWith("/perps")) {
+      const url = req.nextUrl.clone();
+      url.pathname = pathname === "/" ? "/perps" : `/perps${pathname}`;
+      return withSecurityHeaders(NextResponse.rewrite(url));
+    }
+    return withSecurityHeaders(NextResponse.next());
+  }
+
   // app.talise.io → the web wallet is retired; everyone goes to the iOS beta.
   // Backend stays fully alive so nothing breaks: the iOS app's API (`/api`),
   // OAuth (`/auth`), the shield prover assets (`/shield`), public money links
@@ -205,7 +227,10 @@ export function middleware(req: NextRequest) {
       url.pathname = "/app/shield-prove";
       return withSecurityHeaders(NextResponse.rewrite(url));
     }
-    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|req|admin|_next|_vercel)(\/|$)/;
+    // `perps` is kept alive so the "trade perps" banner (href="/perps") serves
+    // the dedicated terminal on app.talise.io instead of being rewritten to the
+    // non-existent /app/perps. (Same route the perps.talise.io host serves.)
+    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|req|admin|perps|_next|_vercel)(\/|$)/;
     if (keepAlive.test(pathname)) {
       return withSecurityHeaders(NextResponse.next());
     }
@@ -261,6 +286,6 @@ export const config = {
   // keep the matcher liberal otherwise so every page + API response
   // picks the headers up.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|otf|eot)).*)",
   ],
 };

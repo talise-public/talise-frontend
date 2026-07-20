@@ -21,7 +21,7 @@ export const runtime = "nodejs";
  * no-ops.
  *
  * Streaming is ON-CHAIN only: the refund is a SENDER-signed
- * `stream::cancel_and_withdraw` — only the user's zkLogin can sign it. The
+ * `stream::cancel_and_withdraw`, only the user's zkLogin can sign it. The
  * server flips the row to cancelled and returns Onara-SPONSORED cancel bytes
  * with `mode:'onchain'` for iOS to sign and POST to /api/zk/sponsor-execute;
  * that tx withdraws the remainder Coin<USDSUI> back to the sender.
@@ -74,7 +74,7 @@ export async function POST(
   // already flipped to cancelled, so the scheduler won't release further.
   if (streamOnchainEnabled() && isOnchainStreamId(id)) {
     if (remainderMicros <= 0n) {
-      // Nothing undistributed left on chain — fully released. No withdraw tx.
+      // Nothing undistributed left on chain, fully released. No withdraw tx.
       return NextResponse.json({
         ok: true,
         state: "cancelled",

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
  * Persist a referral code captured from `?ref=` on the landing page into an
  * httpOnly cookie (signed, 30-day TTL). Called by `<Hero>` on mount.
  *
- * We do NOT look up the inviter here — that happens at onboarding time when
+ * We do NOT look up the inviter here, that happens at onboarding time when
  * the user actually picks an account type, so an invalid code can be caught
  * with a clean message instead of silently dying.
  */

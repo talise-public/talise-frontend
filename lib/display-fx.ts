@@ -3,7 +3,7 @@ import "server-only";
 import { FX, type Currency } from "@/lib/fx";
 
 /**
- * The LIVE display FX rates — the exact numbers the app shows (Home, activity,
+ * The LIVE display FX rates, the exact numbers the app shows (Home, activity,
  * currency picker) via `/api/fx`. Extracted here so the agent converts local
  * amounts with the SAME rate the user sees, instead of the static `FX` snapshot.
  *

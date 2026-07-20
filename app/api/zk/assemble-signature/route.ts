@@ -19,14 +19,14 @@ export const runtime = "nodejs";
  *
  * Pure proof-assembly endpoint. Factored out of `/api/send/gasless-submit`
  * so iOS can broadcast directly to a Sui fullnode and skip the Vercel hop
- * on the slow leg. This endpoint NEVER touches the chain — it only takes
+ * on the slow leg. This endpoint NEVER touches the chain, it only takes
  * the user's ephemeral signature + (optional) cached zk proof and returns
  * the full zkLogin signature ready to attach to `executeTransactionBlock`.
  *
  * Cache hit (cachedProof supplied + still valid): ~50ms.
  * Cache miss (fresh prover round-trip via Shinami): ~500ms-3s.
  *
- * Auth/App-Attest gate matches the canonical `gasless-submit` route — the
+ * Auth/App-Attest gate matches the canonical `gasless-submit` route, the
  * pair is fungible from a security standpoint, the only difference is who
  * broadcasts the bytes.
  */

@@ -40,7 +40,7 @@ PATTERN='SuiJsonRpcClient|@mysten/sui/jsonRpc|\bsuiJsonRpc\b'
 #   • ios/Talise/Auth/ZkLoginCoordinator.swift — sub-plan 5.6 parked pending
 #     iOS deploy-target decision. Excluded from the sweep, not the lint.
 # Additional deliberate exceptions (post-Phase-5, justified):
-#   • web/scripts/probe-* → operator/debug probes; not on any runtime path.
+#   • web/scripts/probes/probe-* → operator/debug probes; not on any runtime path.
 #
 # Removed 2026-07-10: web/lib/navi-supply.ts. NAVI Earn is now gRPC-native —
 # @t2000/sdk's NaviAdapter is fed a gRPC-backed JSON-RPC-compat client
@@ -60,10 +60,10 @@ ALLOWLIST=(
   "web/scripts/bootstrap-payment-registry.mjs"
   "web/scripts/debug-navi-earned.mjs"
   "web/scripts/navi-grpc-validate.mjs"
-  "web/scripts/probe-navi-withdraw.mjs"
-  "web/scripts/probe-shinami-broadcast.mjs"
-  "web/scripts/probe-valid-during.mjs"
-  "web/scripts/probe-grpc-gasless.mjs"
+  "web/scripts/probes/probe-navi-withdraw.mjs"
+  "web/scripts/probes/probe-shinami-broadcast.mjs"
+  "web/scripts/probes/probe-valid-during.mjs"
+  "web/scripts/probes/probe-grpc-gasless.mjs"
   "web/scripts/recover-stranded.mjs"
   "web/scripts/sweep-accumulator.mjs"
   "web/scripts/sweep-now.mjs"

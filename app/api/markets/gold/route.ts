@@ -7,11 +7,11 @@ export const runtime = "nodejs";
  * GET /api/markets/gold
  *
  * Live gold spot price for the Talise "Grow your wealth" surface. Gold is
- * Talise's first wealth product — for a naira/cedi/shilling user it's the
+ * Talise's first wealth product, for a naira/cedi/shilling user it's the
  * canonical inflation hedge, so we price it in USD here and the client maps
  * it through the user's display-currency FX (TaliseFormat.local2).
  *
- * Source: CoinGecko PAX-Gold (`pax-gold`) — 1 PAXG == 1 fine troy oz of
+ * Source: CoinGecko PAX-Gold (`pax-gold`), 1 PAXG == 1 fine troy oz of
  * LBMA-good-delivery gold, so its USD price tracks spot within a tenth of a
  * percent, and it's free + keyless with a 7-day market chart for the
  * sparkline. gold-api.com XAU is the spot fallback if CoinGecko is down.

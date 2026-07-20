@@ -43,7 +43,7 @@ type Bucket = { count: number; resetAt: number };
 
 // Module-level Map survives across requests within a single Node process.
 // Vercel's per-function isolation means each lambda instance has its own
-// copy — fine for abuse control, not for strict global quotas.
+// copy, fine for abuse control, not for strict global quotas.
 const buckets = new Map<string, Bucket>();
 
 // Lazy GC: every N inserts we sweep expired keys so the Map doesn't grow
@@ -116,7 +116,7 @@ function upstashConfig(): { url: string; token: string } | null {
 }
 
 // Log the active mode exactly once so prod boot logs make it obvious
-// whether caps are global (Redis) or per-instance (Map) — the F3 signal.
+// whether caps are global (Redis) or per-instance (Map), the F3 signal.
 let modeLogged = false;
 function logModeOnce(redisEnabled: boolean): void {
   if (modeLogged) return;
@@ -126,7 +126,7 @@ function logModeOnce(redisEnabled: boolean): void {
   } else {
     console.warn(
       "[rate-limit] backend=in-memory (per-instance; set UPSTASH_REDIS_REST_URL + " +
-        "UPSTASH_REDIS_REST_TOKEN for global caps — audit F3)"
+        "UPSTASH_REDIS_REST_TOKEN for global caps, audit F3)"
     );
   }
 }
@@ -181,7 +181,7 @@ export async function rateLimitAsync(opts: RateLimitOptions): Promise<RateLimitR
   logModeOnce(cfg !== null);
 
   if (!cfg) {
-    // No Redis configured — preserve existing per-instance behavior.
+    // No Redis configured, preserve existing per-instance behavior.
     return rateLimit(opts);
   }
 
@@ -196,7 +196,7 @@ export async function rateLimitAsync(opts: RateLimitOptions): Promise<RateLimitR
     }
 
     if (count === 1) {
-      // First request in this window — set the TTL. NX guards against a
+      // First request in this window, set the TTL. NX guards against a
       // race where another instance already set it (harmless either way).
       await upstashCmd(cfg, ["EXPIRE", redisKey, windowSec, "NX"]);
     }
@@ -205,7 +205,7 @@ export async function rateLimitAsync(opts: RateLimitOptions): Promise<RateLimitR
       return { ok: true };
     }
 
-    // Over limit — best-effort remaining TTL for Retry-After. A failed
+    // Over limit, best-effort remaining TTL for Retry-After. A failed
     // TTL fetch must not turn an over-limit denial into a 500, so default
     // to the full window.
     let retryAfterSec = windowSec;
@@ -231,7 +231,7 @@ export async function rateLimitAsync(opts: RateLimitOptions): Promise<RateLimitR
  * (and a client cannot forge) before the client-influenced
  * `x-forwarded-for`. On Vercel, `x-vercel-forwarded-for` and
  * `x-real-ip` are set by the edge to the true connecting IP and any
- * inbound value is overwritten — so they can't be spoofed. The leftmost
+ * inbound value is overwritten, so they can't be spoofed. The leftmost
  * value of a raw `x-forwarded-for` IS attacker-controllable on
  * non-Vercel / self-hosted deploys (a client can send
  * `X-Forwarded-For: <anything>` to rotate their rate-limit bucket and
@@ -251,7 +251,7 @@ export function getClientIp(req: Request): string {
   }
   const xri = req.headers.get("x-real-ip");
   if (xri) return xri.trim();
-  // Client-influenced — last resort.
+  // Client-influenced, last resort.
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const first = xff.split(",")[0]?.trim();

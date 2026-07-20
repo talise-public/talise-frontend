@@ -11,8 +11,8 @@ import {
  * Expired-session teardown (client).
  *
  * A Talise web session has two halves with different lifetimes:
- *   • the server cookie session (days, sliding) — what the layout checks
- *   • the zkLogin ephemeral signing key (sessionStorage, ~55 min) — what
+ *   • the server cookie session (days, sliding), what the layout checks
+ *   • the zkLogin ephemeral signing key (sessionStorage, ~55 min), what
  *     actually signs transactions
  *
  * When the signing half lapses the app used to sit in a half-signed-in limbo:
@@ -38,7 +38,7 @@ export async function forceFreshSignIn(opts?: {
     // where the user lands next.
     await fetch("/auth/logout", { method: "POST", redirect: "manual" });
   } catch {
-    /* network hiccup — cookies survive but the key is gone; sign-in still fixes it */
+    /* network hiccup, cookies survive but the key is gone; sign-in still fixes it */
   }
   const returnTo =
     opts?.returnTo ??

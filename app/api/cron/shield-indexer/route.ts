@@ -13,7 +13,7 @@ export const maxDuration = 60;
  * Drives the shielded-pool indexer: polls `suix_queryEvents` for NewCommitment
  * / NullifierSpent / NewPool and folds them into Postgres (shield_commitments /
  * shield_nullifiers / shield_pools), advancing a durable cursor. The
- * merkle-path service reads those tables — so transfers and withdraws (which
+ * merkle-path service reads those tables, so transfers and withdraws (which
  * need a note's authentication path) depend on this running. Deposits use the
  * all-zero dummy path and work before the first poll.
  *
@@ -21,7 +21,7 @@ export const maxDuration = 60;
  * shieldConfigured() until SHIELD_PKG + SHIELD_POOL_USDSUI are set.
  *
  * Auth: Vercel adds `Authorization: Bearer $CRON_SECRET` to scheduled
- * invocations when CRON_SECRET is set — require it then; allow when unset (dev).
+ * invocations when CRON_SECRET is set, require it then; allow when unset (dev).
  */
 export async function GET(req: Request) {
   const denied = requireCron(req);

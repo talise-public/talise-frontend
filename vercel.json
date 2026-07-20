@@ -4,6 +4,7 @@
     { "path": "/api/cron/shield-indexer", "schedule": "*/2 * * * *" },
     { "path": "/api/cron/yield-rebalance", "schedule": "0 9 * * *" },
     { "path": "/api/cron/analytics-index", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/process-team-streams", "schedule": "* * * * *" }
+    { "path": "/api/cron/process-team-streams", "schedule": "* * * * *" },
+    { "path": "/api/cron/perp-warm", "schedule": "*/5 * * * *" }
   ]
 }

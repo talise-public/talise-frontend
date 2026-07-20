@@ -15,7 +15,7 @@ import { appendPaymentKitReceipt } from "@/lib/intents/wrap-payment-kit";
 export const runtime = "nodejs";
 
 /**
- * Per-leg timeout wrapper — mirrors `withTimeout` in `lib/activity.ts`.
+ * Per-leg timeout wrapper, mirrors `withTimeout` in `lib/activity.ts`.
  * Duplicated locally (rather than imported) so a stalled NAVI read in
  * the activity feed and a stalled NAVI read here can't share a stack
  * frame and both wedge at once. Returns `fallback` on timeout / error
@@ -28,8 +28,8 @@ export const runtime = "nodejs";
  * implementation collapsed both timeout and rejection into the same
  * fallback value, which meant a NAVI SDK exception ("no NAVI USDsui
  * position", an oracle update failure, etc.) surfaced to iOS as
- * "Withdraw is taking longer than usual — try again in a few seconds."
- * — misleading and unhelpful: retrying didn't fix the underlying error.
+ * "Withdraw is taking longer than usual, try again in a few seconds."
+ *, misleading and unhelpful: retrying didn't fix the underlying error.
  */
 type LegResult<T> =
   | { kind: "ok"; value: T }
@@ -107,7 +107,7 @@ function mapNaviError(raw: string): string {
  *     // omit to withdraw the entire position (interest + principal)
  *     amount?: number,
  *   }
- * Returns: { transactionKindB64 } — feed straight into /api/zk/sponsor.
+ * Returns: { transactionKindB64 }, feed straight into /api/zk/sponsor.
  */
 
 const SUPPORTED_VENUES = new Set(["deepbook", "navi"]);
@@ -173,10 +173,10 @@ export async function POST(req: Request) {
       if (venue === "navi") {
         // NAVI withdraw refreshes the Pyth oracle in the same PTB
         // (required for the position-health check). `undefined` =
-        // "withdraw the full supplied amount" — the adapter reads the
+        // "withdraw the full supplied amount", the adapter reads the
         // user's live position internally.
         //
-        // `appendNaviWithdraw` is the slow leg in the wild — its
+        // `appendNaviWithdraw` is the slow leg in the wild, its
         // internal position lookup + Pyth refresh can take 4-8s on a
         // sluggish RPC. Was 5s; bumped to 9s so a normal-but-slow
         // NAVI read doesn't trip the inner cap. Still ≤ outer 12s cap
@@ -250,7 +250,7 @@ export async function POST(req: Request) {
         }).build(tx);
       }
 
-      // Universal Talise receipt — see /api/earn/supply/prepare for the
+      // Universal Talise receipt, see /api/earn/supply/prepare for the
       // full rationale. The venue's withdraw MoveCalls above redeem the
       // position; this 1-micro self-ping just tags the tx with a typed
       // memo so the activity classifier can render "Withdrew from Navi"
@@ -295,7 +295,7 @@ export async function POST(req: Request) {
       console.log(
         `[earn/withdraw-prepare] position=${tPosition - t0}ms rewards=0ms build=${tBuild - tPosition}ms total=${tBuild - t0}ms venue=${venue}`
       );
-      // Verification log — per the 2026-05-29 sponsorship-matrix directive.
+      // Verification log, per the 2026-05-29 sponsorship-matrix directive.
       // gasOwner + gasPrice get set in /api/zk/sponsor (see its log line
       // with the full `mode=sponsored sponsor=<addr> gasPrice=<n>` shape).
       console.log(
@@ -326,7 +326,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Withdraw is taking longer than usual — try again in a few seconds.",
+          "Withdraw is taking longer than usual, try again in a few seconds.",
       },
       { status: 504 }
     );

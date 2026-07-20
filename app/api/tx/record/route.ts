@@ -19,7 +19,7 @@ export const runtime = "nodejs";
  * Records an outbound transaction in the user's history table after they've
  * signed and broadcast it. The caller controls the body fully, so every
  * field is validated + length-capped before it hits the DB. tx_history is a
- * hint/cache — for audit-grade truth we read chain directly via lib/activity.
+ * hint/cache, for audit-grade truth we read chain directly via lib/activity.
  */
 
 // Sui tx digest: base58 of a 32-byte hash. ~44 chars typical. We allow 40-60.
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
 
   // TODO(rewards): wire volume-milestone + first-send bonuses here once we
   // settle on a USDsui amount normalization. The helpers live in
-  // `lib/rewards.ts` — `awardVolumePoints(user.id, amountUsdsui, digest)` for
+  // `lib/rewards.ts`, `awardVolumePoints(user.id, amountUsdsui, digest)` for
   // every send, and `awardFirstSendBonus(user.id, digest)` gated by a
   // `tx_history` row-count check so it only fires once per user.
 
@@ -223,7 +223,12 @@ async function verifyAndCloseInvoice(input: {
   try {
     tx = await getNormalizedTransaction(input.digest);
   } catch (e) {
-    return { ok: false, reason: `tx fetch failed: ${(e as Error).message}` };
+    // Keep the internal detail server-side; return a generic client reason so
+    // raw RPC/exception messages don't leak into the API response.
+    console.error(
+      `[tx/record] tx fetch failed for digest=${input.digest}: ${(e as Error).message}`
+    );
+    return { ok: false, reason: "verification unavailable, try again" };
   }
 
   if (tx.status !== "success") {
@@ -253,7 +258,11 @@ async function verifyAndCloseInvoice(input: {
       await setInvoiceReceiptObjectId(input.slug, input.receiptObjectId);
     }
   } catch (e) {
-    return { ok: false, reason: `db update failed: ${(e as Error).message}` };
+    // Keep the internal detail server-side; return a generic client reason.
+    console.error(
+      `[tx/record] markInvoicePaid failed for slug=${input.slug}: ${(e as Error).message}`
+    );
+    return { ok: false, reason: "verification unavailable, try again" };
   }
   return { ok: true };
 }

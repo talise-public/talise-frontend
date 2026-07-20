@@ -1,5 +1,5 @@
 /**
- * Analytics persistence layer — the cache the on-chain indexer writes and the
+ * Analytics persistence layer, the cache the on-chain indexer writes and the
  * dashboard reads.
  *
  * Indexing every Talise user's on-chain tx history is far too much work for one
@@ -9,9 +9,9 @@
  * dashboard serves whatever is cached so far (with progress).
  *
  * Three Postgres tables (all idempotent, created by ensureAnalyticsSchema):
- *   • analytics_user_stats  — one row per indexed user (aggregates).
- *   • analytics_recent_tx   — newest-first recent-transaction feed (PK digest).
- *   • analytics_index_state — singleton (id=1) cursor + run timestamps.
+ *   • analytics_user_stats, one row per indexed user (aggregates).
+ *   • analytics_recent_tx , newest-first recent-transaction feed (PK digest).
+ *   • analytics_index_state, singleton (id=1) cursor + run timestamps.
  *
  * Resilient like /api/admin/overview: a failed sub-query yields its zero/empty
  * fallback rather than throwing, so the dashboard always renders. Writes are
@@ -21,6 +21,7 @@
 import { db } from "@/lib/db";
 import { countUsers } from "@/lib/analytics/users";
 import type {
+  AnalyticsSnapshot,
   AnalyticsSummary,
   RecentTx,
   UserIndex,
@@ -48,7 +49,7 @@ function strOrNull(v: unknown): string | null {
 
 /**
  * Create the three analytics tables + supporting index if they don't exist.
- * Idempotent — safe to call on every request/batch. Seeds the singleton
+ * Idempotent, safe to call on every request/batch. Seeds the singleton
  * index-state row (id=1) so getCursor/setCursor always have a row to read.
  */
 export async function ensureAnalyticsSchema(): Promise<void> {
@@ -99,11 +100,36 @@ export async function ensureAnalyticsSchema(): Promise<void> {
     args: [],
   });
 
+  // Append-only public metrics checkpoints (the /analytics timeline). One row
+  // per completed full pass where the numbers changed; never updated/deleted.
+  await db().execute({
+    sql: `CREATE TABLE IF NOT EXISTS analytics_snapshots (
+            id              BIGSERIAL PRIMARY KEY,
+            created_at      BIGINT NOT NULL,
+            accounts        INT NOT NULL DEFAULT 0,
+            active_accounts INT NOT NULL DEFAULT 0,
+            tx_count        INT NOT NULL DEFAULT 0,
+            volume_usd      DOUBLE PRECISION NOT NULL DEFAULT 0,
+            private_notes   INT NOT NULL DEFAULT 0,
+            private_spent   INT NOT NULL DEFAULT 0,
+            cheques         INT NOT NULL DEFAULT 0,
+            streams         INT NOT NULL DEFAULT 0,
+            goals           INT NOT NULL DEFAULT 0,
+            waitlist        INT NOT NULL DEFAULT 0
+          )`,
+    args: [],
+  });
+  await db().execute({
+    sql: `CREATE INDEX IF NOT EXISTS analytics_snapshots_created_idx
+            ON analytics_snapshots (created_at DESC)`,
+    args: [],
+  });
+
   // Self-heal across environments: an earlier analytics build left
   // analytics_user_stats with a `joined_at BIGINT NOT NULL` column and an
   // obsolete analytics_daily table. CREATE TABLE IF NOT EXISTS won't fix an
   // existing table, so the stale NOT NULL column silently fails every new
-  // insert (which omits joined_at). Drop the obsolete column + table — no-ops
+  // insert (which omits joined_at). Drop the obsolete column + table, no-ops
   // on a freshly-created schema, repairs a legacy one.
   await db()
     .execute({ sql: `ALTER TABLE analytics_user_stats DROP COLUMN IF EXISTS joined_at`, args: [] })
@@ -161,7 +187,7 @@ export async function upsertUserStat(s: {
 
 /**
  * Record (upsert) recent-transaction rows keyed by digest. ON CONFLICT(digest)
- * refreshes the row — the same on-chain tx seen across batches stays single,
+ * refreshes the row, the same on-chain tx seen across batches stays single,
  * and any newly resolved fields (e.g. a counterparty name) overwrite stale
  * ones. Rows with no digest are skipped (digest is the PK).
  */
@@ -261,7 +287,7 @@ export async function getCursor(): Promise<{
 /**
  * Persist the singleton cursor (id=1). Always stamps last_run_at; only touches
  * full_pass_at when `fullPassAt` is provided (a full pass over all users just
- * completed) — passing undefined leaves the existing value intact via COALESCE.
+ * completed), passing undefined leaves the existing value intact via COALESCE.
  */
 export async function setCursor(v: {
   cursor: number;
@@ -297,27 +323,39 @@ export async function setCursor(v: {
  * via the `index` block).
  */
 export async function getSummary(): Promise<AnalyticsSummary> {
-  // Live total accounts (excludes deleted tombstones) — the denominator.
+  // Live total accounts (excludes deleted tombstones), the denominator.
   const totalUsers = await countUsers().catch(() => 0);
 
-  // SUM(volume_usd) + SUM(tx_count) over everything indexed so far.
+  // Indexing progress (how many users we've walked) stays a row-count of
+  // analytics_user_stats.
+  const indexedUsers = await db()
+    .execute({ sql: `SELECT COUNT(*) AS n FROM analytics_user_stats`, args: [] })
+    .then((r) => num(r.rows[0]?.n))
+    .catch(() => 0);
+
+  // Headline totals come from analytics_recent_tx — the digest-keyed, deduped
+  // feed — using the SAME query as the public /api/analytics page, so the admin
+  // dashboard, the public /analytics page, and the pitch deck all report the
+  // identical figures. (SUM over analytics_user_stats both double-counts
+  // internal transfers AND reflects only the latest, sometimes source-degraded,
+  // per-user snapshot, so it drifted low and diverged from the public numbers.)
   const aggregates = await db()
     .execute({
-      sql: `SELECT COALESCE(SUM(volume_usd), 0) AS vol,
-                   COALESCE(SUM(tx_count), 0)   AS txs,
-                   COUNT(*)                     AS n
-              FROM analytics_user_stats`,
+      sql: `SELECT COUNT(*) AS txs,
+                   COALESCE(SUM(amount_usd) FILTER (
+                     WHERE direction IN ('sent','swap','withdraw','invest')),0) AS vol
+              FROM analytics_recent_tx`,
       args: [],
     })
     .then((r) => ({
       stablecoinVolumeUsd: num(r.rows[0]?.vol),
       transactions: num(r.rows[0]?.txs),
-      indexedUsers: num(r.rows[0]?.n),
+      indexedUsers,
     }))
     .catch(() => ({
       stablecoinVolumeUsd: 0,
       transactions: 0,
-      indexedUsers: 0,
+      indexedUsers,
     }));
 
   // Newest-first recent-transaction feed.
@@ -363,4 +401,130 @@ export async function getSummary(): Promise<AnalyticsSummary> {
       fullPassAt: state.fullPassAt,
     },
   };
+}
+
+// ── public checkpoints ─────────────────────────────────────────────────────
+
+/** The aggregate numbers a checkpoint captures (order-independent compare). */
+type SnapshotMetrics = Omit<AnalyticsSnapshot, "id" | "createdAt">;
+
+/** Read the current public aggregates (same figures as getPublicAnalytics). */
+async function currentSnapshotMetrics(): Promise<SnapshotMetrics> {
+  const counts = await db()
+    .execute({
+      sql: `SELECT
+              (SELECT COUNT(*) FROM shield_commitments) AS notes,
+              (SELECT COUNT(*) FROM shield_nullifiers)  AS spent,
+              (SELECT COUNT(*) FROM cheques)            AS cheques,
+              (SELECT COUNT(*) FROM streams)            AS streams,
+              (SELECT COUNT(*) FROM savings_goals)      AS goals,
+              (SELECT COUNT(*) FROM users)              AS accounts,
+              (SELECT COUNT(*) FROM waitlist_signups)   AS waitlist`,
+      args: [],
+    })
+    .then((r) => r.rows[0] ?? {})
+    .catch(() => ({}) as Record<string, unknown>);
+
+  const tx = await db()
+    .execute({
+      sql: `SELECT
+              COUNT(*)                AS txcount,
+              COUNT(DISTINCT address) AS active,
+              COALESCE(SUM(amount_usd) FILTER (
+                WHERE direction IN ('sent','swap','withdraw','invest')),0) AS vol
+            FROM analytics_recent_tx`,
+      args: [],
+    })
+    .then((r) => r.rows[0] ?? {})
+    .catch(() => ({}) as Record<string, unknown>);
+
+  return {
+    accounts: num((counts as Record<string, unknown>).accounts),
+    activeAccounts: num((tx as Record<string, unknown>).active),
+    txCount: num((tx as Record<string, unknown>).txcount),
+    volumeUsd: num((tx as Record<string, unknown>).vol),
+    privateNotes: num((counts as Record<string, unknown>).notes),
+    privateSpent: num((counts as Record<string, unknown>).spent),
+    cheques: num((counts as Record<string, unknown>).cheques),
+    streams: num((counts as Record<string, unknown>).streams),
+    goals: num((counts as Record<string, unknown>).goals),
+    waitlist: num((counts as Record<string, unknown>).waitlist),
+  };
+}
+
+function sameMetrics(a: SnapshotMetrics, b: SnapshotMetrics): boolean {
+  return (Object.keys(a) as (keyof SnapshotMetrics)[]).every(
+    (k) => a[k] === b[k]
+  );
+}
+
+/**
+ * Append a new public checkpoint iff the numbers changed since the last one.
+ * Called at the end of a completed full index pass, so /analytics shows a
+ * timeline that grows a step whenever the network actually moved. Best-effort:
+ * a failure here never breaks the indexer batch.
+ */
+export async function recordSnapshotIfChanged(now: number): Promise<void> {
+  try {
+    const metrics = await currentSnapshotMetrics();
+    const last = (await getSnapshots(1))[0];
+    // A full AnalyticsSnapshot is a superset of SnapshotMetrics, so it compares
+    // directly. Nothing changed since the last checkpoint → don't add one.
+    if (last && sameMetrics(metrics, last)) return;
+    await db().execute({
+      sql: `INSERT INTO analytics_snapshots
+              (created_at, accounts, active_accounts, tx_count, volume_usd,
+               private_notes, private_spent, cheques, streams, goals, waitlist)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        now,
+        metrics.accounts,
+        metrics.activeAccounts,
+        metrics.txCount,
+        metrics.volumeUsd,
+        metrics.privateNotes,
+        metrics.privateSpent,
+        metrics.cheques,
+        metrics.streams,
+        metrics.goals,
+        metrics.waitlist,
+      ],
+    });
+  } catch {
+    // Checkpointing is best-effort; never derail a batch over it.
+  }
+}
+
+/** Read the newest `limit` checkpoints, newest-first. Resilient → [] on error. */
+export async function getSnapshots(limit = 90): Promise<AnalyticsSnapshot[]> {
+  const cap = Math.max(1, Math.min(500, Math.floor(limit)));
+  try {
+    const r = await db().execute({
+      sql: `SELECT id, created_at, accounts, active_accounts, tx_count,
+                   volume_usd, private_notes, private_spent, cheques, streams,
+                   goals, waitlist
+              FROM analytics_snapshots
+             ORDER BY created_at DESC, id DESC
+             LIMIT ${cap}`,
+      args: [],
+    });
+    return r.rows.map(
+      (row): AnalyticsSnapshot => ({
+        id: num(row.id),
+        createdAt: num(row.created_at),
+        accounts: num(row.accounts),
+        activeAccounts: num(row.active_accounts),
+        txCount: num(row.tx_count),
+        volumeUsd: num(row.volume_usd),
+        privateNotes: num(row.private_notes),
+        privateSpent: num(row.private_spent),
+        cheques: num(row.cheques),
+        streams: num(row.streams),
+        goals: num(row.goals),
+        waitlist: num(row.waitlist),
+      })
+    );
+  } catch {
+    return [];
+  }
 }

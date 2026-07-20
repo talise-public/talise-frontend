@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/offramp/linq/resolve
  *
- * Lightweight account name-enquiry — resolves the holder name for a
+ * Lightweight account name-enquiry, resolves the holder name for a
  * (bankCode, accountNumber) pair so the cash-out form can DETECT the name as
  * the user types (no manual "account name" entry). Amount-independent; the
  * full /quote still runs at review to lock the NGN figure.
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Name-enquiry hits the bank network — throttle per user.
+  // Name-enquiry hits the bank network, throttle per user.
   const rl = await rateLimitAsync({ key: `offramp-linq-resolve:user:${userId}`, limit: 20, windowSec: 60 });
   if (!rl.ok) {
     return NextResponse.json(

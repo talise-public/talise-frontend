@@ -32,7 +32,7 @@ export const runtime = "nodejs";
  *
  * Combined replacement for `/api/send/prepare` + `/api/zk/sponsor`.
  *
- * Before: iOS made two serial round-trips — prepare returned the
+ * Before: iOS made two serial round-trips, prepare returned the
  * PTB kind bytes, sponsor wrapped them with the gas owner. Each cost
  * one full iOS→Vercel network hop (~500ms cold). This endpoint does
  * both server-side in one call:
@@ -45,7 +45,7 @@ export const runtime = "nodejs";
  *   4. Run the FULL `tx.build()` (with client) to produce the
  *      sponsor-ready bytes.
  *
- * Returns `{ bytes, roundupUsd, receiptNonce }` — iOS signs `bytes`
+ * Returns `{ bytes, roundupUsd, receiptNonce }`, iOS signs `bytes`
  * directly and forwards to `/api/zk/sponsor-execute`. One fewer
  * round-trip → ~500–800ms saved per send.
  *
@@ -75,12 +75,12 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Gate reads run CONCURRENTLY — app-access, rate limit and the user row are
+  // Gate reads run CONCURRENTLY, app-access, rate limit and the user row are
   // independent lookups, and running them serially put 3 stacked DB
   // round-trips on every send's critical path. Denial precedence is
   // unchanged: allowlist first, then rate limit, then user-row.
   const [denied, rl, user] = await Promise.all([
-    // Private-beta guardrail: signed-in is not enough — the account must be
+    // Private-beta guardrail: signed-in is not enough, the account must be
     // on the app allowlist before it can originate any value-moving call.
     denyUnlessAppApproved(userId),
     // Per-user global rate limit on this money route (anti-abuse / anti-DDoS).
@@ -104,18 +104,18 @@ export async function POST(req: Request) {
     asset?: string;
     /**
      * Allow falling back to the Onara-sponsored rail when the gasless rail
-     * can't serve this send — instead of returning a 400.
+     * can't serve this send, instead of returning a 400.
      *
      * The gasless rail (`balance::send_funds`) can ONLY source from the
      * user's Address-Balance accumulator; it is provably impossible for
      * users whose USDsui sits in `Coin<USDSUI>` objects. Talise-facilitated
      * money-out flows (off-ramp cash-out, pay-to-bank) promise the user a
-     * fee-free transfer ("No network fee — sponsored by Talise") and MUST
+     * fee-free transfer ("No network fee, sponsored by Talise") and MUST
      * land regardless of the user's coin/accumulator balance shape.
      *
-     * With this set we still TRY gasless first — so a user whose funds are
+     * With this set we still TRY gasless first, so a user whose funds are
      * already in the accumulator gets a genuinely free transfer and Talise
-     * pays nothing — and only when gasless can't build do we fall through to
+     * pays nothing, and only when gasless can't build do we fall through to
      * Payment Kit (which sources from Coin objects via
      * `coinWithBalance({useGasCoin:false})`) on Onara-sponsored gas. Plain
      * P2P sends leave it unset and a gasless failure stays a hard 400, per
@@ -147,7 +147,7 @@ export async function POST(req: Request) {
   }
 
   // Talise-sponsored money-out flows (off-ramp, pay-to-bank) opt into a
-  // sponsored fallback — see the `sponsorFallback` body field above. We still
+  // sponsored fallback, see the `sponsorFallback` body field above. We still
   // try gasless first (free when the user's funds are in the accumulator) and
   // only sponsor when the gasless build can't serve the send.
   const sponsorFallback = body.sponsorFallback === true || body.sponsored === true;
@@ -181,7 +181,7 @@ export async function POST(req: Request) {
   // letting the validator reject the tx ~1s later under an opaque
   // "Invalid withdraw reservation" string.
   // A send below the gasless minimum can't take the gasless rail. For a plain
-  // P2P send that's a hard 400. For a sponsor-fallback flow it's fine — we
+  // P2P send that's a hard 400. For a sponsor-fallback flow it's fine, we
   // simply skip the gasless attempt (see `tryGasless` below) and let Payment
   // Kit handle it on sponsored gas, where the minimum doesn't apply.
   const MIN_GASLESS_MICROS = 10_000n;
@@ -198,13 +198,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // ── Compliance screening — HARD STOP (master plan §7) ───────────
+  // ── Compliance screening, HARD STOP (master plan §7) ───────────
   // Pre-broadcast sanctions + on-chain address risk. Runs AFTER we've
   // resolved the user row and validated the recipient, but BEFORE any
   // PTB bytes are built/returned, so a flagged transfer never produces
   // signable bytes. `screenTransfer` is fail-closed on an explicit
   // sanctioned-name hit and fail-open (logs, allows) on an address-risk
-  // provider/transport error — a vendor outage must not 500 every send.
+  // provider/transport error, a vendor outage must not 500 every send.
   // `business_name` is preferred for the sender (business accounts settle
   // under their legal/registered name); falls back to the personal name.
   const screen = await screenTransfer({
@@ -265,7 +265,7 @@ export async function POST(req: Request) {
   // instead falls through to the SPONSORED branch below, which bundles
   // the transfer + the NAVI supply ATOMICALLY in one user-signed tx
   // (`appendNaviSupply`). Trade-off: that send is sponsored (Talise pays
-  // gas), not gasless — but the Save is real, atomic, and user-owned.
+  // gas), not gasless, but the Save is real, atomic, and user-owned.
   // (This retires the dead `roundup_queue` deferral + the
   // process-roundup-queue cron: nothing enqueues now that Save-on sends
   // supply atomically.)
@@ -289,7 +289,7 @@ export async function POST(req: Request) {
       (amountNum * roundupCfg.percentage) / 100,
       amountNum
     );
-    // 1¢ floor mirrors the previous gasless gate — anything smaller
+    // 1¢ floor mirrors the previous gasless gate, anything smaller
     // than a single USDsui micro-unit isn't a real round-up.
     if (Math.round(computed * 1e6) > 0) {
       deferredRoundupUsd = computed;
@@ -338,7 +338,7 @@ export async function POST(req: Request) {
       // escape hatch is mandatory. This mirrors the SDK's own parallel
       // executor in `addressBalance` gas mode
       // (`@mysten/sui/transactions/executor/parallel.mjs`
-      // #getValidDuringExpiration) — INCLUDING its `setGasPayment([])`,
+      // #getValidDuringExpiration), INCLUDING its `setGasPayment([])`,
       // which is the load-bearing line (see the build step below).
       tx.moveCall({
         target: "0x2::balance::send_funds",
@@ -381,12 +381,12 @@ export async function POST(req: Request) {
       // rejects the `ValidDuring` variant in @mysten/sui 2.16.3 ("unknown
       // TransactionExpirationKind"); WITH it the gRPC build produces bytes
       // BYTE-IDENTICAL to the old JSON-RPC build (verified live, fixed
-      // nonce — see web/scripts/probe-grpc-gasless.mjs). This is what lets
+      // nonce, see web/scripts/probe-grpc-gasless.mjs). This is what lets
       // the whole gasless build run on gRPC; the JSON-RPC dependency is
       // gone (JSON-RPC fullnodes sunset ~July 2026 regardless).
       tx.setGasPayment([]);
 
-      // Build OFFLINE on the gRPC client — the only client touch during
+      // Build OFFLINE on the gRPC client, the only client touch during
       // build is the CoinWithBalance intent's balance read.
       const bytes = await tx.build({ client: client as never });
 
@@ -395,11 +395,11 @@ export async function POST(req: Request) {
       // JSON-RPC build used to give us (underfunded accumulator, the
       // "use the whole balance or leave ≥10000" dust rule, etc.). A
       // FailedTransaction throws with the validator's status text so the
-      // catch below maps it to the right user-facing code — and, critically,
+      // catch below maps it to the right user-facing code, and, critically,
       // we NEVER hand iOS signable bytes for a tx the validator would reject
       // at execute. `simulateTransaction` is routed through the sui() proxy's
       // BROADCAST chain (suiGrpcBroadcast), which bypasses the Hayabusa read
-      // proxy — Hayabusa 502s simulate, so this must hit a direct fullnode.
+      // proxy, Hayabusa 502s simulate, so this must hit a direct fullnode.
       const sim = (await client.simulateTransaction({
         transaction: bytes,
         include: { effects: true },
@@ -439,7 +439,7 @@ export async function POST(req: Request) {
 
       // Stash inbound-settlement notification info for gasless-submit to fire
       // once the tx confirms (we know the recipient + amount here; the submit
-      // leg only has opaque bytes). Best-effort, same-instance — see perf-cache.
+      // leg only has opaque bytes). Best-effort, same-instance, see perf-cache.
       setPendingInbound(userId, {
         to,
         // Prefer the sender's @talise handle so the recipient's notification
@@ -475,24 +475,24 @@ export async function POST(req: Request) {
         to,
         // Non-zero ONLY when SnS is on. The submit endpoint enqueues
         // a NAVI supply for this amount post-broadcast so the user's
-        // spend-and-save still happens — just deferred, not atomic.
+        // spend-and-save still happens, just deferred, not atomic.
         roundupUsd: deferredRoundupUsd,
       });
     } catch (err) {
       // LOUD by default. The previous swallow-and-fall-through pattern
-      // hid real bugs — `tx.build()` failing on the gasless rail almost
+      // hid real bugs, `tx.build()` failing on the gasless rail almost
       // always means EITHER (a) the user genuinely has insufficient
-      // USDsui (in which case the sponsored path will fail too — Payment
+      // USDsui (in which case the sponsored path will fail too, Payment
       // Kit also calls `coinWithBalance({useGasCoin:false})` on the same
       // type), OR (b) something is actually broken in the gasless build
       // and we want to know loudly.
       //
       // Log the FULL stack so Vercel logs surface the real cause, and
       // distinguish two cases:
-      //   • Insufficient balance — return 500 with a clear, user-facing
+      //   • Insufficient balance, return 500 with a clear, user-facing
       //     message. iOS surfaces it; no silent fallback to a sponsored
       //     path that will also fail on chain.
-      //   • Anything else — log loudly, then fall through to the
+      //   • Anything else, log loudly, then fall through to the
       //     sponsored path (which still uses Payment Kit and may or may
       //     not succeed, but at least the safety net runs).
       const msg = (err as Error).message ?? String(err);
@@ -511,7 +511,7 @@ export async function POST(req: Request) {
         );
       }
       // The canonical `tx.withdrawal()` primitive pulls from the user's
-      // on-chain Address Balance accumulator ONLY — it has zero visibility
+      // on-chain Address Balance accumulator ONLY, it has zero visibility
       // into legacy `Coin<USDSUI>` objects sitting in the user's wallet.
       //
       // 2026-05-29 probe (web/scripts/probe-gasless-build.mjs, full
@@ -526,7 +526,7 @@ export async function POST(req: Request) {
       //      sub-10k accumulator)
       //   2. "Transaction resolution failed: InsufficientGas"
       //      (every shape that prepends SplitCoins / mergeCoins /
-      //      coin::into_balance + balance::split + balance::send_funds —
+      //      coin::into_balance + balance::split + balance::send_funds -
       //      validator refuses to cover intermediate-object storage with
       //      the input coin's rebate)
       //   3. "Feature is not supported: Function 0x2::pay::* | 0x2::coin::transfer | ..."
@@ -534,7 +534,7 @@ export async function POST(req: Request) {
       //      balance::send_funds and coin::send_funds)
       //
       // The ONE shape that simulates `success:true` with `paymentCount:0`
-      // is `0x2::coin::send_funds(<WHOLE_COIN>, recipient)` — but that
+      // is `0x2::coin::send_funds(<WHOLE_COIN>, recipient)`, but that
       // sends the entire Coin object's balance, NOT arbitrary amounts.
       //
       // See: docs/sui-rpc-migration/gasless-notes.md
@@ -553,8 +553,8 @@ export async function POST(req: Request) {
       // accumulator::deposit / coin::join_to_accumulator entry function,
       // re-run probe-gasless-build.mjs to detect allowlist inclusion and
       // prepend the deposit leg to the canonical balance::send_funds PTB.
-      // Product directive (2026-05-29 evening): a FREE transaction —
-      // plain USDsui send with NO Spend-and-Save leg — must NEVER fall
+      // Product directive (2026-05-29 evening): a FREE transaction -
+      // plain USDsui send with NO Spend-and-Save leg, must NEVER fall
       // through to Onara sponsorship. If the validator-side gasless
       // allowlist can't accommodate the user's balance state, the
       // honest answer is a clean 400 telling them why. The user can
@@ -564,7 +564,7 @@ export async function POST(req: Request) {
       // should be free, and (b) hide the underlying state mismatch.
       //
       // The ONLY exception is when SnS is on AND we still need to
-      // atomically supply to NAVI — that path legitimately needs
+      // atomically supply to NAVI, that path legitimately needs
       // sponsorship for the bundled NAVI leg, and we fall through.
       const isSnsActive = deferredRoundupUsd > 0;
       // Detect the "no address-owned input available" failure mode:
@@ -575,7 +575,7 @@ export async function POST(req: Request) {
       //    at most two epochs of validity"
       // because the ValidDuring escape hatch couldn't be built. As of
       // 2026-06-01 we DO build ValidDuring offline (via setGasPayment([])
-      // — see the build step above), so this case now succeeds GASLESSLY
+      //, see the build step above), so this case now succeeds GASLESSLY
       // and this branch is a defensive net that should rarely, if ever,
       // fire. Kept because the post-build simulate could still surface
       // this string on some unforeseen state, and the send must land.
@@ -593,7 +593,7 @@ export async function POST(req: Request) {
         // analytics + logs can distinguish this specific dead-end
         // from regular sponsored sends or the older
         // `sponsored-coin-fallback`. The user "didn't get gasless"
-        // — that's documented honestly in the mode — but their
+        //, that's documented honestly in the mode, but their
         // tx LANDS, which is the higher-priority constraint when the
         // alternative is "your send fails until a third party sends
         // you USDsui via legacy primitives".
@@ -614,10 +614,10 @@ export async function POST(req: Request) {
         (isSnsActive || sponsorFallback)
       ) {
         console.warn(
-          `[send/sponsor-prepare] gasless unreachable for user=${userId} (Coin-only balance state); ${isSnsActive ? "SnS active" : "sponsorFallback opted-in"} — falling through to sponsored-coin-fallback. detail=${msg.slice(0, 200)}`
+          `[send/sponsor-prepare] gasless unreachable for user=${userId} (Coin-only balance state); ${isSnsActive ? "SnS active" : "sponsorFallback opted-in"}, falling through to sponsored-coin-fallback. detail=${msg.slice(0, 200)}`
         );
         gaslessFellBack = true;
-        // Intentional fall-through — Payment Kit handles Coin<T>
+        // Intentional fall-through, Payment Kit handles Coin<T>
         // sourcing via coinWithBalance({useGasCoin:false}). When SnS is on
         // the NAVI supply leg lands atomically too. Response surfaces
         // mode: "sponsored-coin-fallback". This is the off-ramp path: a user
@@ -625,7 +625,7 @@ export async function POST(req: Request) {
         // of a dead end, while accumulator-funded users stayed gasless above.
       } else if (/withdraw reservation/i.test(msg) || /accumulator/i.test(msg) || /InsufficientGas/i.test(msg) || /insufficient.*balance/i.test(msg)) {
         console.warn(
-          `[send/sponsor-prepare] gasless unreachable for user=${userId} (accumulator underfunded); SnS off — returning ACCUMULATOR_UNDERFUNDED 400. detail=${msg.slice(0, 200)}`
+          `[send/sponsor-prepare] gasless unreachable for user=${userId} (accumulator underfunded); SnS off, returning ACCUMULATOR_UNDERFUNDED 400. detail=${msg.slice(0, 200)}`
         );
         // The clean 2-call gasless pattern requires the requested amount
         // to live in the user's Address Balance accumulator. Coin<T>
@@ -633,12 +633,12 @@ export async function POST(req: Request) {
         // The user-facing remediation is now: top up via Stripe (lands
         // directly in the accumulator) OR use the manual swap CTA on
         // Home to convert other coins to USDsui. We no longer surface
-        // a `canConsolidate` hint — the consolidation offer flow was
+        // a `canConsolidate` hint, the consolidation offer flow was
         // removed alongside the autoswap archive (2026-05-29).
         return NextResponse.json(
           {
             error:
-              "Your USDsui isn't in your Address Balance accumulator yet — gasless sends require accumulator funds. Top up via Deposit (Stripe onramp lands USDsui directly in your accumulator) and try again.",
+              "Your USDsui isn't in your Address Balance accumulator yet, gasless sends require accumulator funds. Top up via Deposit (Stripe onramp lands USDsui directly in your accumulator) and try again.",
             detail: msg,
             code: "ACCUMULATOR_UNDERFUNDED",
           },
@@ -648,7 +648,7 @@ export async function POST(req: Request) {
         // Uncategorized gasless failure on a sponsor-fallback flow (off-ramp,
         // pay-to-bank): the user asked us to land the transfer, so fall
         // through to the sponsored Payment Kit branch rather than 400-ing.
-        // This doesn't mask a real build bug — the sponsored branch runs its
+        // This doesn't mask a real build bug, the sponsored branch runs its
         // own build + simulate and will surface any genuine failure from
         // there (outer catch → 500). A purely gasless-specific hiccup, by
         // contrast, simply succeeds on the sponsored rail.
@@ -684,7 +684,7 @@ export async function POST(req: Request) {
     // the PTB in memory. By the time we need the sponsor / gas price
     // values, both promises are already settled (or close).
     //
-    // ensurePaymentRegistry() lived here before — it was a fire-and-forget
+    // ensurePaymentRegistry() lived here before, it was a fire-and-forget
     // call that the Promise.all still awaited. After the first call per
     // process it's a memoTtl hit, but the FIRST call paid an object lookup
     // on the gRPC client. Since /api/zk/warmup already calls it on
@@ -710,7 +710,7 @@ export async function POST(req: Request) {
     );
 
     // Build the PTB body. Both branches end with a tx that hasn't
-    // been `build()`-ed yet — we need the sponsor address first.
+    // been `build()`-ed yet, we need the sponsor address first.
     const tx = new Transaction();
     tx.setSender(user.sui_address);
 
@@ -736,14 +736,14 @@ export async function POST(req: Request) {
       receiptNonce = nonce;
       tPk = Date.now();
 
-      // Round-up & Save — atomic supply leg in the same PTB. Reuses the
+      // Round-up & Save, atomic supply leg in the same PTB. Reuses the
       // cached `roundupCfg` from the gasless decision above (no second DB
       // round-trip). If the user has toggled round-up on, we append a
       // NAVI supply for `amount × percentage / 100` USDsui so send + save
       // land in one signature.
       //
       // `appendNaviSupply` is async (the underlying adapter does a small
-      // amount of bookkeeping on the first call per process — pre-warmed
+      // amount of bookkeeping on the first call per process, pre-warmed
       // by `/api/zk/warmup`). We await it INLINE here rather than in the
       // status+price Promise.all because it MUTATES `tx`; running it in
       // parallel with `tx.build()` would race the builder. The cost is
@@ -754,7 +754,7 @@ export async function POST(req: Request) {
       // supply sponsors cleanly. So we just compute the round-up amount and
       // return it; the client fires the save as its OWN sponsored
       // /api/earn/supply tx (the same clean path the Invest screen uses, which
-      // credits the roundup_save reward there — so the send no longer does).
+      // credits the roundup_save reward there, so the send no longer does).
       tRoundup = Date.now();
       if (roundupCfg.enabled && roundupCfg.percentage > 0) {
         const computed = Math.min((amountNum * roundupCfg.percentage) / 100, amountNum);
@@ -789,14 +789,14 @@ export async function POST(req: Request) {
     // `getReferenceGasPrice` RPC.
     tx.setGasPrice(BigInt(gasPrice));
 
-    // Explicit gas budget — load-bearing. Without it, tx.build() auto-selects
+    // Explicit gas budget, load-bearing. Without it, tx.build() auto-selects
     // the sponsor's gas coins AND auto-estimates the budget. When the sponsor
     // holds a tiny "dust" Coin<SUI> alongside its main coin, the auto-selection
     // can pick ONLY the dust coin and then bake a budget that the dust can't
     // cover, so Onara's simulate rejects the signed tx with "Insufficient gas"
     // (a real send-killer observed in prod 2026-06-19). Setting a generous
     // fixed budget makes the SDK's gas-coin selection accumulate coins until
-    // they total >= the budget — which pulls in the sponsor's main coin — so
+    // they total >= the budget, which pulls in the sponsor's main coin, so
     // gas is always sufficient regardless of dust. The sponsor is only charged
     // the ACTUAL gas used (~0.003–0.01 SUI); this is just the cap.
     tx.setGasBudget(SPONSOR_GAS_BUDGET_MIST);
@@ -832,7 +832,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // Reserve against the rolling limit window (USDsui only — the cap
+    // Reserve against the rolling limit window (USDsui only, the cap
     // engine is fiat-USD today). Mirrors the gasless branch above:
     // best-effort, never gates the response.
     if (asset === "USDsui") {

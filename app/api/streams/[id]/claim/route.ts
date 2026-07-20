@@ -20,13 +20,13 @@ export const runtime = "nodejs";
  * caller (the recipient, in practice) signs with their zkLogin ephemeral key
  * and POSTs to /api/zk/sponsor-execute. The on-chain contract walks the
  * schedule against `Clock`, releases every tranche now due, and transfers it to
- * the stream's HARDWIRED recipient — so even though the call is permissionless,
+ * the stream's HARDWIRED recipient, so even though the call is permissionless,
  * funds can only ever go to the recipient, never the signer.
  *
  * No worker key, no scheduler. The recipient pulls their accrued balance
  * whenever they like; gas is sponsored so it's free.
  *
- * On-chain streams only — escrow streams are gone with the cron.
+ * On-chain streams only, escrow streams are gone with the cron.
  */
 export async function POST(
   req: Request,

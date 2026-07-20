@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 const MONO = "var(--font-mono), ui-monospace, SFMono-Regular, monospace";
-const DISPLAY = "var(--font-display-v2)";
+const DISPLAY = '"TWK Everett", var(--font-display-v2), system-ui, sans-serif';
 
 function H2({ children }: { children: React.ReactNode }) {
   return (
@@ -106,10 +106,10 @@ function Quote({ children }: { children: React.ReactNode }) {
 
 export default function TaliseCopilot() {
   return (
-    <main className="mx-auto max-w-[1500px] px-6 pb-8 pt-12 md:px-12 md:pt-16">
+    <main className="mx-auto max-w-[760px] px-6 pb-10 pt-12 md:px-10 md:pt-16">
       {/* tag + title */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#3d7a29]">
-        <span className="rounded-full bg-[#CAFFB8] px-2.5 py-1 text-[#15300c]">Product</span>
+        <span className="bg-[var(--color-accent-light)] px-2.5 py-1 text-[#1c3d12]">Product</span>
         <span>July 2, 2026</span>
         <span>·</span>
         <span>6 min read</span>

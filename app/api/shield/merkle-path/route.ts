@@ -9,7 +9,7 @@ import { USDSUI_TYPE } from "@/lib/usdsui";
 export const runtime = "nodejs";
 
 /**
- * LIVE CATCH-UP — pull just-landed commitments straight from chain on demand,
+ * LIVE CATCH-UP, pull just-landed commitments straight from chain on demand,
  * so a withdraw's Merkle path (and the deposit's current root) is available
  * within ~seconds of the deposit finalizing, NOT gated by the 2-min indexer
  * cron. THIS is what makes the shielded send fire at Sui speed.
@@ -17,7 +17,7 @@ export const runtime = "nodejs";
  * REAL in-flight dedup: the harness polls every ~2s, so a plain value-cache
  * (memoTtl) would let polls that arrive BEFORE the first run resolves each spawn
  * a parallel full indexer run. We share the in-flight promise and rate-limit to
- * one run per ~2.5s window. Failures are swallowed — the cron + the caller's
+ * one run per ~2.5s window. Failures are swallowed, the cron + the caller's
  * retry remain the backstop.
  */
 let _catchUpInFlight: Promise<unknown> | null = null;
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
-  // Catch up to chain on-demand BEFORE serving — both the deposit's current
+  // Catch up to chain on-demand BEFORE serving, both the deposit's current
   // root and the withdraw's path are then live (no 2-min cron wait).
   await liveIndexCatchUp();
 
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     try {
       currentRoot = await refreshMerkleCache(coinType);
     } catch {
-      /* leave undefined — the caller falls back / retries */
+      /* leave undefined, the caller falls back / retries */
     }
     return NextResponse.json({ dummy: true, ...p, ...(currentRoot ? { currentRoot } : {}) });
   }

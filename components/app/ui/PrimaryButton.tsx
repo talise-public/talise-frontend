@@ -29,23 +29,20 @@ export function PrimaryButton({
   full = false,
   type = "button",
 }: PrimaryButtonProps) {
-  const base =
-    "relative inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[15px] font-semibold transition-[transform,background-color,border-color,color,opacity] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#3d7a29]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7fcf2] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
-  const width = full ? "w-full" : "";
-
+  // Blueprint bracket button: mono-uppercase label, forest fill (primary) /
+  // hairline (ghost) / danger, with `+`-bracket corners drawn just outside.
   const variantCls =
-    variant === "primary"
-      ? "bg-[#15300c] text-[#f7fcf2] hover:-translate-y-0.5"
-      : variant === "danger"
-        ? "border-2 border-[#c0532f] text-[#c0532f] hover:bg-[#c0532f] hover:text-[#f7fcf2]"
-        : "border-2 border-[#15300c] text-[#15300c] hover:bg-[#15300c] hover:text-[#f7fcf2]";
+    variant === "primary" ? "bp-btn-solid" : variant === "danger" ? "bp-btn-danger" : "bp-btn-ghost";
+  const width = full ? "bp-btn-full" : "";
 
   const isDisabled = disabled || loading;
-  const cls = `${base} ${variantCls} ${width}`;
+  const cls = `bp-btn ${variantCls} ${width} outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]`;
 
   const content = (
     <>
-      {loading && <Spinner size={16} />}
+      <span aria-hidden className="bp-bracket" />
+      <span aria-hidden className="bp-bracket-2" />
+      {loading && <Spinner size={15} />}
       {/* inline-flex so a leading HugeIcons <svg> (which renders display:block)
           sits inline with the label instead of stacking above it. */}
       <span className={`inline-flex items-center gap-2 ${loading ? "opacity-80" : ""}`}>{children}</span>

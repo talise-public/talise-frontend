@@ -5,7 +5,7 @@
  * deliberately light: a calm one-liner that Earn is optional and routed through
  * a third-party DeFi protocol (NAVI), and that they can move their money back
  * anytime. No alarming "not guaranteed / not insured / not your balance"
- * framing — just a soft heads-up. The supply only runs after "Start earning".
+ * framing, just a soft heads-up. The supply only runs after "Start earning".
  */
 
 import { Sheet, PrimaryButton } from "@/components/app";
@@ -28,15 +28,15 @@ export function EarnDisclosureSheet({
       <div className="space-y-5 pb-1">
         <div className="space-y-2">
           <h2
-            className="text-[20px] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-            style={{ fontFamily: "var(--font-display-v2)" }}
+            className="text-[20px] font-[500] tracking-[-0.05em] text-[#15300c]"
+            style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
           >
             {apy > 0
               ? `Earn around ${(apy * 100).toFixed(2)}% on your ${moneyWord}`
               : `Earn on your ${moneyWord}`}
           </h2>
           <p className="text-[14px] leading-[1.55] text-[#3a5230]">
-            Put your {moneyWord} to work through NAVI, a trusted DeFi protocol — and
+            Put your {moneyWord} to work through NAVI, a trusted DeFi protocol, and
             move it back to your balance whenever you like.
           </p>
         </div>

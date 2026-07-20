@@ -1,5 +1,5 @@
 /**
- * On-ramp provider layer — public surface + env-driven selector.
+ * On-ramp provider layer, public surface + env-driven selector.
  *
  * Mirrors web/lib/offramp/index.ts. The PRIMARY adapter is Bridge (delivers
  * USDsui directly on Sui, since Bridge issues the Sui Dollar). The FALLBACK

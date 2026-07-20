@@ -5,7 +5,7 @@
  * (master plan §4): it owns the on-chain leg and bolts local fiat legs
  * on via swappable BaaS/PSP partners behind ONE internal interface. The
  * live Linq NGN integration (`web/lib/linq.ts` + `web/app/api/offramp/linq/*`)
- * is the canonical reference — every adapter here mirrors its three-step
+ * is the canonical reference, every adapter here mirrors its three-step
  * shape:
  *
  *   quote          → TTL-locked USDsui → local-currency price (Linq `quote`)
@@ -20,7 +20,7 @@
  * Asian/global corridors (master plan §4 per-corridor table).
  *
  * NOTE: the stub adapters return mock data only. No live partner calls are
- * made — wiring real PSP/bank requests, persistence, and on-chain
+ * made, wiring real PSP/bank requests, persistence, and on-chain
  * verification is out of scope for this slice and lands per-corridor later.
  */
 
@@ -30,23 +30,23 @@
  * PHP/IDR/VND payouts that the display layer does not yet render.
  */
 export type PayoutCurrency =
-  | "NGN" // Nigeria      — Linq (live)
-  | "KES" // Kenya        — M-Pesa
-  | "GHS" // Ghana        — generic bank
-  | "ZAR" // South Africa — generic bank
-  | "JPY" // Japan        — Zengin furikomi
-  | "SGD" // Singapore    — PayNow / FAST
-  | "PHP" // Philippines  — (SG→ASEAN payout network)
-  | "IDR" // Indonesia    — (SG→ASEAN payout network)
-  | "VND" // Vietnam      — (SG→ASEAN payout network)
-  | "USD"; // United States — RTP/FedNow/ACH
+  | "NGN" // Nigeria    , Linq (live)
+  | "KES" // Kenya      , M-Pesa
+  | "GHS" // Ghana      , generic bank
+  | "ZAR" // South Africa, generic bank
+  | "JPY" // Japan      , Zengin furikomi
+  | "SGD" // Singapore  , PayNow / FAST
+  | "PHP" // Philippines, (SG→ASEAN payout network)
+  | "IDR" // Indonesia  , (SG→ASEAN payout network)
+  | "VND" // Vietnam    , (SG→ASEAN payout network)
+  | "USD"; // United States, RTP/FedNow/ACH
 
 /**
  * The corridor-agnostic payout lifecycle. Generalizes the Linq
  * `quoted → debited → remitting → settled | failed` row state into the
  * provider-leg states the master plan §3 transfers machine describes
  * (`… → fiat_out_pending → settled`). An adapter only ever reports the
- * fiat-out leg states — `quoted`/`debited`/on-chain settling belong to the
+ * fiat-out leg states, `quoted`/`debited`/on-chain settling belong to the
  * orchestrating route + ledger, not the payout provider.
  */
 export type PayoutStatus =
@@ -122,7 +122,7 @@ export interface PayoutRequest {
   destination: PayoutDestination;
   /**
    * Caller-owned idempotency key (Talise's transfer/row id). Re-initiating
-   * with the same reference MUST NOT double-pay — mirrors how Linq reuses
+   * with the same reference MUST NOT double-pay, mirrors how Linq reuses
    * `referenceNumber`.
    */
   reference: string;
@@ -146,7 +146,7 @@ export interface PayoutStatusResult {
 
 /**
  * The one interface every corridor implements. Implementations are pure
- * wrappers over a partner API (or, for now, a deterministic mock) — they
+ * wrappers over a partner API (or, for now, a deterministic mock), they
  * own NO persistence and NO on-chain logic; the route handlers + ledger do.
  */
 export interface PayoutAdapter {

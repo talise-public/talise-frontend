@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/activity?limit=20 — recent on-chain activity for the authed
+ * GET /api/activity?limit=20, recent on-chain activity for the authed
  * user. Source of truth is the chain; a per-user Postgres snapshot serves
  * an instant first paint and is refreshed from chain in the background.
  * `?fresh=1` always reads the chain (the post-send reconcile path).
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
         { headers: { "Cache-Control": "private, no-store" } }
       );
     }
-    // Scan blew the budget — serve the freshest snapshot (any age beats a spinner).
+    // Scan blew the budget, serve the freshest snapshot (any age beats a spinner).
     const snap = await readActivitySnapshot(userId).catch(() => null);
     return NextResponse.json(
       {

@@ -32,7 +32,7 @@ function isCountryCode(x: unknown): x is CountryCode {
 }
 
 export async function POST(req: Request) {
-  // App Attest (structural) — mirrors the offramp gate. No-op for web
+  // App Attest (structural), mirrors the offramp gate. No-op for web
   // cookie sessions; enforced for mobile bearer traffic.
   const attestBlock = requireAppAttestStructural(req);
   if (attestBlock) return attestBlock;
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated", code: "BAD_INPUT" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;

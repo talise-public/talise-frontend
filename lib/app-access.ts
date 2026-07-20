@@ -20,12 +20,12 @@ import { memoTtl } from "./perf-cache";
  * so gating them gates the product.
  *
  * Deliberately NOT gated: receiving money. Cheque claiming is worker-signed
- * server-side and invoice/pay/profile pages are public — non-members must be
+ * server-side and invoice/pay/profile pages are public, non-members must be
  * able to RECEIVE funds; they just can't originate transactions until
  * approved (app_allowlist table / APP_ALLOWED_EMAILS env).
  *
  * Fail-closed: lookup errors deny. 60s memo per entry id keeps the hot path
- * at zero extra DB round-trips (a revoke takes ≤60s to bite — acceptable).
+ * at zero extra DB round-trips (a revoke takes ≤60s to bite, acceptable).
  */
 export async function entryIsAppApproved(entryId: number): Promise<boolean> {
   try {
@@ -44,7 +44,7 @@ export function appAccessDeniedResponse(): NextResponse {
   return NextResponse.json(
     {
       error:
-        "Talise is in private beta — your account hasn't been approved yet. You're on the list; we open access in waves.",
+        "Talise is in private beta, your account hasn't been approved yet. You're on the list; we open access in waves.",
       code: "APP_ACCESS",
     },
     { status: 403 }

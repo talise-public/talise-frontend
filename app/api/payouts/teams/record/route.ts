@@ -21,7 +21,7 @@ export const runtime = "nodejs";
  *   • create (no chainObjectId) → parse the new Team object id from `digest`.
  *   • edit   (chainObjectId set) → reuse it (the object id is stable).
  *
- * Then upsert the DB row — the operational store the pay path re-resolves. We
+ * Then upsert the DB row, the operational store the pay path re-resolves. We
  * upsert even if the object-id parse lags (chainObjectId stays null and is
  * back-filled on the next edit) so a confirmed roster is never lost.
  */

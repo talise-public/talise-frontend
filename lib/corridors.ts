@@ -1,13 +1,13 @@
 /**
- * Talise corridor registry — the single source of truth for which
+ * Talise corridor registry, the single source of truth for which
  * money-movement corridors exist, what fiat rails sit at each end, and
  * how far along each one is (live / partner / planned).
  *
  * This is the merge of the two halves of the product directive:
- *   • African corridors  — NG/NGN (live via Linq), KE/KES, GH/GHS, ZA/ZAR.
- *   • Asian / global      — JP/JPY, SG/SGD, PH/PHP, ID/IDR, VN/VND, US/USD.
+ *   • African corridors, NG/NGN (live via Linq), KE/KES, GH/GHS, ZA/ZAR.
+ *   • Asian / global    , JP/JPY, SG/SGD, PH/PHP, ID/IDR, VN/VND, US/USD.
  *
- * The model is deliberately descriptive metadata only — no I/O, no
+ * The model is deliberately descriptive metadata only, no I/O, no
  * provider clients. It is the registry that the FX edge, the (future)
  * corridor-agnostic transfers state machine, and the client UI all read
  * to decide what is offerable and at what spread. Provider wiring (Linq,
@@ -15,10 +15,10 @@
  * here but is NOT implemented in this file.
  *
  * Status semantics (per docs/strategy/cross-border-masterplan.md §2/§5):
- *   • "live"    — at least one direction is in production today.
- *   • "partner" — the rail is being onboarded behind a licensed partner;
+ *   • "live"  , at least one direction is in production today.
+ *   • "partner", the rail is being onboarded behind a licensed partner;
  *                 not yet generally available but actively in flight.
- *   • "planned" — on the roadmap; no rail integration started.
+ *   • "planned", on the roadmap; no rail integration started.
  *
  * The chain stays invisible: every corridor settles USDsui/USDC at par on
  * Sui in the middle. `fiatInRail` / `fiatOutRail` describe only the fiat
@@ -51,7 +51,7 @@ export type CountryCode =
  * `Currency` (which only covers the African display set today) because the
  * corridor registry must name JPY/SGD/PHP/IDR/VND/USD even before the FX
  * layer migrates off its hardcoded snapshot. When `fx.ts` grows to include
- * the Asian set, the two should converge — see the `Currency` re-export note.
+ * the Asian set, the two should converge, see the `Currency` re-export note.
  */
 export type CorridorCurrency =
   | Currency // NGN | KES | GHS | ZAR | USD
@@ -116,7 +116,7 @@ export interface Corridor {
 }
 
 /**
- * The registry. Directed corridors only — a reverse leg (e.g. JP→US) is a
+ * The registry. Directed corridors only, a reverse leg (e.g. JP→US) is a
  * separate entry and is added when that direction has a rail.
  *
  * Notes on status assignment (master plan §2 expansion order):
@@ -124,7 +124,7 @@ export interface Corridor {
  *     today and the US card on-ramp (Stripe) is live.
  *   • Singapore is the licensing anchor and first self-licensable market,
  *     so SG corridors are "partner" (PSP-fronted while the MPI pends).
- *   • US→JP under the JPYC ¥1M cap is the launch beachhead — "partner".
+ *   • US→JP under the JPYC ¥1M cap is the launch beachhead, "partner".
  *   • The remaining African corridors and SG→ASEAN payouts are "planned".
  */
 export const CORRIDORS: readonly Corridor[] = [
@@ -297,7 +297,7 @@ export function getCorridor(
 
 /**
  * True iff a corridor exists for the given direction AND is in production
- * ("live"). Partner/planned corridors return false — use this as the hard
+ * ("live"). Partner/planned corridors return false, use this as the hard
  * gate before offering a real money movement.
  */
 export function isCorridorLive(from: CountryCode, to: CountryCode): boolean {
@@ -332,7 +332,7 @@ export type CorridorQuoteResult =
  * The product primitive: price a corridor transfer end-to-end.
  *
  * Resolves the directed corridor, rejects planned/unbookable corridors and
- * over-cap amounts (perTxCapUsd — recall the JP ¥1M-equivalent partner-rail
+ * over-cap amounts (perTxCapUsd, recall the JP ¥1M-equivalent partner-rail
  * cap), then defers pricing to the server-authoritative FX feed
  * (`getQuote`). The corridor's registry `spreadBps` is treated as a policy
  * FLOOR: the effective spread is the larger of the registry spread and the
@@ -369,7 +369,7 @@ export async function corridorQuote(
     return { ok: false, code: "FX", message: fx.message };
   }
   // Enforce the registry spread as a floor (documented; the feed already
-  // applied its vol-tier spread — we surface the floor that governs).
+  // applied its vol-tier spread, we surface the floor that governs).
   const floorBps = Math.max(corridor.spreadBps, corridorSpreadBps(corridor.fromCcy, corridor.toCcy));
   return { ok: true, corridor: { ...corridor, spreadBps: floorBps }, quote: fx.quote };
 }

@@ -22,8 +22,8 @@ function localLabel(amount: number, currency: string): string {
 
 /**
  * The Talise Agent's safety brain: take a PROPOSED intent (steps the LLM emitted)
- * and return a VALIDATED, priced preview — resolving recipients, screening them,
- * and checking the user's send cap — WITHOUT moving any money. The client renders
+ * and return a VALIDATED, priced preview, resolving recipients, screening them,
+ * and checking the user's send cap, WITHOUT moving any money. The client renders
  * this as a confirm card; only on a user slide does it call the real prepare +
  * sign endpoints. "Agent proposes → server validates → human confirms."
  *
@@ -167,7 +167,7 @@ export async function planIntent(user: User, steps: ChatStep[]): Promise<AgentPl
       continue;
     }
 
-    // cash_out — move USDsui to the user's linked NGN bank (Linq off-ramp).
+    // cash_out, move USDsui to the user's linked NGN bank (Linq off-ramp).
     // Gated on the feature flag, a linked primary bank, and the daily cap.
     if (step.kind === "cash_out") {
       const { usd: amt, local } = resolveUsd(step);
@@ -201,7 +201,7 @@ export async function planIntent(user: User, steps: ChatStep[]): Promise<AgentPl
       continue;
     }
 
-    // request — create a shareable payment link (no signing, no money moves).
+    // request, create a shareable payment link (no signing, no money moves).
     if (step.kind === "request") {
       const { usd: amt, local } = resolveUsd(step);
       if (!Number.isFinite(amt) || amt <= 0) {
@@ -220,7 +220,7 @@ export async function planIntent(user: User, steps: ChatStep[]): Promise<AgentPl
       continue;
     }
 
-    // save / withdraw / swap / claim_rewards — amount sanity only (signed client-side).
+    // save / withdraw / swap / claim_rewards, amount sanity only (signed client-side).
     const { usd: amt } = resolveUsd(step);
     if (step.kind !== "claim_rewards" && (!Number.isFinite(amt) || amt <= 0)) {
       planned.push({ kind: step.kind, label, status: "needs_info", detail: "Enter a positive amount." });

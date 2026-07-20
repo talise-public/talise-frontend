@@ -30,7 +30,7 @@ export type Currency =
   | "VND";
 
 /**
- * Units of `currency` per 1 USD — a hardcoded Q2 2026 snapshot.
+ * Units of `currency` per 1 USD, a hardcoded Q2 2026 snapshot.
  *
  * Used ONLY as a display fallback and as the seed/sanity reference for the
  * live feed. Quote pricing MUST go through `fx-feed.ts` (`getQuote`), which
@@ -68,7 +68,7 @@ export const SYMBOL: Record<Currency, string> = {
 };
 
 /**
- * Country/region flag (emoji) per currency — renders the corridor visually in
+ * Country/region flag (emoji) per currency, renders the corridor visually in
  * pickers + amount chips. Emoji flags render natively on macOS/iOS/Android
  * (Talise's audience). On Windows Chrome they fall back to the 2-letter code;
  * drop in the MIT `flag-icons` package there if pixel-perfect flags are needed.
@@ -87,7 +87,7 @@ export const FLAG: Record<Currency, string> = {
 };
 
 /**
- * ISO-3166 alpha-2 country code per currency — keys the circle-flag SVGs
+ * ISO-3166 alpha-2 country code per currency, keys the circle-flag SVGs
  * vendored at `/public/flags/<cc>.svg` (HatScripts/circle-flags, MIT). Used by
  * the <Flag/> component so pickers render crisp circular flags instead of the
  * emoji fallback (which doesn't render on Windows Chrome).

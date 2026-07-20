@@ -3,17 +3,17 @@
  *
  * This module wires the @mysten/payment-kit SDK to Talise's USDsui invoice
  * flow. Each paid invoice mints an on-chain `PaymentReceipt` dynamic field
- * inside the merchant's `PaymentRegistry` — a durable, queryable proof
+ * inside the merchant's `PaymentRegistry`, a durable, queryable proof
  * object that replaces the DB-only invoice slug as the source of truth.
  *
  * Docs: https://docs.sui.io/onchain-finance/payment-kit
  *
  * ---------------------------------------------------------------------------
- * V1 REGISTRY MODEL — GLOBAL SHARED REGISTRY
+ * V1 REGISTRY MODEL, GLOBAL SHARED REGISTRY
  * ---------------------------------------------------------------------------
  * We use a single registry named `TALISE_REGISTRY_NAME` shared across all
- * merchants. The registry id is deterministic — derived from
- * (namespaceId, registryName) — so every merchant's `PaymentReceipt`
+ * merchants. The registry id is deterministic, derived from
+ * (namespaceId, registryName), so every merchant's `PaymentReceipt`
  * dynamic fields live under one well-known parent object. The per-merchant
  * `users.payment_registry_id` column is reserved for v2 when each merchant
  * gets their own registry + AdminCap (so they can manage funds independently).
@@ -21,7 +21,7 @@
  * Why global v1: this ships immediately, no per-merchant bootstrap or
  * sponsored AdminCap dance. Duplicate-prevention is keyed by
  * (nonce, amount, receiver, coin_type) so two merchants sharing the same
- * registry can never collide — the receiver address differs.
+ * registry can never collide, the receiver address differs.
  *
  * The receipt is uniquely addressable by its key: the registry parent +
  * the BCS-serialized `PaymentKey<USDSUI>(nonce, amount, receiver)`. We
@@ -32,7 +32,7 @@
  * Bootstrap: the global registry must exist on-chain before any payment
  * can write to it. `/api/business/init-payment-registry` calls
  * `createRegistry` with the operator key once on first invocation. Idempotent
- * — repeated calls no-op once `getPaymentRecord` against the registry id
+ *, repeated calls no-op once `getPaymentRecord` against the registry id
  * succeeds (or we catch the "already exists" abort).
  */
 
@@ -88,7 +88,7 @@ export function globalRegistryId(): string {
  * Dynamic, browser-side: we only enable receipts when localStorage has
  * `talise:pk:ready=1`, which the warmup endpoint sets ONLY after it has
  * confirmed (or successfully minted) the registry on chain. This avoids
- * the race where the user clicks Send before the lazy mint finishes —
+ * the race where the user clicks Send before the lazy mint finishes -
  * which produced "Object 0xdad…908 does not exist" failures.
  *
  * Env override: NEXT_PUBLIC_PK_RECEIPTS_ENABLED=false force-disables
@@ -109,7 +109,7 @@ export function paymentKitReceiptsEnabled(): boolean {
 /**
  * Called by the warmup client component once `/api/zk/warmup` confirms
  * the registry exists. Subsequent sends in this browser will attach
- * Payment Kit receipts. Persists across sessions — so the user only
+ * Payment Kit receipts. Persists across sessions, so the user only
  * pays the cold mint once.
  */
 export function markPaymentKitReady() {
@@ -128,7 +128,7 @@ export function markPaymentKitReady() {
  *      `(nonce, receiver, amount)` pairs fail.
  *
  * The kit's `processRegistryPayment` call internally pulls the exact USDsui
- * amount from the caller's wallet (via `coinWithBalance`) — we don't need
+ * amount from the caller's wallet (via `coinWithBalance`), we don't need
  * a separate `transferObjects`. The PaymentRecord dynamic field that gets
  * minted IS the receipt; the merchant takes custody of the USDsui balance.
  */
@@ -136,11 +136,11 @@ export function buildPayWithReceipt(opts: {
   sender: string;
   /** Existing registry id, or null to mint a new one inline. */
   registry: string | null;
-  /** Recipient address — the merchant. */
+  /** Recipient address, the merchant. */
   merchant: string;
   /** USDsui amount in dollars (will be converted to micro-units, 6 decimals). */
   amountUsdsui: number;
-  /** Invoice slug — used as the receipt nonce. */
+  /** Invoice slug, used as the receipt nonce. */
   invoiceSlug: string;
 }): { build: (tx: Transaction) => void | Promise<void> } {
   const client = paymentKitClient();
@@ -226,8 +226,8 @@ export function suiscanReceiptUrl(objectId: string): string {
 // Platform-wide receipt attachment
 // ---------------------------------------------------------------------------
 //
-// Every USDsui payment Talise processes — sends, payroll legs, bill payments,
-// remittance settlements — registers under the global `talise` registry so
+// Every USDsui payment Talise processes, sends, payroll legs, bill payments,
+// remittance settlements, registers under the global `talise` registry so
 // the transaction is provably part of our app on chain. The PaymentKey hash
 // includes (nonce, amount, receiver, coin_type), so uniqueness only requires
 // the nonce to differ when the other fields match.
@@ -238,7 +238,7 @@ export function suiscanReceiptUrl(objectId: string): string {
  *   <kind>:<sender6>:<receiver6>:<base36-timestamp>:<base36-random>
  *
  * Short, sortable-ish, and collision-safe in practice. We don't need
- * cryptographic uniqueness — PaymentKit's PaymentKey collision check guards
+ * cryptographic uniqueness, PaymentKit's PaymentKey collision check guards
  * the rest (an attacker can't replay a tx since amounts + receivers are
  * different from any real prior payment).
  */
@@ -263,7 +263,7 @@ export function nonceFor(
  *
  * The PTB:
  *   1. Optionally bootstraps the Talise global registry if it doesn't exist.
- *   2. Calls payment-kit `processRegistryPayment` — pulls USDsui from sender,
+ *   2. Calls payment-kit `processRegistryPayment`, pulls USDsui from sender,
  *      transfers to receiver, mints PaymentReceipt under the talise registry.
  *
  * Returns the same `{ build }` shape as our other PTB builders so the
@@ -317,7 +317,7 @@ export function buildUsdsuiBatchWithReceipts(opts: {
     build: (tx: Transaction) => {
       for (let i = 0; i < opts.recipients.length; i++) {
         const r = opts.recipients[i];
-        // Use the SAME compact nonce shape as single sends (`nonceFor`) — the
+        // Use the SAME compact nonce shape as single sends (`nonceFor`), the
         // Payment Kit `validate_nonce` rejects over-long nonces (EInvalidNonce),
         // and the old `${kind}:…:${i}:${label}` form blew past that cap. A short
         // fixed prefix + the leg index keeps every nonce unique within the batch.

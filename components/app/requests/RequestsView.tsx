@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * RequestsView — tracked money requests (/app/requests).
+ * RequestsView, tracked money requests (/app/requests).
  *
  * The INVERSE of a cheque: "I need $X from you, here's a link to pay me." Unlike
  * the receive-QR on /app/pay/request (which mints an ephemeral /pay/<handle>
  * link with no tracking), each request here is a real row that flips to PAID
- * once it's settled on-chain — so you can see who has paid and cancel the rest.
+ * once it's settled on-chain, so you can see who has paid and cancel the rest.
  *
  *   • Create  → POST /api/requests { amountUsd, note? } → { request, payUrl }.
  *               The result view shows the public /req/<id> link + a QR + share.
@@ -114,14 +114,14 @@ export function RequestsView() {
           Requests
         </div>
         <h1
-          className="mt-2 text-[clamp(24px,4vw,34px)] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="mt-2 text-[clamp(24px,4vw,34px)] font-[500] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Ask to get paid.
         </h1>
         <p className="mt-2 max-w-xl text-[14px] leading-[1.5] text-[#3a5230]">
           Send someone a link to pay you a set amount. It clears the moment they
-          pay — gasless, no wallet needed — and you can see who&apos;s settled.
+          pay, gasless, no wallet needed, and you can see who&apos;s settled.
         </p>
       </header>
 
@@ -234,7 +234,7 @@ function RequestRow({
         <span className="flex shrink-0 flex-col items-end gap-1.5">
           <span
             className="text-[15px] font-semibold text-[#15300c]"
-            style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}
+            style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
           >
             {formatUsd(req.amountUsd, { fixed: true })}
           </span>
@@ -325,7 +325,7 @@ function CreateRequestSheet({
       );
       try {
         await navigator.clipboard.writeText(r.payUrl);
-        toast("Request created — pay link copied", "success");
+        toast("Request created, pay link copied", "success");
       } catch {
         toast("Request created", "success");
       }
@@ -342,7 +342,7 @@ function CreateRequestSheet({
       <div className="space-y-4">
         <Field label="Amount" hint="What you're asking for, in USD (settles 1:1 as USDsui)">
           <div className="flex items-center gap-1.5 rounded-xl border border-[#15300c]/15 bg-white/60 px-3.5 py-2.5 backdrop-blur-sm focus-within:ring-2 focus-within:ring-[#3d7a29]/45">
-            <span className="text-[20px] text-[#3a5230]" style={{ fontFamily: "var(--font-display-v2)" }}>
+            <span className="text-[20px] text-[#3a5230]" style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}>
               $
             </span>
             <input
@@ -355,7 +355,7 @@ function CreateRequestSheet({
               placeholder="0.00"
               autoFocus
               className="w-full bg-transparent text-[22px] font-[700] text-[#15300c] tabular-nums outline-none placeholder:text-[#3d7a29]"
-              style={{ letterSpacing: "-0.02em" }}
+              style={{ letterSpacing: "-0.05em" }}
             />
           </div>
         </Field>
@@ -413,7 +413,7 @@ function ShareSheet({ request, onClose }: { request: MoneyRequest | null; onClos
         });
         return;
       } catch {
-        /* cancelled / unsupported — fall through to copy */
+        /* cancelled / unsupported, fall through to copy */
       }
     }
     await copy();
@@ -426,7 +426,7 @@ function ShareSheet({ request, onClose }: { request: MoneyRequest | null; onClos
           <div className="flex flex-col items-center text-center">
             <span
               className="text-[28px] font-[800] tabular-nums text-[#15300c]"
-              style={{ fontFamily: "var(--font-display-v2)", letterSpacing: "-0.02em" }}
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', letterSpacing: "-0.02em" }}
             >
               {formatUsd(request.amountUsd, { fixed: true })}
             </span>
@@ -448,7 +448,7 @@ function ShareSheet({ request, onClose }: { request: MoneyRequest | null; onClos
             <button
               type="button"
               onClick={copy}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#15300c] px-5 py-3 text-[14px] font-medium text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-[6px] border border-[#15300c] px-5 py-3 text-[12px] uppercase tracking-[0.06em] font-mono text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
             >
               <HugeiconsIcon
                 icon={copied ? Tick02Icon : Copy01Icon}

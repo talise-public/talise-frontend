@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  * url with `Authorization: Bearer <token>` on the top-level request; we verify
  * the bearer, mint the matching web-session cookie, and 302 to the in-app page.
  * The WKWebView follows the redirect WITH the cookie set, so the page + its
- * same-origin shield API calls are authenticated — keeping the private flow
+ * same-origin shield API calls are authenticated, keeping the private flow
  * fully inside the app (no Safari hand-off).
  *
  * Anti-open-redirect: the destination is restricted to a fixed allowlist of

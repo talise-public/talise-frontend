@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * BankSelect — on-brand searchable bank picker (replaces the native <select>).
+ * BankSelect, on-brand searchable bank picker (replaces the native <select>).
  *
  * A button that opens a search + scrollable list rendered inline (no portal,
  * so it always inherits the v2 theme). Click-outside + Escape close it.
@@ -107,7 +107,7 @@ export function BankSelect({
               className="w-full bg-transparent text-[14px] text-[#15300c] outline-none placeholder:text-[#3d7a29]"
             />
           </div>
-          <ul className="max-h-64 overflow-y-auto py-1">
+          <ul data-lenis-prevent className="max-h-64 overflow-y-auto py-1">
             {filtered.length === 0 && (
               <li className="px-4 py-3 text-[13px] text-[#3d7a29]">No banks match.</li>
             )}

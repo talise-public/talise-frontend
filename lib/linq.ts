@@ -3,24 +3,24 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Linq B2B off-ramp client — USDSUI → NGN bank payout.
+ * Linq B2B off-ramp client, USDSUI → NGN bank payout.
  *
  * Replaces the Paga integration. Linq is a complete payout engine: we create
  * an order and it hands back a DEPOSIT wallet address it watches; the user
- * sends USDSUI there and Linq pays the bank itself. So — unlike the Paga path
- * — Talise needs NO treasury float, NO on-chain verification, and NO refund
+ * sends USDSUI there and Linq pays the bank itself. So, unlike the Paga path
+ *, Talise needs NO treasury float, NO on-chain verification, and NO refund
  * machinery: Linq owns deposit detection, the 10-minute timeout, and payout.
  *
  * Auth: every endpoint except GET /b2b/rate needs `X-API-Key`. Webhooks are
  * signed `X-Linq-Signature: sha256=<hex>` (HMAC-SHA256 of the raw body, keyed
- * by the webhook secret — SEPARATE from the API key).
+ * by the webhook secret, SEPARATE from the API key).
  *
  * Env (set after one-time `POST /b2b/signup` with the invite code):
  *   LINQ_API_KEY         biz_live_…   (X-API-Key)
  *   LINQ_WEBHOOK_SECRET  whsec_…      (webhook HMAC key)
  *   LINQ_BASE_URL        optional override of the default host
  *
- * Coin: USDSUI on Sui (6 decimals) — same contract Talise uses
+ * Coin: USDSUI on Sui (6 decimals), same contract Talise uses
  * (0x44f838…::usdsui::USDSUI), verified identical to USDSUI_TYPE.
  */
 
@@ -29,7 +29,7 @@ const DEFAULT_BASE_URL =
 
 /**
  * The ONLY coin Talise off-ramps. Linq also supports USDC, but we move USDSUI
- * end-to-end — sending it explicitly (rather than relying on Linq's "usdsui"
+ * end-to-end, sending it explicitly (rather than relying on Linq's "usdsui"
  * default) guarantees the deposit wallet watches for the same coin the client
  * sends. `USDSUI_CONTRACT` is the on-chain type; we assert order.coinType
  * matches it before letting the client deposit.
@@ -70,7 +70,7 @@ export function linqConfigured(): boolean {
 
 /**
  * Product gate for bank cash-out. CLOSED by default for the TestFlight launch.
- * Open by setting `FEATURE_CASHOUT=true` in Vercel — the SAME flag the app's
+ * Open by setting `FEATURE_CASHOUT=true` in Vercel, the SAME flag the app's
  * UI reads via /api/me, so one env var opens both the UI and this backend at
  * once. Gating here (not just the UI) closes cash-out for already-installed
  * builds and any direct API call too.
@@ -83,7 +83,7 @@ export function cashoutFeatureOpen(): boolean {
 
 /** User-facing copy when cash-out is gated closed. */
 export const CASHOUT_CLOSED_MESSAGE =
-  "Cash-out to bank isn't available yet — it's coming soon. Your balance is untouched.";
+  "Cash-out to bank isn't available yet, it's coming soon. Your balance is untouched.";
 
 function baseUrl(): string {
   return process.env.LINQ_BASE_URL?.trim() || DEFAULT_BASE_URL;
@@ -175,18 +175,18 @@ export interface CreateOrderInput {
   accountName: string;
   /**
    * Sui wallet to auto-refund the stablecoin to if the bank payout fails.
-   * STRONGLY RECOMMENDED — without it, a failed payout leaves the deposit
+   * STRONGLY RECOMMENDED, without it, a failed payout leaves the deposit
    * stuck pending manual support. Always the address that SENT the deposit.
    */
   refundAddress?: string;
   /**
-   * Stablecoin to off-ramp. Defaults to USDSUI — the only coin Talise moves.
+   * Stablecoin to off-ramp. Defaults to USDSUI, the only coin Talise moves.
    * Sent explicitly so the deposit wallet never ends up watching for USDC.
    */
   coin?: "usdsui" | "usdc";
   /** Your own reference (echoed in webhooks). */
   customerRef?: string;
-  /** Unique per order — re-sending the same key returns the original order. */
+  /** Unique per order, re-sending the same key returns the original order. */
   idempotencyKey: string;
 }
 
@@ -360,7 +360,7 @@ export async function checkDailyOfframpCap(
     ...(ok
       ? {}
       : {
-          error: `Cash-outs are capped at $${OFFRAMP_MAX_USD} per day. You have $${remaining.toFixed(2)} left today — verify your identity (KYC) to raise your limit.`,
+          error: `Cash-outs are capped at $${OFFRAMP_MAX_USD} per day. You have $${remaining.toFixed(2)} left today, verify your identity (KYC) to raise your limit.`,
           code: "OFFRAMP_DAILY_CAP",
         }),
   };

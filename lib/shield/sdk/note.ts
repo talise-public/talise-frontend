@@ -1,5 +1,5 @@
 /**
- * Talise shielded-pool SDK — notes (commitment + nullifier).
+ * Talise shielded-pool SDK, notes (commitment + nullifier).
  *
  * A NOTE is the private representation of value: a leaf commitment in the
  * height-26 Merkle tree. There is no wrapped coin.
@@ -50,7 +50,7 @@ export function makeNote(params: {
 
 /**
  * commitment = Poseidon4(amount, pubkey, blinding, pool).
- * STUBBED Poseidon — see keys.ts.
+ * STUBBED Poseidon, see keys.ts.
  */
 export function noteCommitment(note: Note): bigint {
   return poseidonStub([note.amount, note.pubkey, note.blinding, note.pool]);
@@ -59,7 +59,7 @@ export function noteCommitment(note: Note): bigint {
 /**
  * nullifier = Poseidon3(commitment, pathIndex, sig).
  * `sig` binds the spending key so only the owner can derive the nullifier.
- * STUBBED Poseidon — see keys.ts.
+ * STUBBED Poseidon, see keys.ts.
  */
 export function noteNullifier(params: {
   commitment: bigint;
@@ -75,7 +75,7 @@ export function noteNullifier(params: {
 
 /**
  * A 254-bit random field element from a CSPRNG. REAL (Web Crypto). Used for
- * note blinding — distinct per note so two equal-amount notes have distinct
+ * note blinding, distinct per note so two equal-amount notes have distinct
  * commitments.
  */
 export function randomField(): bigint {

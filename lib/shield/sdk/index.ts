@@ -3,14 +3,14 @@
  *
  * Server + client importable, NO new deps (uses @mysten/sui + Web Crypto).
  * Clean public surface:
- *   • deriveShieldKeypair — note keys from a personal-message signer
- *   • makeNote / noteCommitment — build a note + its commitment
- *   • buildTransact — assemble the relayer-validatable transact PTB
- *   • scanNotes — trial-decrypt the commitments feed
+ *   • deriveShieldKeypair, note keys from a personal-message signer
+ *   • makeNote / noteCommitment, build a note + its commitment
+ *   • buildTransact, assemble the relayer-validatable transact PTB
+ *   • scanNotes, trial-decrypt the commitments feed
  *
  * CRYPTO: note ENCRYPTION is REAL (P-256 ECIES + AES-256-GCM, see encrypt.ts).
  * Poseidon and the Groth16 prover are still clearly STUBBED with TODOs (see
- * keys.ts, tx.ts). Replace before any real use — the Poseidon byte-match to
+ * keys.ts, tx.ts). Replace before any real use, the Poseidon byte-match to
  * `sui::poseidon_bn254` is THE critical gate.
  */
 

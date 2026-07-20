@@ -2,9 +2,9 @@
  * Provider-agnostic off-ramp payout layer (master plan §4).
  *
  * Public surface:
- *   - types       — the `PayoutAdapter` interface + request/response shapes
- *   - registry    — `adapterForCurrency(toCcy)` corridor resolution
- *   - adapters    — paynow-sg, zengin-jp, mpesa-ke, generic-bank (stubs)
+ *   - types     , the `PayoutAdapter` interface + request/response shapes
+ *   - registry  , `adapterForCurrency(toCcy)` corridor resolution
+ *   - adapters  , paynow-sg, zengin-jp, mpesa-ke, generic-bank (stubs)
  *
  * The live NGN off-ramp is the Linq engine behind
  * `web/app/api/offramp/linq/*` and is deliberately not routed through this

@@ -7,7 +7,7 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 
 /**
- * POST /api/auth/mobile/nonce — compute the zkLogin nonce for a
+ * POST /api/auth/mobile/nonce, compute the zkLogin nonce for a
  * device-generated ephemeral binding.
  *
  * The NATIVE Sign in with Apple flow needs the zkLogin nonce BEFORE the
@@ -15,11 +15,11 @@ export const runtime = "nodejs";
  * so Apple embeds it verbatim in the identity token's `nonce` claim, and
  * `/api/auth/mobile/exchange` later verifies the claim against the same
  * (ephemeralPubKey, maxEpoch, randomness) triple. iOS has no BN254
- * Poseidon implementation, so the computation lives here — the exact
+ * Poseidon implementation, so the computation lives here, the exact
  * same `generateNonce` call `/api/auth/mobile/start` makes for Google.
  *
  * Pure function of its inputs: unauthenticated by design (it mints
- * nothing and reveals nothing — the nonce is derivable by anyone holding
+ * nothing and reveals nothing, the nonce is derivable by anyone holding
  * the same public inputs), rate-limited like /start.
  *
  * Body: { ephemeralPubKeyB64: string (32-byte Ed25519, std base64),

@@ -23,7 +23,7 @@ export const runtime = "nodejs";
  *
  * Why throw? sponsor-execute moves money. A silent fallback on the proof
  * mint or Onara POST would either drop the send (false failure) or, worse,
- * return a fake success without a digest (false success — exactly what we
+ * return a fake success without a digest (false success, exactly what we
  * fixed in e50a2b4). So this variant rejects with a typed error and lets
  * the outer try/catch translate it into a 5xx with a stable `code`.
  *
@@ -78,7 +78,7 @@ function withLegTimeout<T>(
  * Trip 2. The user has signed the sponsored TransactionData bytes with their
  * ephemeral key. We:
  *   1. Wrap that ephemeral signature into a zkLoginSignature (sender sig).
- *   2. POST { sender, txBytes, txSignature } to Onara's /sponsor endpoint —
+ *   2. POST { sender, txBytes, txSignature } to Onara's /sponsor endpoint -
  *      Onara enforces its policy, signs as gasOwner, broadcasts, and returns
  *      the execution result.
  *
@@ -103,11 +103,11 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Gate reads run CONCURRENTLY — app-access, rate limit and the user row
+  // Gate reads run CONCURRENTLY, app-access, rate limit and the user row
   // are independent lookups; serial they stacked 3 DB round-trips on the
   // execute critical path. Denial precedence is unchanged.
   const [denied, rl, user] = await Promise.all([
-    // Private-beta guardrail: signed-in is not enough — the account must be
+    // Private-beta guardrail: signed-in is not enough, the account must be
     // on the app allowlist before it can originate any value-moving call.
     denyUnlessAppApproved(userId),
     // Rate-limit: 30 sponsored executions per hour per user. Money-moving
@@ -150,14 +150,14 @@ export async function POST(req: Request) {
      * was minted by one of our prepare routes, so iOS knows whether
      * this was a send / invest / withdraw and how many USD it moved.
      * Server validates `kind` against a closed enum + clips `amountUsd`
-     * before crediting — a malicious client can at worst inflate their
+     * before crediting, a malicious client can at worst inflate their
      * own points balance, never anyone else's money.
      */
     meta?: {
       // `consolidate` is the one-time "Enable gasless balance" tap that
       // burns the user's Coin<USDsui> objects into their accumulator.
       // The kind is accepted here so the request validates, but the
-      // ALLOWED earn-trigger set below does NOT include it — we don't
+      // ALLOWED earn-trigger set below does NOT include it, we don't
       // credit points for a wallet-setup operation.
       kind?:
         | "send"
@@ -195,11 +195,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
 
-  // Mobile callers don't have a signing cookie — pull jwt+salt + binding
+  // Mobile callers don't have a signing cookie, pull jwt+salt + binding
   // from the mobile_sessions row instead. Web callers stay on the cookie
   // path. Pass the client's ephemeral pubkey so mobileSigningContext picks
   // the row bound to THIS signing key (not merely the newest row, which can
-  // carry a stale/expired max_epoch — the exact cause of the Onara "ZKLogin
+  // carry a stale/expired max_epoch, the exact cause of the Onara "ZKLogin
   // expired at epoch N" deposit failures).
   const signing = isMobileRequest(req)
     ? await mobileSigningContext(userId, body.ephemeralPubKeyB64)
@@ -232,7 +232,7 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         {
-          error: "Sign in again — your session predates the latest fix.",
+          error: "Sign in again, your session predates the latest fix.",
           code: "session_rebind_required",
         },
         { status: 401 }
@@ -246,40 +246,40 @@ export async function POST(req: Request) {
 
   // Expired-binding guard (mobile only). The zkLogin nonce is bound to
   // `maxEpochToUse` at sign-in and CANNOT be swapped afterward, so if that
-  // epoch is already past on chain the proof is dead — Onara would reject it
+  // epoch is already past on chain the proof is dead, Onara would reject it
   // with the cryptic "ZKLogin expired at epoch N, current epoch M". Catch it
   // HERE and return the same clean rebind signal the iOS client already
   // handles (mapExecuteError → SessionError.rebindRequired → sign-in prompt),
   // mirroring the null-binding guard above. The epoch read is memoized 30s in
   // lib/sui-epoch, so this doesn't add a fullnode round-trip to the hot path.
   //
-  // NOTE: does NOT touch the send/gasless rail — gasless-submit uses
+  // NOTE: does NOT touch the send/gasless rail, gasless-submit uses
   // body.maxEpoch on its own path and never calls this route.
   if (isMobileRequest(req)) {
     try {
       const currentEpoch = await getCurrentEpoch();
       if (maxEpochToUse <= currentEpoch) {
         console.warn(
-          `[zk/sponsor-execute] expired binding for user=${userId}: maxEpoch=${maxEpochToUse} <= currentEpoch=${currentEpoch} — routing to rebind`
+          `[zk/sponsor-execute] expired binding for user=${userId}: maxEpoch=${maxEpochToUse} <= currentEpoch=${currentEpoch}, routing to rebind`
         );
         return NextResponse.json(
           {
-            error: "Sign in again — your session has expired.",
+            error: "Sign in again, your session has expired.",
             code: "session_rebind_required",
           },
           { status: 401 }
         );
       }
     } catch (e) {
-      // If we cannot read the epoch (fullnode blip), DON'T block the send —
+      // If we cannot read the epoch (fullnode blip), DON'T block the send -
       // fall through and let Onara be the authority. This preserves the
       // working rail: at worst the user sees the old Onara error on the rare
       // occasion the epoch read fails AND the binding is genuinely expired.
-      console.warn("[zk/sponsor-execute] epoch pre-check unavailable — proceeding:", e);
+      console.warn("[zk/sponsor-execute] epoch pre-check unavailable, proceeding:", e);
     }
   }
 
-  // Pin to non-undefined locals — TS doesn't carry the validation-block
+  // Pin to non-undefined locals, TS doesn't carry the validation-block
   // narrowing of `body.*` through the IIFE closure below.
   const bytesB64 = body.bytesB64;
   const userSignature = body.userSignature;
@@ -287,7 +287,7 @@ export async function POST(req: Request) {
   // Outer route cap. iOS used to hit URLSession's 60s default before
   // anything in here could fall over cleanly. We promise-race the whole
   // pipeline against 25s so we ALWAYS surface a JSON error before iOS
-  // gives up — request-timeout on the client is now 30s, this fires first.
+  // gives up, request-timeout on the client is now 30s, this fires first.
   const ROUTE_CAP_MS = 25_000;
   let outerTimer: ReturnType<typeof setTimeout> | undefined;
   const routeDeadline = new Promise<never>((_, reject) => {
@@ -319,7 +319,7 @@ export async function POST(req: Request) {
   const work = (async () => {
     const t0 = Date.now();
     // Proof mint: cached path ~250ms, fresh Shinami ~2-4s, fresh GPU
-    // ~400ms. 12s ceiling is 3x the worst hot path — anything beyond
+    // ~400ms. 12s ceiling is 3x the worst hot path, anything beyond
     // means Shinami/GPU is wedged and we should fail fast.
     const assemble = (useCachedProof: boolean) =>
       withLegTimeout(
@@ -340,7 +340,7 @@ export async function POST(req: Request) {
     const tProof = Date.now();
     // Tag the freshness with the prover backend so we can grep
     // "FRESH-GPU" vs "FRESH-SHINAMI" vs "FRESH-CANARY" in production
-    // logs. Confirms ZK_PROVER_PRIMARY routing is actually winning —
+    // logs. Confirms ZK_PROVER_PRIMARY routing is actually winning -
     // critical signal during the GPU cutover.
     const freshTagFor = (a: typeof assembled) =>
       a.isFresh
@@ -356,7 +356,7 @@ export async function POST(req: Request) {
     // receipt instead of waiting for the chain to include the tx.
     // Sui finalizes in ~600ms regardless; this lets the user's UI
     // advance immediately. Trade-off: if the tx fails on chain (rare
-    // — only on malformed PTB or balance race), we don't surface that
+    //, only on malformed PTB or balance race), we don't surface that
     // here. iOS resolves the actual outcome by polling the digest
     // (HomeView's optimistic-balance path already does this).
     //
@@ -381,7 +381,7 @@ export async function POST(req: Request) {
           txBytes: bytesB64,
           txSignature: sig,
           waitForExecution: false,
-          // Skip Onara's pre-broadcast simulate — one fewer RPC round-trip on
+          // Skip Onara's pre-broadcast simulate, one fewer RPC round-trip on
           // the hot send path. The send is already optimistic (we don't wait
           // for execution; iOS polls the digest), so the simulate only added
           // latency + a timeout surface under RPC congestion.
@@ -399,14 +399,14 @@ export async function POST(req: Request) {
     } catch (err) {
       // Stale client proof: the cached proof was minted against a previous
       // ephemeral key, so the chain rejects the assembled signature with a
-      // Groth16 verify failure. The server holds the jwt+salt — re-mint a
+      // Groth16 verify failure. The server holds the jwt+salt, re-mint a
       // FRESH proof and retry ONCE instead of dead-ending the send (the
       // response's freshProof then replaces the client's stale cache). If
       // the JWT itself is too old to prove, the mint throws and the proof-
       // leg error mapping below converts it to session_rebind_required.
       if (!assembled.isFresh && body.cachedProof && isStaleProofError(err)) {
         console.warn(
-          `[zk/sponsor-execute] stale cached proof rejected on-chain (user=${userId}) — re-minting fresh and retrying once`
+          `[zk/sponsor-execute] stale cached proof rejected on-chain (user=${userId}), re-minting fresh and retrying once`
         );
         assembled = await assemble(false);
         result = await broadcast(assembled.signature);
@@ -419,7 +419,7 @@ export async function POST(req: Request) {
     const tDone = Date.now();
 
     // Per-leg timing so we can see exactly where the latency goes.
-    // Logged on EVERY successful response (defense in depth) — grep
+    // Logged on EVERY successful response (defense in depth), grep
     // `[zk/sponsor-execute]` to see proof/onara/total breakdown.
     console.log(
       `[zk/sponsor-execute] proof=${tProof - t0}ms (${freshTagFor(assembled)}) · onara=${tDone - tProof}ms · total=${tDone - t0}ms`
@@ -438,11 +438,11 @@ export async function POST(req: Request) {
       },
     });
 
-    // Rewards earn — fire-and-forget. The user's money already moved;
+    // Rewards earn, fire-and-forget. The user's money already moved;
     // if the points write fails (DB hiccup, etc.) we don't block the
     // response. Validation here is server-side: only the closed kind
     // enum, only positive amounts up to a per-tx cap (defends against
-    // a malicious client inflating their own points balance — at worst
+    // a malicious client inflating their own points balance, at worst
     // a single tx earns the cap, never more).
     const meta = body.meta;
     if (
@@ -462,10 +462,10 @@ export async function POST(req: Request) {
       const trigger = meta.kind as EarnTrigger;
       if (ALLOWED.has(trigger)) {
         // 10k USD per-tx cap on the points-earning amount. Real txs
-        // can exceed this — the user just doesn't farm extra points
+        // can exceed this, the user just doesn't farm extra points
         // beyond it.
         const amountUsd = Math.min(meta.amountUsd, 10_000);
-        // Don't await — we'll return to iOS as soon as we have the
+        // Don't await, we'll return to iOS as soon as we have the
         // digest. The .catch() prevents an unhandled promise rejection
         // from crashing the request handler.
         awardForTx({
@@ -481,12 +481,12 @@ export async function POST(req: Request) {
     }
 
     // Onara returns the raw gRPC `TransactionResult` from its
-    // executeTransaction — a discriminated union shaped like:
+    // executeTransaction, a discriminated union shaped like:
     //   { $kind: 'Transaction',       Transaction:       { digest, effects, ... } }
     //   { $kind: 'FailedTransaction', FailedTransaction: { digest, ... } }
     // So `result.digest` is undefined; the digest is one level deeper.
     // Fall through several known shapes for resilience to upstream
-    // changes — we'd rather extract a digest than fail the send over
+    // changes, we'd rather extract a digest than fail the send over
     // a field-name diff.
     const r = result as Record<string, unknown>;
     const okTx =
@@ -496,14 +496,14 @@ export async function POST(req: Request) {
 
     // MONEY-SAFETY: a tx that is ADMITTED then Move-ABORTS comes back as a
     // FailedTransaction that STILL carries a digest. Never report that as a
-    // delivered send — the recipient was not paid and the balance must not drop.
+    // delivered send, the recipient was not paid and the balance must not drop.
     if ((r.$kind as string | undefined) === "FailedTransaction" || (failedTx && !okTx)) {
       console.error(
         `[zk/sponsor-execute] FAILED on-chain tx user=${userId} digest=${failedTx?.digest ?? ""}`,
         JSON.stringify(failedTx ?? r)
       );
       return NextResponse.json(
-        { error: "transaction failed on chain (aborted) — funds not moved", code: "TX_ABORTED" },
+        { error: "transaction failed on chain (aborted), funds not moved", code: "TX_ABORTED" },
         { status: 502 }
       );
     }
@@ -512,17 +512,17 @@ export async function POST(req: Request) {
     if (!digest) {
       // Log the raw shape so we can fix the extractor without guessing.
       console.error(
-        "[zk/sponsor-execute] no digest in Onara response — shape:",
+        "[zk/sponsor-execute] no digest in Onara response, shape:",
         JSON.stringify(Object.keys(r))
       );
     }
 
-    // Phase 2 v2 — Round-up & Save credit on the COMPOUND PTB.
+    // Phase 2 v2, Round-up & Save credit on the COMPOUND PTB.
     //
     // The send PTB now includes a NAVI supply leg for `meta.roundupUsd`
     // (computed + appended by /api/send/prepare based on the user's
     // round-up config). It already settled atomically with the send
-    // when Onara broadcast — funds are in the NAVI pool. All that's
+    // when Onara broadcast, funds are in the NAVI pool. All that's
     // left is the bookkeeping: credit the 5pt/$1 round-up earn, bump
     // lifetime saved tallies (both `lifetime_saved_usd` and the
     // running `roundup_saved_usd` for the RoundupCard UI).
@@ -532,13 +532,13 @@ export async function POST(req: Request) {
     // crediting any other value would diverge from chain reality. A
     // malicious client that LIES about roundupUsd > 0 when no supply
     // ran will fail Sui validation at sponsor-time (the PTB doesn't
-    // match what they're claiming) — so by the time we reach this
+    // match what they're claiming), so by the time we reach this
     // point the value is implicitly verified.
     // Notify the RECIPIENT that money landed. The stash was set in
     // sponsor-prepare; previously only gasless-submit consumed it, so
     // SPONSORED sends (Spend+Save round-ups, cross-currency, any Move-call
     // send) settled without ever notifying the recipient. Consume it here too
-    // so every inbound send pushes. Fire-and-forget — never gates the
+    // so every inbound send pushes. Fire-and-forget, never gates the
     // response, never throws (same contract as gasless-submit).
     if (digest) {
       const inbound = takePendingInbound(userId);
@@ -597,7 +597,7 @@ export async function POST(req: Request) {
     const msg = e.message ?? "execute failed";
 
     // Hard deadline tripped before any leg could fail cleanly. Shouldn't
-    // happen in practice (each leg has its own shorter cap) — surfacing
+    // happen in practice (each leg has its own shorter cap), surfacing
     // it distinctly so we'd notice in logs.
     if (e.code === "ROUTE_TIMEOUT") {
       console.error("[zk/sponsor-execute] route deadline exceeded");
@@ -607,7 +607,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Proof mint took too long — almost always Shinami congestion or a
+    // Proof mint took too long, almost always Shinami congestion or a
     // GPU box that's degraded. iOS shows the user a real error; we
     // don't poison the cache or fake success.
     if (e.code === "PROOF_TIMEOUT") {
@@ -629,21 +629,21 @@ export async function POST(req: Request) {
 
     // Proof mint threw. An "Invalid params" (-32602) from the prover means
     // the JWT can no longer mint a proof (expired id_token / nonce-binding
-    // mismatch) — that's a SESSION problem, not a prover outage: route the
+    // mismatch), that's a SESSION problem, not a prover outage: route the
     // client to a clean re-sign-in instead of an opaque 502 it would retry
     // forever (the iOS money flows all handle session_rebind_required).
     if (e.leg === "proof") {
       if (/-32602|invalid params/i.test(msg)) {
         return NextResponse.json(
           {
-            error: "Sign in again — your session needs a refresh.",
+            error: "Sign in again, your session needs a refresh.",
             code: "session_rebind_required",
           },
           { status: 401 }
         );
       }
       // Network glitch, Shinami 5xx, GPU down. The zksigner already
-      // exhausted its primary→fallback chain — we're out of options for
+      // exhausted its primary→fallback chain, we're out of options for
       // this request. 502 distinguishes from timeout.
       return NextResponse.json(
         { error: msg, code: "PROOF_FAILED" },

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/me/nfts
  *
- * The signed-in user's display-bearing Sui objects (NFTs) — for picking a
+ * The signed-in user's display-bearing Sui objects (NFTs), for picking a
  * profile picture. Reads owned objects via Sui GraphQL and keeps only those
  * with a resolvable `image_url` in their on-chain Display. `ipfs://` is
  * rewritten to a public gateway so the URL loads directly in the app.
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
   const out: Array<{ objectId: string; name: string; imageUrl: string }> = [];
   try {
     let cursor: string | null = null;
-    // Walk up to 3 pages (150 objects) — plenty for an avatar picker.
+    // Walk up to 3 pages (150 objects), plenty for an avatar picker.
     for (let page = 0; page < 3; page++) {
       const data: GqlObjects = await gql<GqlObjects>(QUERY, {
         addr: user.sui_address,

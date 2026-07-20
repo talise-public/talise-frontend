@@ -38,7 +38,7 @@ import {
 } from "./earn-data";
 import { useEarnAction } from "./useEarnAction";
 
-// framer-motion only loads on the save-success celebration — keep it out of the
+// framer-motion only loads on the save-success celebration, keep it out of the
 // Earn page's initial bundle.
 const PiggySave = dynamic(
   () => import("@/components/app/anim/PiggySave").then((m) => ({ default: m.PiggySave })),
@@ -47,7 +47,7 @@ const PiggySave = dynamic(
 import { EarnDisclosureSheet } from "./EarnDisclosureSheet";
 import { WithdrawSheet } from "./WithdrawSheet";
 
-/** Colloquial plural for the user's display currency — drives the headline. */
+/** Colloquial plural for the user's display currency, drives the headline. */
 function moneyWordFor(code: string): string {
   switch (code) {
     case "USD":
@@ -144,11 +144,11 @@ export function SupplyCard() {
 
   return (
     <div className="space-y-4">
-      {/* Headline — big ink number style, APY is the hero stat */}
+      {/* Headline, big ink number style, APY is the hero stat */}
       <div className="space-y-0.5">
         <h1
-          className="text-[24px] font-[800] uppercase leading-tight tracking-[-0.02em] text-[#15300c] sm:text-[28px]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="text-[24px] font-[500] leading-tight tracking-[-0.05em] text-[#15300c] sm:text-[28px]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           {best
             ? `Earn up to ${(best.apy * 100).toFixed(2)}% on your ${moneyWord}`
@@ -193,12 +193,12 @@ export function SupplyCard() {
       {/* Supply card / success state */}
       {successDigest ? (
         <GlassCard className="px-5 py-7 text-center" radius={28} tint="#CAFFB8">
-          {/* Piggy drops in + a coin falls into the slot with a little gulp —
+          {/* Piggy drops in + a coin falls into the slot with a little gulp -
               the web port of the iOS savings-success piggy. Plays once. */}
           <div className="mx-auto mb-1 grid place-items-center">
             <PiggySave size={120} />
           </div>
-          <p className="text-[17px] font-semibold tracking-[-0.02em] text-[#15300c]">Now earning</p>
+          <p className="text-[17px] font-semibold tracking-[-0.05em] text-[#15300c]">Now earning</p>
           <p className="mt-1 font-mono text-[11px] text-[#3d7a29]">
             {successDigest.slice(0, 18)}…
           </p>
@@ -214,7 +214,7 @@ export function SupplyCard() {
         <GlassCard className="space-y-4 p-5" radius={28}>
           <div className="space-y-2">
             <Eyebrow>Amount</Eyebrow>
-            {/* Amount input — glass chip */}
+            {/* Amount input, glass chip */}
             <div className="flex items-center gap-2 rounded-xl border border-[#15300c]/15 bg-white/60 px-4 py-3 backdrop-blur-sm">
               <span className="text-[26px] font-medium text-[#3a5230]">{symbol}</span>
               <input
@@ -226,7 +226,7 @@ export function SupplyCard() {
                   setError(null);
                 }}
                 placeholder="0.00"
-                className="w-full bg-transparent text-[26px] font-medium tracking-[-0.02em] tabular-nums text-[#15300c] outline-none placeholder:text-[#3d7a29]"
+                className="w-full bg-transparent text-[26px] font-medium tracking-[-0.05em] tabular-nums text-[#15300c] outline-none placeholder:text-[#3d7a29]"
               />
               <span className="text-[13px] font-medium text-[#3a5230]">{currency}</span>
             </div>
@@ -251,7 +251,7 @@ export function SupplyCard() {
 
           <PrimaryButton full disabled={!canSupply} loading={working} onClick={onSupplyTapped}>
             {amountUsd > 0
-              ? `Earn ${formatUsd(amountUsd, { fixed: true })}`
+              ? `Earn on ${formatUsd(amountUsd, { fixed: true })}`
               : "Start earning"}
           </PrimaryButton>
         </GlassCard>
@@ -314,7 +314,7 @@ function VenueRow({
       </div>
       <div className="flex items-center gap-1.5">
         <span
-          className={`text-[20px] font-medium tracking-[-0.02em] tabular-nums ${
+          className={`text-[20px] font-medium tracking-[-0.05em] tabular-nums ${
             venue.apy >= 0.0001 ? "text-[#15300c]" : "text-[#3d7a29]"
           }`}
         >
@@ -374,7 +374,7 @@ function ProjectionRow({
     <div className="flex items-center justify-between px-4 py-2.5">
       <span className="text-[13px] text-[#3a5230]">{label}</span>
       <span
-        className={`text-[14px] font-medium tracking-[-0.01em] tabular-nums ${
+        className={`text-[14px] font-medium tracking-[-0.05em] tabular-nums ${
           accent ? "font-semibold text-[#15300c]" : "text-[#15300c]"
         }`}
       >

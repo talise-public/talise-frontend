@@ -8,12 +8,12 @@ import Image from "next/image";
  * "Continue with Google" and stays until the browser actually navigates
  * to Google's OAuth screen. Without this, the dark hero would freeze
  * for half a second while the ephemeral key + state cookie get minted
- * — visually ugly and confusing on a slow network.
+ *, visually ugly and confusing on a slow network.
  *
  * Why a full-screen overlay (not just a button spinner): the OAuth
  * preparation kicks off TWO fetches in series (the state cookie set,
  * then the Shinami ephemeral key registration). On a cold tab they
- * collectively take 300-900ms — long enough that the user thinks the
+ * collectively take 300-900ms, long enough that the user thinks the
  * button is broken.
  *
  * The galaxy backdrop reuses the existing /landing-hero.png so we don't
@@ -39,7 +39,7 @@ export function SigninPreloader({
           role="status"
           aria-live="polite"
         >
-          {/* Cosmic backdrop — same hero galaxy, faded + scaled out. */}
+          {/* Cosmic backdrop, same hero galaxy, faded + scaled out. */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-70"
@@ -88,7 +88,8 @@ export function SigninPreloader({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="mt-7 text-[22px] font-medium tracking-[-0.02em] text-[#111]"
+              className="mt-7 text-[22px] font-medium tracking-[-0.05em] text-[#111]"
+              style={{ fontFamily: '"TWK Everett", "Hanken Grotesk", system-ui, sans-serif' }}
             >
               talise
             </motion.div>

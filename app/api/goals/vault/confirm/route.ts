@@ -18,13 +18,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/goals/vault/confirm — record an on-chain GoalVault op AFTER the
+ * POST /api/goals/vault/confirm, record an on-chain GoalVault op AFTER the
  * sponsored tx has landed.
  *
  * Body: { goalId, op: "create" | "deposit" | "withdraw", amountUsd, digest }
  *
  * The REAL funds live in the user's on-chain GoalVault (segregated from their
- * spendable balance). `current_usd` is only a DISPLAY tracker — so we sync it
+ * spendable balance). `current_usd` is only a DISPLAY tracker, so we sync it
  * here ONLY after verifying the tx (a) succeeded and (b) was sent by this user.
  * For `create` we also capture the freshly-minted GoalVault object id from the
  * tx's objectChanges (mirrors lib/cheques.ts) and persist it on the goal so
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
   try {
     await sui().waitForTransaction({ digest });
   } catch {
-    /* not indexed in time — try the read anyway below */
+    /* not indexed in time, try the read anyway below */
   }
   let tx;
   try {
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     }
 
     // Yield ops move funds between the vault's principal and its NAVI position
-    // WITHIN the same goal — the goal's total (current_usd) is unchanged. We
+    // WITHIN the same goal, the goal's total (current_usd) is unchanged. We
     // only flip the "earning" flag. (Display total stays put; APY accrues on
     // chain and is reflected when the position is next read.)
     if (op === "yield-start" || op === "yield-add" || op === "yield-withdraw") {

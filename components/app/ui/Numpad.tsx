@@ -11,7 +11,7 @@ export type NumpadProps = {
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"] as const;
 
-/** A 3-column numeric keypad for amount entry — digits, a decimal, backspace. */
+/** A 3-column numeric keypad for amount entry, digits, a decimal, backspace. */
 export function Numpad({ onKey, onBackspace, className = "" }: NumpadProps) {
   return (
     <div className={`grid grid-cols-3 gap-2 ${className}`}>

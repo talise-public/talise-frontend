@@ -1,5 +1,5 @@
 /**
- * DeepBook V3 Margin — USDsui supplier (best-margin yield).
+ * DeepBook V3 Margin, USDsui supplier (best-margin yield).
  *
  * Suppliers deposit USDsui into the DeepBook margin pool and earn the
  * borrow rate × utilization × (1 − protocol spread). This generally
@@ -12,7 +12,7 @@
  *   3. Withdraw: redeem shares (cap-gated).
  *
  * The on-chain refs below are pulled directly from `@mysten/deepbook-v3`
- * mainnet config (v1.3.6, margin v8) — we don't hand-roll any object ids
+ * mainnet config (v1.3.6, margin v8), we don't hand-roll any object ids
  * other than the lending-pool key map.
  */
 
@@ -23,7 +23,7 @@ import { network, sui } from "./sui";
 /**
  * Lending pool object ids by coin key. Verified against Surflux
  * /deepbook-margin/pools (2026-05-11). USDsui is the only pool we
- * surface in Talise — the others (SUI/USDC/DEEP) sit underneath the
+ * surface in Talise, the others (SUI/USDC/DEEP) sit underneath the
  * trading flows.
  */
 export const LENDING_POOLS = {
@@ -34,16 +34,16 @@ export const LENDING_POOLS = {
  * SupplierCap struct type used to filter owned objects.
  *
  * Sui's qualified type names anchor to the package that ORIGINALLY
- * defined the struct, even after upgrades — so this is always the
+ * defined the struct, even after upgrades, so this is always the
  * margin protocol's v1 (canonical) package id. DeepBook upgraded
  * its margin package in late 2026 (new MARGIN_PACKAGE_ID =
  * 0x124bb3…cff2e in SDK 1.4.1), but existing SupplierCap objects
- * — and any newly minted ones — keep the v1 type identifier below.
+ *, and any newly minted ones, keep the v1 type identifier below.
  *
  * Earlier code hardcoded the intermediate 0xfbd3…1377 id, which
  * lookups never matched (returning null for every user), forcing
  * `buildSupplyUsdsuiMargin` to mint a fresh cap on every call.
- * That always aborted on `margin_registry::load_inner` (code 10 —
+ * That always aborted on `margin_registry::load_inner` (code 10 -
  * Versioned mismatch) because the OLD package's mint helper was
  * touching the NEW registry's versioned inner.
  */
@@ -54,7 +54,7 @@ const USDSUI_DECIMALS = 6;
 
 function dbClient(address: string): DeepBookClient {
   const net = network();
-  // Reuse the shared gRPC client — DeepBookClient hits the unified
+  // Reuse the shared gRPC client, DeepBookClient hits the unified
   // BaseClient surface under the hood, so passing `sui()` is fine.
   return new DeepBookClient({
     client: sui() as never,
@@ -100,7 +100,7 @@ export async function fetchUsdsuiMarginApy(): Promise<{
 }
 
 /**
- * Find the user's SupplierCap (if any) — needed for every supply +
+ * Find the user's SupplierCap (if any), needed for every supply +
  * withdraw call after the first mint.
  */
 export async function fetchSupplierCapId(

@@ -7,7 +7,7 @@ import type { AnalyticsSummary } from "@/lib/analytics/types";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/analytics/summary — the cached on-chain AnalyticsSummary.
+ * GET /api/analytics/summary, the cached on-chain AnalyticsSummary.
  *
  * Reads whatever the indexer has persisted so far (analytics_user_stats +
  * analytics_recent_tx + analytics_index_state) and returns REAL totals,

@@ -5,7 +5,7 @@
  * ~2.9% + $0.30, which alone exceeds Talise's ~80bps gross spread), so the
  * product MUST default to bank-rail funding and treat card as a surcharged
  * convenience tier. This module is the single source of truth for the set of
- * funding methods and their surfaced cost — the GET /api/onramp/methods route
+ * funding methods and their surfaced cost, the GET /api/onramp/methods route
  * renders these to the client so the UI can default to bank.
  *
  * Pure, no I/O. Fees are deterministic functions of the funded amount so they
@@ -20,7 +20,7 @@ export type FundingSpeed = "instant" | "same_day" | "next_day";
 
 /**
  * Per-method fee parameters. Card passes the processor cost (Stripe Crypto
- * Onramp) through explicitly — Talise eats none of it and adds no markup, so
+ * Onramp) through explicitly, Talise eats none of it and adds no markup, so
  * the user sees exactly why card is more expensive. Bank rails are ~free
  * because Circle Mint settles USD wire/ACH → USDC on Sui at par (see
  * circle-mint.ts).
@@ -37,7 +37,7 @@ const FEE_SPEC: Record<FundingMethod, FundingFeeSpec> = {
   bank_ach: { rate: 0, flatUsd: 0 },
   // FedNow/RTP instant rail: par mint, no processor cut.
   fednow: { rate: 0, flatUsd: 0 },
-  // Card via Stripe Crypto Onramp — the "killer" cost, passed through 1:1.
+  // Card via Stripe Crypto Onramp, the "killer" cost, passed through 1:1.
   card: { rate: 0.029, flatUsd: 0.3 },
 } as const;
 
@@ -102,7 +102,7 @@ function roundCents(usd: number): number {
  * Surcharge/fee charged for funding `amountUsd` via `method`, in USD.
  *
  * Card returns ~2.9% + $0.30 explicitly; bank rails return 0. This is the
- * fee the *user* pays on top of the amount they want to fund — it is NOT a
+ * fee the *user* pays on top of the amount they want to fund, it is NOT a
  * Talise margin (card fee is a pure pass-through of the processor cost).
  */
 export function fundingFeeUsd(method: FundingMethod, amountUsd: number): number {

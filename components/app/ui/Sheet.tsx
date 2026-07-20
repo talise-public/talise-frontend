@@ -16,7 +16,7 @@ export type SheetProps = {
 const MAX_W = { sm: "sm:max-w-sm", md: "sm:max-w-md", lg: "sm:max-w-lg" } as const;
 
 /**
- * Modal surface built on Radix Dialog — a bottom sheet on mobile, a centered
+ * Modal surface built on Radix Dialog, a bottom sheet on mobile, a centered
  * glass dialog on sm+. Radix gives us focus-trap, scroll-lock, ESC + backdrop
  * close, focus restoration, and the right ARIA roles for free; the look (glass
  * panel, grab handle, eyebrow title, soft green scrim) is unchanged. Controlled
@@ -31,18 +31,25 @@ export function Sheet({ open, onClose, title, children, size = "md" }: SheetProp
       }}
     >
       <Dialog.Portal>
-        {/* Backdrop — soft dark-green scrim (not pure black) + light blur. */}
+        {/* Backdrop, soft dark-green scrim (not pure black) + light blur. */}
         <Dialog.Overlay
           className="talise-sheet-backdrop fixed inset-0 z-[100] backdrop-blur-sm data-[state=closed]:opacity-0"
           style={{ background: "rgba(21,48,12,0.35)" }}
         />
         <Dialog.Content
           aria-describedby={undefined}
+          // Let the sheet's own body scroll natively under the app's Lenis
+          // smooth scroll (Lenis skips anything inside [data-lenis-prevent]).
+          data-lenis-prevent
           // Don't yank focus into the first input (pops the mobile keyboard);
           // Radix still traps focus within the panel.
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className={`talise-sheet-panel fixed inset-x-0 bottom-0 z-[101] mx-auto w-full border border-[#15300c]/10 bg-[#f7fcf2] text-[#15300c] outline-none ${MAX_W[size]} sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2`}
-          style={{ borderRadius: 24, maxHeight: "92vh", boxShadow: "0 24px 60px -20px rgba(21,48,12,0.45)" }}
+          // `app-clean` is essential: Radix portals this to <body>, OUTSIDE the
+          // app's .app-clean wrapper, so without it the --color-* tokens resolve
+          // to the dark root theme (dark sheet) and .bp-btn styling never
+          // applies (unstyled buttons). Carrying the scope here re-lights it.
+          className={`app-clean talise-sheet-panel fixed inset-x-0 bottom-0 z-[101] mx-auto w-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-fg)] outline-none ${MAX_W[size]} sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2`}
+          style={{ borderRadius: 14, maxHeight: "92vh", boxShadow: "0 24px 60px -20px rgba(21,48,12,0.45)" }}
         >
           {/* Mobile grab handle */}
           <div className="flex justify-center pt-2.5 sm:hidden">

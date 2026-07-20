@@ -3,7 +3,7 @@ import "server-only";
 import { getRecentActivityWithMeta, type ActivityEntry } from "@/lib/activity";
 
 /**
- * Talise Rewards — Month Insights (Phase 3).
+ * Talise Rewards, Month Insights (Phase 3).
  *
  * Lightweight month-to-date summary derived from the activity feed.
  * No new tables; we just bucket the user's recent on-chain motion into
@@ -19,7 +19,7 @@ import { getRecentActivityWithMeta, type ActivityEntry } from "@/lib/activity";
  *   - `spent`     ← direction === "sent"      (USD value of outflows)
  *   - `received`  ← direction === "received"  (USD value of inflows)
  *   - `saved`     ← direction === "invest"    (yield supplies count as savings)
- *   - withdraws are intentionally excluded — they're a wash with
+ *   - withdraws are intentionally excluded, they're a wash with
  *     "saved" (money moving back to the user's own wallet).
  *
  * Top counterparties: group all sent/received entries this month by
@@ -45,7 +45,7 @@ export type MonthInsights = {
   /** Number of activity entries that contributed (debugging aid). */
   sampleSize: number;
   /**
-   * False when the underlying tx-history read timed out or failed — the
+   * False when the underlying tx-history read timed out or failed, the
    * totals above were computed from a PARTIAL (possibly empty) view of
    * the chain and must NOT be cached or presented as truth. Same
    * integrity principle as the 2026-06-11 balances incident: a failed
@@ -64,7 +64,7 @@ function startOfMonth(t: number = Date.now()): number {
 /**
  * Per-entry USD value. We use USDsui as a 1:1 USD proxy (it's the user's
  * stable-coin balance). When an entry only carries SUI (rare for Talise
- * txs — these are usually gas-only sponsor reimbursements), we skip it
+ * txs, these are usually gas-only sponsor reimbursements), we skip it
  * rather than mis-priced its USD value here. Future: fold in suiPriceUsd.
  */
 function usdValue(e: ActivityEntry): number {
@@ -77,7 +77,7 @@ function usdValue(e: ActivityEntry): number {
 /**
  * Aggregate the last `sampleSize` activity entries for `address` into a
  * month-to-date insights summary. Falls back gracefully if the activity
- * fetch fails — returns zeros + an empty counterparty list, but ALWAYS
+ * fetch fails, returns zeros + an empty counterparty list, but ALWAYS
  * with `complete: false` so the caller knows these zeros came from a
  * failed read, not from a genuinely quiet month.
  */
@@ -95,7 +95,7 @@ export async function getMonthInsights(
     entries = r.entries;
     complete = r.complete;
   } catch {
-    // Soft fail — the Insights section is decorative, not load-bearing.
+    // Soft fail, the Insights section is decorative, not load-bearing.
     // `complete: false` keeps the zeros from being mistaken for truth.
     return {
       spentUsd: 0,
@@ -123,7 +123,7 @@ export async function getMonthInsights(
     else if (e.direction === "received") receivedUsd += usd;
     else if (e.direction === "invest") savedUsd += usd;
 
-    // Only sent/received contribute to counterparties — invest/withdraw
+    // Only sent/received contribute to counterparties, invest/withdraw
     // have no real counterparty (the pool isn't a person).
     // Skip self-sends: when a user pays their own address (rare but
     // possible via SuiNS misroute or a debugging tx), they shouldn't

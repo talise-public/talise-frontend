@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * DELETE /api/me/bank/[id]
  *
  * Unlink one of the caller's linked NGN bank accounts. Scoped to the
- * caller — deleting a row that isn't theirs (or doesn't exist) returns
+ * caller, deleting a row that isn't theirs (or doesn't exist) returns
  * 404, never touches another user's row.
  *
  * Response: 200 { ok: true }

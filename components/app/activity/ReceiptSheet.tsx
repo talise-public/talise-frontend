@@ -32,12 +32,12 @@ import {
 /**
  * On-chain receipt for a tapped activity row. Hero amount in the user's
  * display currency, USDsui sub-line, counterparty/venue, timestamp, network,
- * canonical digest (Suiscan link + copy), fee ("$0 — sponsored"), and the
+ * canonical digest (Suiscan link + copy), fee ("$0, sponsored"), and the
  * round-up if the send carried one.
  *
  * Design: hero badge + eyebrow label, big amount, clean detail card (flat
  * white + hairline, list rows with thin dividers), then two action buttons
- * (primary forest + ghost secondary). All radii follow the design system —
+ * (primary forest + ghost secondary). All radii follow the design system -
  * rounded-xl for buttons and cards, rounded-full only for the badge and pills.
  */
 export function ReceiptSheet({
@@ -84,7 +84,7 @@ function CashOutReceipt({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — no-op */
+      /* clipboard blocked, no-op */
     }
   };
 
@@ -94,11 +94,11 @@ function CashOutReceipt({
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })} USDsui`
-      : "—";
+      : "-";
 
   return (
     <div className="flex flex-col items-center gap-5 pb-2 pt-1">
-      {/* Hero badge — bank glyph on a coral disc (money out) */}
+      {/* Hero badge, bank glyph on a coral disc (money out) */}
       <div className="flex flex-col items-center gap-2">
         <span
           className="flex items-center justify-center rounded-full"
@@ -117,7 +117,7 @@ function CashOutReceipt({
       <div className="flex flex-col items-center gap-1 text-center">
         <span
           className="font-semibold text-[#15300c] tabular-nums"
-          style={{ fontFamily: "var(--font-display-v2)", fontSize: 38, lineHeight: 1.06, letterSpacing: "-0.03em" }}
+          style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontSize: 38, lineHeight: 1.06, letterSpacing: "-0.02em" }}
         >
           {done ? "You received " : ""}
           {formatNgn(offramp.amountNgn)}
@@ -154,7 +154,7 @@ function CashOutReceipt({
           href={suiscanUrl(row.digest)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#15300c] text-[15px] font-semibold text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#15300c] text-[12px] uppercase tracking-[0.06em] font-mono text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
         >
           <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={2} />
           View on Suiscan
@@ -162,7 +162,7 @@ function CashOutReceipt({
         <button
           type="button"
           onClick={copyDigest}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-[#15300c] text-[14px] font-medium text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-[6px] border border-[#15300c] text-[12px] uppercase tracking-[0.06em] font-mono text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
         >
           <HugeiconsIcon
             icon={copied ? Tick02Icon : Copy01Icon}
@@ -190,7 +190,7 @@ function SendReceipt({ row }: { row: ActivityRow }) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — no-op */
+      /* clipboard blocked, no-op */
     }
   };
 
@@ -200,13 +200,13 @@ function SendReceipt({ row }: { row: ActivityRow }) {
   if (category === "sent") {
     partyRow = {
       label: "To",
-      value: cpLabel ?? "—",
+      value: cpLabel ?? "-",
       mono: !row.counterpartyName,
     };
   } else if (category === "received") {
     partyRow = {
       label: "From",
-      value: cpLabel ?? "—",
+      value: cpLabel ?? "-",
       mono: !row.counterpartyName,
     };
   } else if (category === "invest" || category === "withdraw") {
@@ -228,7 +228,7 @@ function SendReceipt({ row }: { row: ActivityRow }) {
   } else if (row.amountSui != null) {
     heroPrimary = `${sign}${Math.abs(row.amountSui).toFixed(4).replace(/\.?0+$/, "")} SUI`;
   } else {
-    heroPrimary = "—";
+    heroPrimary = "-";
   }
 
   const hasUsd = row.amountUsdsui != null && !coin;
@@ -245,11 +245,11 @@ function SendReceipt({ row }: { row: ActivityRow }) {
         <Eyebrow>{titleOf(row)}</Eyebrow>
       </div>
 
-      {/* Big amount — sign-carrying headline in display currency, USDsui sub-line */}
+      {/* Big amount, sign-carrying headline in display currency, USDsui sub-line */}
       <div className="flex flex-col items-center gap-1 text-center">
         <span
           className="font-semibold text-[#15300c] tabular-nums"
-          style={{ fontFamily: "var(--font-display-v2)", fontSize: 38, lineHeight: 1.06, letterSpacing: "-0.03em" }}
+          style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontSize: 38, lineHeight: 1.06, letterSpacing: "-0.02em" }}
         >
           {heroPrimary}
         </span>
@@ -265,7 +265,7 @@ function SendReceipt({ row }: { row: ActivityRow }) {
         )}
       </div>
 
-      {/* Details card — flat cream surface, thin dividers between rows */}
+      {/* Details card, flat cream surface, thin dividers between rows */}
       <GlassCard className="w-full">
         {partyRow && (
           <>
@@ -281,7 +281,7 @@ function SendReceipt({ row }: { row: ActivityRow }) {
         <Divider />
         <DetailRow label="Network" value="Sui Mainnet" />
         <Divider />
-        <DetailRow label="Fee" value="$0 — sponsored" valueClass="text-[#3d7a29]" />
+        <DetailRow label="Fee" value="$0, sponsored" valueClass="text-[#3d7a29]" />
         {roundup != null && (
           <>
             <Divider />
@@ -296,13 +296,13 @@ function SendReceipt({ row }: { row: ActivityRow }) {
         <DetailRow label="Digest" value={shortDigest(row.digest)} mono />
       </GlassCard>
 
-      {/* Actions — primary forest CTA + ghost secondary, both rounded-xl */}
+      {/* Actions, primary forest CTA + ghost secondary, both rounded-xl */}
       <div className="flex w-full flex-col gap-2.5">
         <a
           href={suiscanUrl(row.digest)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#15300c] text-[15px] font-semibold text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#15300c] text-[12px] uppercase tracking-[0.06em] font-mono text-[#f7fcf2] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
         >
           <HugeiconsIcon icon={LinkSquare02Icon} size={16} strokeWidth={2} />
           View on Suiscan
@@ -310,7 +310,7 @@ function SendReceipt({ row }: { row: ActivityRow }) {
         <button
           type="button"
           onClick={copyDigest}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-[#15300c] text-[14px] font-medium text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-[6px] border border-[#15300c] text-[12px] uppercase tracking-[0.06em] font-mono text-[#15300c] transition-colors hover:bg-[#15300c] hover:text-[#f7fcf2]"
         >
           <HugeiconsIcon
             icon={copied ? Tick02Icon : Copy01Icon}

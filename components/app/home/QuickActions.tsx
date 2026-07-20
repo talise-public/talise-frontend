@@ -5,7 +5,7 @@
  * tinted icon disc. Send → the Pay flow. Receive opens the Receive sheet (pay
  * link + QR). Scan opens the camera scanner (mobile only).
  *
- * Mobile: a 3-up grid (icon over a short label). Desktop: 2-up (Scan hidden —
+ * Mobile: a 3-up grid (icon over a short label). Desktop: 2-up (Scan hidden -
  * no camera, and showing your own QR isn't "scanning").
  */
 
@@ -22,7 +22,7 @@ import dynamic from "next/dynamic";
 import { type Me } from "@/components/app";
 import { ReceiveSheet } from "./ReceiveSheet";
 
-// The scanner pulls in jsQR + the camera plumbing — only load it when the user
+// The scanner pulls in jsQR + the camera plumbing, only load it when the user
 // actually taps Scan, keeping it out of the initial bundle.
 const ScanSheet = dynamic(() => import("./ScanSheet").then((m) => ({ default: m.ScanSheet })), {
   ssr: false,
@@ -51,7 +51,7 @@ function ActionTile({ icon, label, sublabel, href, onClick, badge, className = "
         <span className="truncate text-[13px] font-medium leading-tight text-[#15300c] sm:text-[14px]">
           {label}
         </span>
-        {/* Sublabel only on >=sm — on a 4-up mobile row it wraps ("Pay / anyone")
+        {/* Sublabel only on >=sm, on a 4-up mobile row it wraps ("Pay / anyone")
             and looks broken; the label alone reads clean. */}
         <span className="mt-0.5 hidden text-[11px] leading-tight text-[#3d7a29] sm:block">
           {sublabel}
@@ -89,7 +89,7 @@ export function QuickActions({ me }: { me: Me | null }) {
   return (
     <>
       {/* Mobile: Send · Receive · Scan (3-up). Desktop: Send · Receive (Scan
-          hidden — no camera, and showing your own QR isn't "scanning"). */}
+          hidden, no camera, and showing your own QR isn't "scanning"). */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3 lg:grid-cols-2">
         <ActionTile icon={SentIcon} label="Send" sublabel="Pay anyone" href="/app/pay" />
         <ActionTile

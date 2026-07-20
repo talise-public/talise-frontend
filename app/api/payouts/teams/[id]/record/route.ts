@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  *
  * Finalize an on-chain team DELETE: after the client signs + executes the
  * sponsor-ready `payroll::delete` bytes returned by DELETE /api/payouts/teams/[id],
- * this removes the DB index row. Body: `{ digest }` (recorded for audit only —
+ * this removes the DB index row. Body: `{ digest }` (recorded for audit only -
  * the on-chain delete already happened; removing the row is idempotent and
  * ownership-gated by the WHERE clause).
  */

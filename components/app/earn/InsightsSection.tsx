@@ -20,10 +20,10 @@ export function InsightsSection() {
 
   // A `partial` response (server tx-history read timed out, no snapshot) or a
   // failed fetch (data still null after loading) means we DON'T KNOW the
-  // totals — render "—" rather than a confident ₦0.00 that looks like truth.
+  // totals, render "-" rather than a confident ₦0.00 that looks like truth.
   const trusted = data && !data.partial;
   const tileValue = (v: number | undefined) =>
-    trusted ? formatUsd(v ?? 0, { fixed: true }) : "—";
+    trusted ? formatUsd(v ?? 0, { fixed: true }) : "-";
 
   return (
     <section className="space-y-3">
@@ -34,7 +34,7 @@ export function InsightsSection() {
         </span>
       </div>
 
-      {/* 3-tile stat row — compact, no large empty voids */}
+      {/* 3-tile stat row, compact, no large empty voids */}
       <div className="grid grid-cols-3 gap-2.5">
         <Tile label="Spent" value={tileValue(data?.spentUsd)} loading={loading && !data} />
         <Tile label="Received" value={tileValue(data?.receivedUsd)} loading={loading && !data} />
@@ -46,7 +46,7 @@ export function InsightsSection() {
         />
       </div>
 
-      {/* Top counterparties — Wise-style list rows */}
+      {/* Top counterparties, Wise-style list rows */}
       {data && data.topCounterparties.length > 0 && (
         <GlassCard radius={20} className="overflow-hidden !p-0">
           {data.topCounterparties.slice(0, 4).map((c, i) => (
@@ -73,7 +73,7 @@ export function InsightsSection() {
         </GlassCard>
       )}
 
-      {/* Empty state only when the data is trustworthy — a partial read's
+      {/* Empty state only when the data is trustworthy, a partial read's
           empty list doesn't mean the user hasn't sent anything. */}
       {trusted && data.topCounterparties.length === 0 && !loading && (
         <GlassCard radius={20} className="flex items-center gap-3 px-4 py-3.5">
@@ -113,7 +113,7 @@ function Tile({
         <span className="mt-2 block h-4 w-10 rounded-full bg-[#15300c]/10" />
       ) : (
         <span
-          className={`mt-1 block truncate text-[15px] font-medium tracking-[-0.02em] tabular-nums ${
+          className={`mt-1 block truncate text-[15px] font-medium tracking-[-0.05em] tabular-nums ${
             accent ? "text-[#3d7a29]" : "text-[#15300c]"
           }`}
         >

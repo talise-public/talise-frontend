@@ -12,7 +12,7 @@ import {
  * Server-authoritative, executable FX feed for Talise quote generation.
  *
  * --- Why this exists (master plan §6, §11 item 4) ---
- * Display FX (`fx.ts`) is a pure, hardcoded Q2-2026 snapshot — fine for
+ * Display FX (`fx.ts`) is a pure, hardcoded Q2-2026 snapshot, fine for
  * rendering a balance, fatal for pricing money. Pricing a cross-currency
  * send off a stale reference rate is correlated tail risk: in a volatility
  * spike you quote a rate you can't actually execute and eat the slippage.
@@ -53,7 +53,7 @@ const FEED_TTL_MS = 60_000;
  * Max age, relative to the provider's own "last update" timestamp, that we
  * will accept when generating a quote. Beyond this the breaker trips and the
  * quote is refused (callers should fail over to USDC settlement / retry, per
- * §9 — the breaker fails over, it does not silently serve stale FX).
+ * §9, the breaker fails over, it does not silently serve stale FX).
  *
  * IMPORTANT: the default keyless provider (open.er-api.com) refreshes its
  * `time_last_update_unix` only ONCE PER DAY, so by late in the day a perfectly
@@ -87,7 +87,7 @@ const QUOTE_TTL_MS = 30_000;
  */
 const FEED_URL = process.env.FX_FEED_URL?.trim() || "https://open.er-api.com/v6/latest/USD";
 
-/** Network timeout for the feed fetch — never hang a quote on a slow API. */
+/** Network timeout for the feed fetch, never hang a quote on a slow API. */
 const FEED_FETCH_TIMEOUT_MS = 4_000;
 
 // ─── Per-corridor spread by realized-volatility tier ────────────────────────
@@ -98,9 +98,9 @@ const FEED_FETCH_TIMEOUT_MS = 4_000;
  * the master plan calls for spread set "per-corridor by realized volatility,"
  * which this encodes coarsely until a live realized-vol signal is wired in.
  *
- *   stable  — deep, liquid, low realized vol (USD, SGD, JPY).
- *   mid     — liquid EM with managed vol (KES, GHS, ZAR, PHP).
- *   high    — thin / high realized vol / capital-control friction
+ *   stable, deep, liquid, low realized vol (USD, SGD, JPY).
+ *   mid   , liquid EM with managed vol (KES, GHS, ZAR, PHP).
+ *   high  , thin / high realized vol / capital-control friction
  *             (NGN, IDR, VND).
  */
 export type VolTier = "stable" | "mid" | "high";
@@ -181,7 +181,7 @@ function snapshotTable(): RateTable {
 /**
  * Fetch and normalize the live rate table from the provider. Returns the
  * offline snapshot (source `"snapshot"`) on any transport/parse error so a
- * read of FX never throws — but quoting against a snapshot is rejected by the
+ * read of FX never throws, but quoting against a snapshot is rejected by the
  * breaker in `getQuote`.
  */
 async function fetchRateTable(): Promise<RateTable> {
@@ -219,7 +219,7 @@ async function fetchRateTable(): Promise<RateTable> {
 
   // Build the table, requiring every supported currency to be present and
   // positive. A missing/zero/NaN rate for a currency we support means we
-  // can't price it from this feed — fall back rather than emit a bad rate.
+  // can't price it from this feed, fall back rather than emit a bad rate.
   const ratesPerUsd = {} as Record<Currency, number>;
   for (const ccy of ALL_CURRENCIES) {
     if (ccy === "USD") {

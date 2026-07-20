@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 const ADDRESS_RE = /^0x[a-f0-9]{64}$/i;
 
 /**
- * POST /api/rules/record — activate a scheduled-payment rule after the user has
+ * POST /api/rules/record, activate a scheduled-payment rule after the user has
  * signed + executed the `standing_order::create` from POST /api/rules.
  *
  * Body: { digest, firstDueMs, name, trigger, intervalMinutes?, dayOfMonth?,

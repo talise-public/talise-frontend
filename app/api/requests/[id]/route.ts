@@ -6,14 +6,14 @@ import { getRequest, previewRequest, cancelRequest } from "@/lib/requests";
 export const runtime = "nodejs";
 
 /**
- * GET /api/requests/[id] — PUBLIC preview (no auth). Returns a public-safe
+ * GET /api/requests/[id], PUBLIC preview (no auth). Returns a public-safe
  * subset: amount, currency, the requester's display + pay address, an optional
  * note, status, and expiry. Powers the public /req/<id> page's client refresh.
  *
  * When the caller IS the owner, the full request row is returned instead so the
  * owner's UI can render the audit fields (pay digest, payer address).
  *
- * DELETE /api/requests/[id] — owner-only cancel of an open request.
+ * DELETE /api/requests/[id], owner-only cancel of an open request.
  */
 
 export async function GET(

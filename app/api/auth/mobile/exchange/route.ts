@@ -28,7 +28,7 @@ export const runtime = "nodejs";
  * posts it here along with the ephemeral key material. We:
  *   1. Verify the JWT's SIGNATURE + iss/aud/exp against the provider's JWKS.
  *   2. (Apple) Verify the JWT's `nonce` is the zkLogin Poseidon nonce derived
- *      from (ephemeralPubKey, maxEpoch, randomness) — binds token → session.
+ *      from (ephemeralPubKey, maxEpoch, randomness), binds token → session.
  *   3. Resolve the zkLogin salt (Shinami-managed; local fallback for Apple)
  *      to derive the deterministic Sui address.
  *   4. Upsert the user row exactly the way /auth/callback does on web.
@@ -36,7 +36,7 @@ export const runtime = "nodejs";
  *      doesn't pay the 2-4s Shinami latency.
  *   6. Issue a mobile bearer token bound to this user id.
  *
- * Body (Google — DEFAULT, unchanged legacy shape):
+ * Body (Google, DEFAULT, unchanged legacy shape):
  *   { idToken, ephemeralPubKeyB64, jwtRandomness, maxEpoch }
  * Body (Apple):
  *   { provider: "apple", idToken, ephemeralPubKeyB64, maxEpoch, randomness }
@@ -44,7 +44,7 @@ export const runtime = "nodejs";
  * Response shape is IDENTICAL for both providers.
  *
  * Notes:
- *  - No state cookie / no redirect URI dance — that's all client-side.
+ *  - No state cookie / no redirect URI dance, that's all client-side.
  *  - We do NOT set the web session cookie. Mobile is bearer-only.
  *  - Apple identity tokens expire ~10 min after issuance; we verify + mint
  *    the proof immediately, and the proof stays valid until maxEpoch. Later
@@ -53,7 +53,7 @@ export const runtime = "nodejs";
  */
 
 /** Subjects from Sign in with Apple live in the (legacy-named) google_sub
- *  column with this prefix — it's a plain UNIQUE TEXT lookup key. */
+ *  column with this prefix, it's a plain UNIQUE TEXT lookup key. */
 const APPLE_SUB_PREFIX = "apple:";
 
 function appleBundleId(): string {
@@ -71,7 +71,7 @@ function normalizeB64(raw: string): string {
  * True when a Shinami error means "Shinami processed the request and REJECTED
  * this JWT" (unknown issuer/audience → HTTP 4xx or a JSON-RPC application
  * error like -32602 Invalid params). False for 5xx / timeouts / network
- * flakes — those must NOT trigger the local-salt fallback, because minting a
+ * flakes, those must NOT trigger the local-salt fallback, because minting a
  * local salt during a transient outage would pin the subject to a different
  * wallet address than Shinami would later serve.
  *
@@ -87,7 +87,7 @@ function isShinamiJwtRejection(err: unknown): boolean {
 }
 
 export async function POST(req: Request) {
-  // Rate-limit: 5 exchanges per 60s per IP. Tight bound — each exchange
+  // Rate-limit: 5 exchanges per 60s per IP. Tight bound, each exchange
   // mints a zkLogin proof and burns Shinami quota.
   const rl = rateLimit({
     key: `mobile-exchange:${getClientIp(req)}`,
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
     }
 
     // Signature + iss ("https://appleid.apple.com") + aud (bundle id) + exp.
-    // Same takeover rationale as the Google branch — the token is
+    // Same takeover rationale as the Google branch, the token is
     // CLIENT-SUBMITTED, so JWKS signature verification is non-negotiable.
     let claims: Awaited<ReturnType<typeof verifyAppleIdToken>>;
     try {
@@ -166,7 +166,7 @@ export async function POST(req: Request) {
     }
 
     // ── Nonce binding: jwt.nonce MUST equal the zkLogin Poseidon nonce
-    // computed from (ephemeralPubKey, maxEpoch, randomness) — the same
+    // computed from (ephemeralPubKey, maxEpoch, randomness), the same
     // generateNonce the Google web flow uses in /api/auth/mobile/start.
     // Without this check a stolen Apple token could be bound to an
     // attacker-controlled ephemeral key.
@@ -202,7 +202,7 @@ export async function POST(req: Request) {
     const existing = await userByGoogleSub(subjectKey);
 
     // users.email is NOT NULL. Apple includes `email` on every identity
-    // token when the user granted the scope (relay addresses included) —
+    // token when the user granted the scope (relay addresses included) -
     // but belt-and-suspenders fall back to the stored row for returning
     // users before rejecting.
     const resolvedEmail = claims.email ?? existing?.email;
@@ -215,16 +215,16 @@ export async function POST(req: Request) {
     name = claims.name ?? existing?.name ?? "";
     picture = existing?.picture ?? null; // Apple has no picture claim
 
-    // ── Salt resolution. Stability is the only thing that matters here —
+    // ── Salt resolution. Stability is the only thing that matters here -
     // the salt determines the wallet address and must NEVER change for a
     // subject. Order:
     //   1. Local apple_salts row (subject already pinned to local path).
     //   2. Shinami getOrCreateZkLoginWallet (deterministic per iss+sub on
-    //      Shinami's side) — the preferred path, same as Google.
+    //      Shinami's side), the preferred path, same as Google.
     //   3. Shinami REJECTED the apple JWT (unknown aud/iss) → mint a local
     //      salt once (INSERT ON CONFLICT DO NOTHING, read back canonical).
     // Transient Shinami failures (5xx/timeout) abort the sign-in instead of
-    // falling back — see isShinamiJwtRejection.
+    // falling back, see isShinamiJwtRejection.
     try {
       const local = await localAppleSalt(`${claims.iss}|${claims.sub}`);
       if (local) {
@@ -258,7 +258,7 @@ export async function POST(req: Request) {
           );
         }
       } else {
-        // No Shinami configured (testnet/dev) — local table directly.
+        // No Shinami configured (testnet/dev), local table directly.
         salt = await getOrCreateLocalAppleSalt(
           `${claims.iss}|${claims.sub}`,
           generateSalt()
@@ -285,7 +285,7 @@ export async function POST(req: Request) {
       randomness: body.randomness,
     };
   } else {
-    // ── GOOGLE: legacy direct-idToken exchange — behavior unchanged ─────
+    // ── GOOGLE: legacy direct-idToken exchange, behavior unchanged ─────
     if (
       !body.idToken ||
       !body.ephemeralPubKeyB64 ||
@@ -338,7 +338,7 @@ export async function POST(req: Request) {
         suiAddress = existing?.sui_address ?? deriveSuiAddress(body.idToken, salt);
       }
     } catch (err) {
-      // Don't surface raw Shinami / SDK error strings — they sometimes
+      // Don't surface raw Shinami / SDK error strings, they sometimes
       // include the API key prefix or internal endpoint URLs. Log the
       // full message server-side and return a generic 500 to the caller.
       console.error(
@@ -380,7 +380,7 @@ export async function POST(req: Request) {
     user.salt = salt;
   }
 
-  // Pre-mint the proof. If the prover chokes we still return success — the
+  // Pre-mint the proof. If the prover chokes we still return success, the
   // client will retry on first send and pay the cold-start latency then.
   let proof: unknown = null;
   try {
@@ -410,20 +410,20 @@ export async function POST(req: Request) {
     salt,
     // Apple: persist the verified nonce-binding triple so sponsor-execute
     // re-mints with the exact values inside jwt.nonce. (Google's direct
-    // exchange keeps its legacy behavior — binding is supplied per-send.)
+    // exchange keeps its legacy behavior, binding is supplied per-send.)
     ephemeralPubKeyB64: bearerBinding?.ephemeralPubKeyB64,
     maxEpoch: bearerBinding?.maxEpoch,
     randomness: bearerBinding?.randomness,
   });
 
-  // Waitlist-handle bind hook. Hooked HERE — right after `upsertUser`
+  // Waitlist-handle bind hook. Hooked HERE, right after `upsertUser`
   // has returned a row with a real `sui_address`, and BEFORE we look
-  // up the user's owned subnames — so that the subsequent
+  // up the user's owned subnames, so that the subsequent
   // `findTaliseSubnameForOwner` call below picks up the freshly-minted
   // handle on the same response. Fire-and-forget semantics live
   // inside `bindWaitlistHandleIfAny`: it swallows all errors and
   // never throws, so sign-in cannot wedge on it. We `await` only so
-  // the resolver in the next block can see the new NFT — the bind
+  // the resolver in the next block can see the new NFT, the bind
   // call itself returns within one PTB round-trip.
   try {
     const { bindWaitlistHandleIfAny } = await import("@/lib/handle-claim");
@@ -440,7 +440,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Returning users may already own a *.talise.sui subname — surface it
+  // Returning users may already own a *.talise.sui subname, surface it
   // immediately so HomeView shows the canonical handle without an extra
   // round trip. First-time signers will get `null` here UNLESS the
   // waitlist-handle bind above just minted one; in that case the

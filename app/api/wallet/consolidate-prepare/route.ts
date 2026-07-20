@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  * POST /api/wallet/consolidate-prepare
  *
  * One-time "Enable gasless balance" action. The user holds USDsui inside
- * `Coin<USDSUI>` objects rather than the Address Balance accumulator —
+ * `Coin<USDSUI>` objects rather than the Address Balance accumulator -
  * which means the gasless rail (which can only spend out of the
  * accumulator) is blind to those funds. This route builds an Onara-
  * sponsored PTB that, for each Coin<USDSUI> object the user owns:
@@ -28,7 +28,7 @@ export const runtime = "nodejs";
  * IMPORTANT CAVEAT (2026-05-29): consolidation alone does NOT make
  * future sends gasless. Sui's gasless rail requires every PTB to carry
  * EITHER an address-owned Coin input OR a ValidDuring expiration. After
- * consolidation the user has no Coin<USDsui> anchor — and the
+ * consolidation the user has no Coin<USDsui> anchor, and the
  * validator's ValidDuring path is broken upstream
  * ("unknown TransactionExpirationKind" on gRPC). So a fully-consolidated
  * wallet trips
@@ -38,7 +38,7 @@ export const runtime = "nodejs";
  *
  * Practical use today: this route is useful for users whose USDsui is
  * spread across many Coin<USDsui> objects and want a single
- * accumulator total for accounting purposes — but it does NOT unblock
+ * accumulator total for accounting purposes, but it does NOT unblock
  * gasless on its own. iOS no longer offers this as a "fix it to make
  * sends gasless" tap. When Sui ships either (a) a public Coin→
  * accumulator deposit on the gasless allowlist or (b) a working
@@ -49,7 +49,7 @@ export const runtime = "nodejs";
  *   The PTB calls `0x2::coin::into_balance` which is NOT on the gasless
  *   allowlist (proved in docs/sui-rpc-migration/gasless-notes.md). It
  *   needs real gas (~$0.001 SUI). This is the one place we use Onara
- *   intentionally — it's a wallet-setup operation, not a transfer, and
+ *   intentionally, it's a wallet-setup operation, not a transfer, and
  *   the user pays nothing.
  *
  * Idempotent. If the user already holds zero Coin<USDSUI> objects (a
@@ -57,7 +57,7 @@ export const runtime = "nodejs";
  * 200 `{ alreadyGasless: true }` and does not build a tx.
  *
  * iOS signs the returned `bytes` and forwards to /api/zk/sponsor-execute
- * with `meta.kind = "consolidate"` — no new execute route needed.
+ * with `meta.kind = "consolidate"`, no new execute route needed.
  */
 
 const SUPPORTED_ASSETS = new Set(["USDsui"]);
@@ -101,22 +101,22 @@ export async function POST(req: Request) {
 
     // 1. Enumerate Coin<USDSUI> objects + read the accumulator amount.
     //    The accumulator-shadow detection requires BOTH:
-    //      a. `getBalance({owner, coinType}).fundsInAddressBalance` — the
+    //      a. `getBalance({owner, coinType}).fundsInAddressBalance`, the
     //         µ amount sitting in the user's address-balance accumulator.
-    //      b. `listCoins({owner, coinType})` — every Coin<T> the user
+    //      b. `listCoins({owner, coinType})`, every Coin<T> the user
     //         owns PLUS one synthetic row representing the accumulator
     //         surface. The synthetic row reports
     //           type: 0x2::coin::Coin<USDSUI>
     //           balance: <exactly fundsInAddressBalance>
     //           version: much older than peer real coins
     //         so a naive "filter on type or getObject" check passes it
-    //         through (it IS a real on-chain object — just not usable
+    //         through (it IS a real on-chain object, just not usable
     //         as a PTB input). The PTB then fails the tx with
     //         `Object … not found` at build/simulate time.
     //
     //    Robust filter: drop the row whose `balance === fundsInAddressBalance`
     //    AND whose version is dramatically older than the other coins
-    //    (the gap is millions of units in practice — empirically ~200M).
+    //    (the gap is millions of units in practice, empirically ~200M).
     const balancesPromise = client.getBalance({
       owner: user.sui_address,
       coinType: USDSUI_TYPE,
@@ -189,7 +189,7 @@ export async function POST(req: Request) {
     //    `getObject` THROWS on missing objects (unlike JSON-RPC which
     //    returned `{ data: null }`), so we wrap each in a try/catch.
     //
-    //    These checks run in parallel — for the typical user this is at
+    //    These checks run in parallel, for the typical user this is at
     //    most a handful of objects and fits inside one round-trip
     //    window.
     const verified = (
@@ -220,7 +220,7 @@ export async function POST(req: Request) {
 
     if (verified.length === 0) {
       // Nothing to consolidate. Either the user is already fully on the
-      // accumulator (good — every future send is gasless) or they have
+      // accumulator (good, every future send is gasless) or they have
       // no USDsui at all. Either way, the right answer to iOS is "this
       // tap was a no-op".
       return NextResponse.json({
@@ -239,7 +239,7 @@ export async function POST(req: Request) {
     //    The first MoveCall burns the Coin and produces a Balance<T>;
     //    the second deposits that Balance into the sender's own
     //    accumulator via the gasless-rail send_funds primitive (which
-    //    accepts the sender as recipient — same-address deposits are
+    //    accepts the sender as recipient, same-address deposits are
     //    legal and land in the accumulator).
     const tx = new Transaction();
     tx.setSender(user.sui_address);
@@ -258,7 +258,7 @@ export async function POST(req: Request) {
     }
 
     // 4. Wrap with Onara as gasOwner. Same shape as sponsor-prepare's
-    //    sponsored branch — memoized status() + getReferenceGasPrice()
+    //    sponsored branch, memoized status() + getReferenceGasPrice()
     //    in parallel, then setGasOwner + setGasPrice, then tx.build()
     //    against the gRPC client.
     const onaraClient = onara();
@@ -288,7 +288,7 @@ export async function POST(req: Request) {
       totalMicrosMoved: totalMicros.toString(),
     });
   } catch (err) {
-    // ZERO fallback. This is explicitly NOT a transfer — silently
+    // ZERO fallback. This is explicitly NOT a transfer, silently
     // dropping the failure would either pretend a setup operation
     // succeeded (and leave the user permanently stuck in Coin-only
     // state) or charge Onara for a tx the validator never accepted.

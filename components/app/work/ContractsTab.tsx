@@ -86,7 +86,7 @@ export function ContractsTab() {
 
   // Cancel a contract: the server flips status + returns Onara-SPONSORED on-chain
   // `cancel_and_withdraw` bytes (mode:'onchain') that the SENDER must sign to pull
-  // the unsent remainder back. Streaming is on-chain only — there's no gasless
+  // the unsent remainder back. Streaming is on-chain only, there's no gasless
   // refund path, so we sign the returned bytes when present.
   const cancel = useCallback(
     async (c: Contract) => {
@@ -110,7 +110,7 @@ export function ContractsTab() {
             await signSponsorReadyBytes(r.bytes, { kind: "stream-cancel" });
             toast(
               r.refundUsd
-                ? `Contract cancelled — ${formatUsd(r.refundUsd, { fixed: true })} returned`
+                ? `Contract cancelled, ${formatUsd(r.refundUsd, { fixed: true })} returned`
                 : "Contract cancelled",
               "neutral"
             );
@@ -129,7 +129,7 @@ export function ContractsTab() {
         } else {
           toast(
             r.refunded && r.refundUsd
-              ? `Contract cancelled — ${formatUsd(r.refundUsd, { fixed: true })} returned`
+              ? `Contract cancelled, ${formatUsd(r.refundUsd, { fixed: true })} returned`
               : "Contract cancelled",
             "neutral"
           );
@@ -169,7 +169,7 @@ export function ContractsTab() {
           <EmptyState
             icon={<HugeiconsIcon icon={UserGroupIcon} size={26} strokeWidth={1.6} />}
             title="No contracts yet"
-            subtitle="Set up recurring pay for a contractor or teammate. Fund it once — Talise releases each pay period automatically."
+            subtitle="Set up recurring pay for a contractor or teammate. Fund it once, Talise releases each pay period automatically."
             action={
               <PrimaryButton onClick={() => setCreateOpen(true)}>
                 <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
@@ -477,7 +477,7 @@ function CreateContractSheet({
       kind: "stream-fund",
     });
 
-    // 3) Record the stream — the server parses the created on-chain Stream
+    // 3) Record the stream, the server parses the created on-chain Stream
     //    object id from the funding digest and returns it as the stream id.
     //    The funding tx is already on-chain here; if the server's read lags
     //    indexing (409 STREAM_OBJECT_UNCONFIRMED), retry rather than fail.
@@ -519,7 +519,7 @@ function CreateContractSheet({
       },
     });
 
-    toast("Contract funded — pay starts now", "success");
+    toast("Contract funded, pay starts now", "success");
     reset();
     onCreated();
   }, [resolved, total, cad.ms, periodsNum, title, rateNum, cadence, toast, onCreated]);
@@ -537,7 +537,7 @@ function CreateContractSheet({
         } else if (code === "BELOW_GASLESS_MINIMUM" || code === "TRANCHE_BELOW_MINIMUM") {
           toast(err.message, "danger");
         } else if (err.status === 429) {
-          toast("You're going too fast — try again in a moment.", "danger");
+          toast("You're going too fast, try again in a moment.", "danger");
         } else if (err.message && err.code !== "NOT_SIGNED_IN") {
           toast(err.message, "danger");
         }
@@ -594,7 +594,7 @@ function CreateContractSheet({
                 inputMode="decimal"
                 placeholder="500"
                 className="w-full bg-transparent pl-1 text-[15px] text-[#15300c] outline-none placeholder:text-[#3d7a29]"
-                style={{ fontVariantNumeric: "tabular-nums" }}
+                style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
               />
             </div>
           </Field>
@@ -605,7 +605,7 @@ function CreateContractSheet({
               inputMode="numeric"
               placeholder="4"
               className="w-full rounded-xl border border-[#15300c]/15 bg-white/60 px-3.5 py-2.5 text-[15px] text-[#15300c] outline-none backdrop-blur-sm placeholder:text-[#3d7a29] focus:ring-2 focus:ring-[#3d7a29]/45"
-              style={{ fontVariantNumeric: "tabular-nums" }}
+              style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
             />
           </Field>
         </div>
@@ -636,7 +636,7 @@ function CreateContractSheet({
                 <MicroLabel>Funded now</MicroLabel>
                 <span
                   className="text-[22px] font-semibold text-[#15300c]"
-                  style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}
+                  style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontVariantNumeric: "tabular-nums", letterSpacing: "-0.05em" }}
                 >
                   {formatUsd(total, { fixed: true })}
                 </span>

@@ -3,7 +3,7 @@ import { memoTtl } from "./perf-cache";
 
 /**
  * Shared epoch helper. Talise reads the live Sui mainnet epoch in exactly
- * two places — `/api/sui/epoch` (the iOS client polls this before generating
+ * two places, `/api/sui/epoch` (the iOS client polls this before generating
  * its ephemeral key) and `/api/auth/mobile/start` (computes `maxEpoch` for
  * the zkLogin nonce). Both want the same value within the same second.
  *
@@ -13,7 +13,7 @@ import { memoTtl } from "./perf-cache";
  * `epoch` (uint64) along with chain id, server version, and the most-recent
  * checkpoint height. We pull the `epoch` field and ignore the rest.
  *
- * Cached for 30 seconds — epochs flip every ~24h on mainnet, so a 30-second
+ * Cached for 30 seconds, epochs flip every ~24h on mainnet, so a 30-second
  * window is well inside an epoch and avoids hammering the fullnode when
  * many sign-ins land within the same minute.
  */
@@ -35,12 +35,12 @@ const MAX_EPOCH_HORIZON = 2;
  */
 export async function getCurrentEpoch(): Promise<number> {
   return memoTtl("sui:current-epoch", EPOCH_TTL_MS, async () => {
-    // Multi-endpoint fallback — try Mysten's fullnode first, then
+    // Multi-endpoint fallback, try Mysten's fullnode first, then
     // archival, then any configured paid providers (Shinami, Dwellir,
     // QuickNode). Catches today's Mysten outage shape
     // (`no_healthy_upstream` / 503 / `UNAVAILABLE`) and walks the chain.
     const res = await suiGrpcWithFallback(async (client) => {
-      // `getServiceInfo` returns a UnaryCall which is thenable —
+      // `getServiceInfo` returns a UnaryCall which is thenable -
       // await it to resolve, then the `.response` field holds the
       // typed body. Wrapping in `async` keeps TS happy about the
       // Promise<T> contract.
@@ -68,7 +68,7 @@ export async function getMaxEpoch(): Promise<number> {
   return (await getCurrentEpoch()) + MAX_EPOCH_HORIZON;
 }
 
-// Chain identifier is the base58 genesis-checkpoint digest — IMMUTABLE per
+// Chain identifier is the base58 genesis-checkpoint digest, IMMUTABLE per
 // network. The gasless `ValidDuring` expiration must carry it as `chain`.
 // Cached for 6h (effectively forever; the re-fetch only guards against a
 // pathological process that outlives a network swap) and read through the

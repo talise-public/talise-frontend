@@ -5,7 +5,7 @@ import { userById, isAppAccessAllowed } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 /**
- * /business gate — same private-beta allowlist as /app.
+ * /business gate, same private-beta allowlist as /app.
  *
  * Signed-in + allowlisted users get the surface; everyone else is bounced to
  * /app (which renders the sign-in screen or the waiting room as appropriate).

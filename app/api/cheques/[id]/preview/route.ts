@@ -21,19 +21,22 @@ export async function GET(
   const cq = await getChequeForClaim(id, secret);
   if (!cq) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const creator = await userById(cq.creatorUserId);
+  // These three reads are independent — the creator lookup, the country
+  // allowlist, and the Walrus note fetch. Run them concurrently.
+  const [creator, allowedCountries, note] = await Promise.all([
+    userById(cq.creatorUserId),
+    countryAllowlist(id),
+    // Private note: the link holds the secret, so the holder can decrypt the
+    // sender's message (fetched from Walrus). Best-effort, null if absent/unreadable.
+    fetchAndOpenNote(secret, cq.noteBlobId),
+  ]);
   const creatorDisplay =
     creator?.talise_username
       ? `${creator.talise_username}@talise.sui`
       : creator?.business_name ?? creator?.name ?? "A Talise user";
 
-  const allowedCountries = await countryAllowlist(id);
   const now = Date.now();
   const expired = cq.expiresAt < now;
-
-  // Private note: the link holds the secret, so the holder can decrypt the
-  // sender's message (fetched from Walrus). Best-effort — null if absent/unreadable.
-  const note = await fetchAndOpenNote(secret, cq.noteBlobId);
 
   return NextResponse.json({
     id: cq.id,

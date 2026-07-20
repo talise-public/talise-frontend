@@ -19,7 +19,7 @@ const DEFAULT_PAGE = 100;
  * leaf-index cursor; the response echoes `nextCursor` (the last leaf_index, or
  * null when drained).
  *
- * NOT money-moving (it's the receive/scan side — like reading inbound
+ * NOT money-moving (it's the receive/scan side, like reading inbound
  * activity), so gated behind auth only, not app-approval. Dormant → 503.
  */
 export async function GET(req: Request) {

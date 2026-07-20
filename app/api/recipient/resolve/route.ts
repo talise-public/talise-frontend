@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 /**
  * Masked view of a resolved recipient's PRIMARY payout bank. Powers the Send
  * flow's "pay to their bank" option. Only ever exposes the bank name + last
- * 4 digits — NEVER the full account number. `null` when the recipient can't
+ * 4 digits, NEVER the full account number. `null` when the recipient can't
  * be mapped to a Talise user or has no primary bank on file.
  */
 type RecipientBank = {
@@ -23,7 +23,7 @@ type RecipientBank = {
 /**
  * Resolve a recipient's primary payout bank from the address SuiNS gave us.
  * Returns null on any miss (not a Talise user / no primary / lookup hiccup)
- * — this is an additive, best-effort field and must never fail resolution.
+ *, this is an additive, best-effort field and must never fail resolution.
  */
 async function recipientBankFor(address: string): Promise<RecipientBank> {
   try {
@@ -43,7 +43,7 @@ async function recipientBankFor(address: string): Promise<RecipientBank> {
  * The recipient's shield identity (Poseidon spend pubkey + P-256 enc pubkey),
  * used by the sender to mint a hidden-amount shielded note OWNED BY THE
  * RECIPIENT. `null` when the recipient hasn't published a shield identity or
- * the lookup hiccups — additive + best-effort, must never fail resolution.
+ * the lookup hiccups, additive + best-effort, must never fail resolution.
  */
 type RecipientShieldIdentity = {
   pubkey: string;
@@ -52,7 +52,7 @@ type RecipientShieldIdentity = {
 
 /**
  * Resolve a recipient's published shield identity from the address SuiNS gave
- * us. Returns null on any miss — additive, best-effort, never throws.
+ * us. Returns null on any miss, additive, best-effort, never throws.
  */
 async function shieldIdentityForAddress(
   address: string
@@ -78,7 +78,7 @@ async function shieldIdentityForAddress(
  * last4 only) or null. `shieldIdentity` is the recipient's shield spend/enc
  * pubkeys (for hidden-amount shielded transfers) or null. Returns 404 when
  * input is well formed but unknown, and 400 when it's malformed. Authenticated
- * only — we don't want to leak the handle table to crawlers.
+ * only, we don't want to leak the handle table to crawlers.
  */
 export async function GET(req: Request) {
   const userId = await readEntryIdFromRequest(req);

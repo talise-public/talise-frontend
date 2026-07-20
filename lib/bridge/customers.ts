@@ -6,12 +6,12 @@ import type { OnrampKycStatus } from "@/lib/onramp/types";
 /**
  * Bridge Customers + KYC. Two ways to onboard:
  *
- *   1. Hosted KYC Link (preferred for Talise) — `createKycLink` returns a
+ *   1. Hosted KYC Link (preferred for Talise), `createKycLink` returns a
  *      `kyc_link` URL we redirect the user to; Bridge runs the whole identity
  *      + ToS flow and creates the customer for us. We poll / webhook the
  *      status. No PII flows through Talise servers.
  *
- *   2. Direct customer create — `createCustomer` posts the applicant PII
+ *   2. Direct customer create, `createCustomer` posts the applicant PII
  *      ourselves (needs a `signed_agreement_id` from the ToS flow to transact).
  *
  * Status strings are Bridge's; `mapBridgeKycStatus` collapses them onto
@@ -115,7 +115,7 @@ export async function createKycLink(input: {
     });
   } catch (e) {
     // Bridge returns 400 `duplicate_record` when a KYC link already exists for
-    // this email — and INCLUDES the existing link in the error body. That's the
+    // this email, and INCLUDES the existing link in the error body. That's the
     // common case on any second "Verify" tap (Bridge keys kyc_links by email,
     // independent of our Idempotency-Key). Treat it as success and reuse the
     // existing link rather than failing the whole flow.

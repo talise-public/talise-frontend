@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  *
  * Quote-gated KYC: given { amountCents, country }, return the minimum tier
  * the purchase needs and the fields still missing from the user's current
- * tier. Read-only — touches no money path. Dormant unless the on-ramp
+ * tier. Read-only, touches no money path. Dormant unless the on-ramp
  * feature flag is on.
  *
  * Namespaced under /v2 so it sits ALONGSIDE the existing Stripe-based

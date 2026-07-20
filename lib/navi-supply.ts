@@ -10,17 +10,17 @@ import { sourceUsdsuiCoin } from "./usdsui-coin";
 import { naviGrpcCompatClient } from "./navi-grpc-client";
 
 /**
- * NAVI USDsui supply / withdraw — sponsor-friendly PTB builders.
+ * NAVI USDsui supply / withdraw, sponsor-friendly PTB builders.
  *
  * Why this exists separately from deepbook-margin.ts: NAVI's protocol
  * registry, supply oracle (Pyth), and reserve metadata all live behind
  * @t2000/sdk's `NaviAdapter`. The adapter's `addSaveToTx` /
  * `addWithdrawToTx` methods append the right MoveCalls onto an existing
- * Transaction — we just need to feed them a sender + a pre-split coin
+ * Transaction, we just need to feed them a sender + a pre-split coin
  * handle (`coinWithBalance` so we never touch the gas coin, which
  * belongs to Onara during the sponsored leg).
  *
- * `NaviAdapter` was made public in @t2000/sdk 2.11 — the earlier
+ * `NaviAdapter` was made public in @t2000/sdk 2.11, the earlier
  * private `save` ergonomics that blocked mobile aren't a constraint
  * anymore. With this in place, NAVI is the real default yield venue
  * (live ~5% APY on mainnet) and DeepBook margin USDsui can be
@@ -28,7 +28,7 @@ import { naviGrpcCompatClient } from "./navi-grpc-client";
  */
 
 // NAVI's adapter keys assets by their `symbol` (mixed case "USDsui"),
-// not the uppercased registry key — verified from
+// not the uppercased registry key, verified from
 // `SUPPORTED_ASSETS.USDsui.symbol` in @t2000/sdk 2.11.
 const NAVI_ASSET = "USDsui";
 
@@ -49,7 +49,7 @@ let _adapterReady: Promise<NaviAdapter> | null = null;
 /**
  * gRPC-NATIVE NAVI. `@t2000/sdk`'s NaviAdapter (and the Pyth SDK it delegates
  * to for oracle refresh) was written against the legacy JSON-RPC `SuiClient`
- * surface — it calls `devInspectTransactionBlock`, `getObject`,
+ * surface, it calls `devInspectTransactionBlock`, `getObject`,
  * `multiGetObjects`, `getDynamicFieldObject`, `getCoins`/`getBalance`. Talise's
  * transport is gRPC-only, so we feed the adapter a compatibility client
  * (`naviGrpcCompatClient`) that maps every one of those onto gRPC primitives
@@ -84,7 +84,7 @@ async function adapter(): Promise<NaviAdapter> {
  * Intentionally NOT called at module load (it does RPC and would
  * stall every cold start, including handlers that never touch NAVI).
  * The right place to call it is `/api/zk/warmup`, which iOS hits on
- * dashboard load — so the cost hides behind the user reading their
+ * dashboard load, so the cost hides behind the user reading their
  * balances, not behind the Send button.
  *
  * Returns true on successful warm, false on any failure (we never let
@@ -106,7 +106,7 @@ export async function initNaviAdapter(): Promise<boolean> {
  * before handing to Onara.
  *
  * Uses `coinWithBalance` (not `splitCoins(tx.gas)`) because the gas
- * coin is sponsor-owned in the sponsored flow — splitting from it
+ * coin is sponsor-owned in the sponsored flow, splitting from it
  * would have the wallet trying to pay gas with someone else's SUI.
  */
 export async function appendNaviSupply(
@@ -129,7 +129,7 @@ export async function appendNaviSupply(
   if (onchain <= 0n) {
     throw new Error("amount too small");
   }
-  // Source from coins OR the Address-Balance accumulator — most users' USDsui is
+  // Source from coins OR the Address-Balance accumulator, most users' USDsui is
   // in the accumulator (gasless rail), where a coins-only `coinWithBalance` would
   // revert (this silently broke earn supply + spend-and-save). See lib/usdsui-coin.ts.
   const coin = await sourceUsdsuiCoin(tx, senderAddress, onchain);
@@ -151,7 +151,7 @@ export async function appendNaviSupply(
 
 /**
  * Build a NAVI USDsui withdraw step. `amount === undefined | <= 0` is
- * treated as "withdraw everything I have supplied" — the adapter
+ * treated as "withdraw everything I have supplied", the adapter
  * resolves the live supplied amount internally.
  *
  * `skipPythUpdate: false` keeps the oracle refresh in the PTB, which
@@ -199,7 +199,7 @@ export async function appendNaviWithdraw(
  * Fetch the live USDsui supply APY from NAVI's public open API.
  *
  * Why this exists: `@t2000/sdk`'s `getFinancialSummary` returns the
- * USDC `saveApy` regardless of the actual reserve asset — its
+ * USDC `saveApy` regardless of the actual reserve asset, its
  * `getRates()` populates `result.USDC.saveApy` but never adds a
  * USDsui key, then `getFinancialSummary` reads `rates.USDC?.saveApy`
  * unconditionally. That caused the iOS Earn screen to render
@@ -222,7 +222,7 @@ type NaviPoolRow = {
   /** NAVI reserve/asset id (matches the on-chain `UserStateInfo.asset_id`). */
   id: number;
   coinType: string;
-  /** Ray-scaled (1e27) supply index — multiply the user's raw scaled
+  /** Ray-scaled (1e27) supply index, multiply the user's raw scaled
    *  supply balance by this to get the redeemable amount in base units. */
   currentSupplyIndex?: string;
   token?: { decimals?: number; symbol?: string };
@@ -233,7 +233,7 @@ type NaviPoolRow = {
  * Fetch + cache NAVI's full pool list from the public open API.
  *
  * Shared by the APY read AND the direct position read (below) so a single
- * 60s-cached round-trip serves both — the hot path then only pays for the
+ * 60s-cached round-trip serves both, the hot path then only pays for the
  * per-user `devInspect` (~1–2s) instead of re-fetching pool metadata each
  * time. Returns `[]` on any fetch/parse failure so callers degrade to
  * null/0 rather than throwing.
@@ -241,7 +241,7 @@ type NaviPoolRow = {
 async function fetchNaviPoolsOnce(): Promise<NaviPoolRow[]> {
   try {
     const res = await fetch(NAVI_POOLS_URL, {
-      // Don't cache at the fetch layer — memoTtl handles TTL.
+      // Don't cache at the fetch layer, memoTtl handles TTL.
       cache: "no-store",
       // Conservative deadline so a slow Navi response doesn't stall
       // the whole /api/yield/comparison handler.
@@ -279,25 +279,25 @@ export async function fetchNaviUsdsuiSupplyApy(): Promise<number | null> {
 // `@t2000/sdk`'s `NaviAdapter.getPositions()` cost ~4–9s on the hot path
 // because it re-initialised the pool registry from chain and routed the
 // read through a heavyweight summary. We read the user's USDsui supply
-// the SAME way NAVI's own getters do — a single `devInspect` of
-// `<uiGetter>::getter_unchecked::get_user_state(storage, address)` — and
+// the SAME way NAVI's own getters do, a single `devInspect` of
+// `<uiGetter>::getter_unchecked::get_user_state(storage, address)`, and
 // convert with the live pool's supply index + decimals.
 //
 // `get_user_state` returns `vector<UserStateInfo>` where each row is the
 // user's scaled (ray-normalised) per-asset position. The redeemable amount
-// is `scaled * currentSupplyIndex / 1e27` (rounded) — but that result is in
+// is `scaled * currentSupplyIndex / 1e27` (rounded), but that result is in
 // NAVI's INTERNAL 9-decimal normalised accounting precision, NOT the coin's
 // native decimals. So human units = base / 10^9, regardless of USDsui being
 // a 6-decimal coin.
 //
 // THIS WAS THE BUG 7f5cc4d shipped: it divided by `token.decimals` (6),
 // over-dividing by 10^3 and inflating the position ~1000x (a 0.004646 USDsui
-// dust position read as 4.646928 — which is why the Earn screen showed
+// dust position read as 4.646928, which is why the Earn screen showed
 // ₦6,373.94 / "Earned so far" ₦5,615.68 for what is really a few naira).
 // Verified live against `NaviAdapter.getPositions()` (the t2000 adapter,
 // which correctly uses 9): base 4_646_928 / 10^9 = 0.004646928 == adapter's
 // 0.004646, while / 10^6 = 4.646928 was 1000x too high. NAVI normalises every
-// reserve's scaled amount to 9 decimals; that — not the coin precision — is
+// reserve's scaled amount to 9 decimals; that, not the coin precision, is
 // the divisor.
 
 type NaviConfig = { uiGetter: string; storage: string };
@@ -397,7 +397,7 @@ export async function readNaviUsdsuiSupply(address: string): Promise<number> {
       String(usdsui.currentSupplyIndex ?? "0")
     );
     // Divide by NAVI's 9-decimal internal normalisation, NOT the coin's native
-    // `token.decimals` (6). See the block comment above — using token.decimals
+    // `token.decimals` (6). See the block comment above, using token.decimals
     // here is what inflated the position ~1000x.
     const human = Number(base) / 10 ** NAVI_NORMALIZED_DECIMALS;
     return Number.isFinite(human) && human > 0 ? human : 0;
@@ -411,7 +411,7 @@ export async function readNaviUsdsuiSupply(address: string): Promise<number> {
  * breakdown derived from on-chain activity.
  *
  * Data-source decision (Approach A from the spec):
- *   - `currentValue` comes straight from `NaviAdapter.getPositions()` —
+ *   - `currentValue` comes straight from `NaviAdapter.getPositions()` -
  *     the USDsui supply row's `amount` is the principal-plus-accrued
  *     redeemable balance (Navi accrues interest into the position
  *     in-place; there's no separate accrual ledger exposed via SDK,
@@ -421,7 +421,7 @@ export async function readNaviUsdsuiSupply(address: string): Promise<number> {
  *     `venue=navi` carries a typed memo (`talise/v1|invest|...|venue=navi|...`)
  *     whose `amount` field is the canonical USDsui amount the user
  *     supplied or withdrew. The caller passes the parsed activity list
- *     so we don't double-fetch — the comparison route already has it.
+ *     so we don't double-fetch, the comparison route already has it.
  *   - `earned = max(0, currentValue − principalSupplied)`. The floor at
  *     0 protects against transient gaps (e.g. user supplied 100, then
  *     withdrew 100 → we'd read a near-zero current value but the
@@ -429,7 +429,7 @@ export async function readNaviUsdsuiSupply(address: string): Promise<number> {
  *
  * If we can't determine principal (no activity hits for navi, or the
  * activity feed errored out), `principalSupplied` is returned as
- * `currentValue` so `earned` falls to 0 — better to under-report than
+ * `currentValue` so `earned` falls to 0, better to under-report than
  * accidentally show negative or inflated earnings.
  */
 export type NaviPositionDetail = {
@@ -439,7 +439,7 @@ export type NaviPositionDetail = {
   principalSupplied: number;
   /** Real accrued yield = currentValue × apy × (elapsed streak / year). */
   earned: number;
-  /** `currentValue × apy / 365` — per-day growth at this APY. */
+  /** `currentValue × apy / 365`, per-day growth at this APY. */
   dailyEarning: number;
   /** Live USDsui supply APY as a fraction (0.0917 = 9.17%). */
   apy: number;
@@ -455,7 +455,7 @@ export type NaviPositionDetail = {
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 export async function fetchNaviCurrentValue(address: string): Promise<number> {
-  // Direct on-chain read (see `readNaviUsdsuiSupply`) — dropped the
+  // Direct on-chain read (see `readNaviUsdsuiSupply`), dropped the
   // @t2000/sdk `NaviAdapter.getPositions()` path, which cost ~4–9s.
   return readNaviUsdsuiSupply(address);
 }
@@ -464,7 +464,7 @@ export async function fetchNaviCurrentValue(address: string): Promise<number> {
  * Compute the NAVI USDsui position breakdown for an address, given a
  * pre-fetched activity feed (the `venue == 'navi'` rows). Returning a
  * function rather than fetching activity here avoids a second
- * `queryTransactionBlocks` round-trip — callers (`/api/yield/comparison`,
+ * `queryTransactionBlocks` round-trip, callers (`/api/yield/comparison`,
  * `/api/earn/withdraw-earned/prepare`) already have or can cheaply
  * fetch the activity list once.
  *
@@ -479,7 +479,7 @@ export async function fetchNaviCurrentValue(address: string): Promise<number> {
  *      original spec.
  *
  *   3. If `naiveNetDeposited > currentValue` (a real on-chain reality
- *      we observe for users who supply many small USDsui amounts — Navi
+ *      we observe for users who supply many small USDsui amounts, Navi
  *      internally normalizes USDsui's 6 decimals to its 9-decimal accounting
  *      and rounds dust DOWN on each deposit, so summed-deposits ≥ current
  *      redeemable even before interest), then the naive math under-reports
@@ -548,7 +548,7 @@ export function naviPositionFromActivity(opts: {
   }
 
   // Real accrued yield = current balance × APY × (time held this streak).
-  // No artificial cap/floor games — the streak reset is what keeps it honest;
+  // No artificial cap/floor games, the streak reset is what keeps it honest;
   // a single sanity clamp at 100% guards against bad activity data only. The
   // client re-derives + ticks this live from `earningSinceMs`.
   let earned = 0;

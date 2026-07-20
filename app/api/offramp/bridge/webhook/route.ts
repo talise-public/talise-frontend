@@ -11,11 +11,11 @@ export const runtime = "nodejs";
  * transitions. Verify the RSA signature over the RAW body BEFORE parsing.
  *
  * Always acks 200 (even on unverified/unknown) so Bridge doesn't retry
- * forever — the event is logged. This route moves no money; it's a state
+ * forever, the event is logged. This route moves no money; it's a state
  * mirror for the cash-out lifecycle.
  *
- *   liquidation_address.drain.*        — fiat payout lifecycle
- *   transfer.updated.status_transitioned — one-off off-ramp transfers
+ *   liquidation_address.drain.*      , fiat payout lifecycle
+ *   transfer.updated.status_transitioned, one-off off-ramp transfers
  */
 export async function POST(req: Request) {
   const raw = await req.text();
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (!v.verified) {
     // Fail closed in production (a real secret is set) but never 500: log + ack
     // so retries don't pile up. `no_pubkey` = dev/unconfigured.
-    console.warn(`[offramp/bridge/webhook] unverified (${v.reason}) — ignoring`);
+    console.warn(`[offramp/bridge/webhook] unverified (${v.reason}), ignoring`);
     return NextResponse.json({ ok: true, verified: false }, { status: 200 });
   }
 

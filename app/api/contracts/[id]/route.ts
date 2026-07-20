@@ -17,7 +17,7 @@ import {
 export const runtime = "nodejs";
 
 /**
- * GET  /api/contracts/[id] — the caller's single contract + live stream state.
+ * GET  /api/contracts/[id], the caller's single contract + live stream state.
  *
  * POST /api/contracts/[id] { action: 'cancel' }
  *   Owner-only, terminal. Cancels the underlying stream (stops all future
@@ -27,7 +27,7 @@ export const runtime = "nodejs";
  *   Streaming is ON-CHAIN only: cancel_and_withdraw must be SENDER-signed, so
  *   the server flips the stream + contract status here and returns
  *   Onara-SPONSORED cancel bytes (mode:'onchain') the client signs and POSTs to
- *   /api/zk/sponsor-execute — mirrors POST /api/streams/[id]/cancel. Funds are
+ *   /api/zk/sponsor-execute, mirrors POST /api/streams/[id]/cancel. Funds are
  *   safe in the on-chain Stream object either way.
  */
 
@@ -98,7 +98,7 @@ export async function POST(
 
   const stream = await streamById(row.stream_id);
 
-  // No underlying stream row (rare) — just close the contract.
+  // No underlying stream row (rare), just close the contract.
   if (!stream) {
     await setContractStatus(id, "cancelled");
     return NextResponse.json({ ok: true, status: "cancelled", refunded: false });
@@ -123,13 +123,13 @@ export async function POST(
   const refundUsd = Math.max(0, Number(remainderMicros) / 1e6);
 
   // ── ON-CHAIN stream (the only rail): cancel_and_withdraw must be
-  // SENDER-signed, so mirror the stream cancel route — flip status here (done
+  // SENDER-signed, so mirror the stream cancel route, flip status here (done
   // above) and return Onara-SPONSORED cancel bytes the client signs and POSTs
   // to /api/zk/sponsor-execute, which withdraws the remainder back to the
   // sender. Funds are safe in the on-chain Stream object either way.
   if (streamOnchainEnabled() && isOnchainStreamId(row.stream_id)) {
     if (remainderMicros <= 0n) {
-      // Nothing undistributed left on chain — fully released. No withdraw tx.
+      // Nothing undistributed left on chain, fully released. No withdraw tx.
       return NextResponse.json({
         ok: true,
         status: "cancelled",

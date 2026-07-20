@@ -4,30 +4,30 @@
  * "Instant" cross-border is pre-positioned destination-currency FLOAT on
  * both legs of a directed corridor, drawn down on authorization and
  * reconciled behind the user. The chain is the net-settlement rail
- * BETWEEN Talise's own float pools — the structural edge over SWIFT
+ * BETWEEN Talise's own float pools, the structural edge over SWIFT
  * correspondent banking (much less dead nostro/vostro working capital).
  *
  * This module is the data model + the invariants, NOT live treasury ops.
  * Balances are MOCK: no real money moves through `float_pools` yet. The
  * point is to encode the shape (per-corridor, per-currency, per-leg
- * inventory) and — the part that actually matters for survival — the
+ * inventory) and, the part that actually matters for survival, the
  * SAFEGUARDING invariant: safeguarded client-money balances CANNOT be
  * lent into NAVI (master plan §5/§6/§9). `assertNotLendable()` is the
  * code-level guard that any NAVI-supply path must call before routing a
  * pool's USDC into yield.
  *
- *   • recordInflow  — credit a pool (fiat collected, or USDC minted in)
- *   • recordOutflow — debit a pool (fiat paid out, or USDC settled out)
- *   • getPoolState  — read the current inventory for one pool
- *   • needsRebalance — is a pool under-funded or stale past a threshold?
- *   • assertNotLendable — throw if a pool's balance is safeguarded
+ *   • recordInflow, credit a pool (fiat collected, or USDC minted in)
+ *   • recordOutflow, debit a pool (fiat paid out, or USDC settled out)
+ *   • getPoolState, read the current inventory for one pool
+ *   • needsRebalance, is a pool under-funded or stale past a threshold?
+ *   • assertNotLendable, throw if a pool's balance is safeguarded
  *
  * Pool inventory has three buckets per the float model:
  *   fiat_in_pool   funding-leg fiat collected from senders
  *   fiat_out_pool  payout-leg fiat pre-positioned for recipients
  *   usdc_pool      native USDC inventory for the on-chain net-settlement
  *                  hop (master plan §3: corridor inventory in native
- *                  USDC, NOT USDsui — caps de-peg exposure)
+ *                  USDC, NOT USDsui, caps de-peg exposure)
  */
 
 import { db, ensureSchema } from "@/lib/db";
@@ -83,8 +83,8 @@ export type PoolCurrency =
 
 /**
  * Which side of the corridor a pool funds.
- *   • "funding" — the send leg (sender's collected fiat -> USDC)
- *   • "payout"  — the receive leg (USDC -> recipient's fiat)
+ *   • "funding", the send leg (sender's collected fiat -> USDC)
+ *   • "payout", the receive leg (USDC -> recipient's fiat)
  * A corridor has one pool per leg per currency.
  */
 export type PoolLeg = "funding" | "payout";
@@ -183,7 +183,7 @@ function rowToState(row: Record<string, unknown>): PoolState {
 
 /**
  * Ensure a pool row exists for `key`, creating it (with the given
- * `segregated` flag) if absent. Idempotent — relies on the
+ * `segregated` flag) if absent. Idempotent, relies on the
  * `uniq_float_pools_key` index, so concurrent first-touches collapse to
  * one row. Returns the row's current state.
  */
@@ -195,7 +195,7 @@ async function ensurePool(
   const c = db();
   const now = Date.now();
   // ON CONFLICT keeps this a single round-trip and concurrency-safe. The
-  // segregated flag is only set on first insert — flipping it later is a
+  // segregated flag is only set on first insert, flipping it later is a
   // deliberate operation (see setSegregation), never a side effect of a
   // money movement.
   await c.execute({
@@ -252,7 +252,7 @@ export async function listPools(corridor?: Corridor): Promise<PoolState[]> {
  * `segregated` declares whether THIS pool holds safeguarded client money.
  * It's applied only when the pool row is first created; for an existing
  * pool the stored flag wins (use `setSegregation` to change it
- * deliberately). Defaults to `true` (safeguard-by-default) — the safe
+ * deliberately). Defaults to `true` (safeguard-by-default), the safe
  * posture is to treat money as client money unless explicitly marked as
  * Talise's own operating float.
  */
@@ -285,7 +285,7 @@ export async function recordInflow(input: {
  * fiat is paid out on the payout leg, or USDC is settled out on the
  * net-settlement hop.
  *
- * Throws if the pool doesn't exist or the bucket would go negative —
+ * Throws if the pool doesn't exist or the bucket would go negative -
  * you cannot pay out float you don't hold. This is a hard invariant: the
  * whole premise of "instant" is that the float was pre-positioned, so a
  * would-be-negative debit is a real treasury error, not a UX hiccup.
@@ -333,7 +333,7 @@ export async function recordOutflow(input: {
 
 /**
  * Mark a pool as reconciled now (or at `at` ms). Stamps `reconciled_at`,
- * which `needsRebalance()` reads for staleness. No money moves — this is
+ * which `needsRebalance()` reads for staleness. No money moves, this is
  * the "we've checked the books and they tie out" signal.
  */
 export async function markReconciled(
@@ -388,14 +388,14 @@ export async function setSegregation(
  * USDC into NAVI (or any yield/lending venue) MUST call this first; it
  * throws if the pool is segregated, refusing to let client money be lent.
  *
- * This is deliberately a HARD STOP, not a warning — recharacterizing
+ * This is deliberately a HARD STOP, not a warning, recharacterizing
  * safeguarded client money as a lendable asset is exactly the failure
  * mode that draws regulatory enforcement and (in a de-peg/run) loses
  * client funds. Only Talise's own operating float (segregated=false) may
  * pass.
  *
  * Pass either a `PoolKey` (looked up) or an already-loaded `PoolState`.
- * A missing pool also throws — you can't lend inventory that doesn't
+ * A missing pool also throws, you can't lend inventory that doesn't
  * exist, and silently treating "unknown" as "lendable" would defeat the
  * guard.
  */
@@ -409,7 +409,7 @@ export async function assertNotLendable(
   if (!state) {
     const k = poolOrKey as PoolKey;
     throw new Error(
-      `assertNotLendable: no pool for ${k.corridor}/${k.currency}/${k.leg} — refusing to lend`
+      `assertNotLendable: no pool for ${k.corridor}/${k.currency}/${k.leg}, refusing to lend`
     );
   }
   if (state.segregated) {
@@ -424,7 +424,7 @@ export async function assertNotLendable(
 /**
  * Whether a pool is under-funded or stale past the given thresholds and
  * therefore needs a rebalance pass (Circle redemption / local PSP top-up,
- * master plan §6). Pure read — never moves money.
+ * master plan §6). Pure read, never moves money.
  *
  * Directed diaspora-out corridors drain their PAYOUT leg and never refill
  * it organically, so `minFiatOut` is usually the first trip-wire. A pool

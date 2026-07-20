@@ -7,15 +7,15 @@ import "server-only";
  * a user-supplied PTB. That is a blank cheque UNLESS the PTB shape is pinned
  * exactly. An unconstrained relayer is a drain hole: a malicious `txBytes`
  * could call ANY Move function with the relayer as sender. So before we ever
- * hand the bytes to Onara we parse the serialized PTB and assert it matches —
- * to the command — the shielded `transact` / `transact_with_account` shape:
+ * hand the bytes to Onara we parse the serialized PTB and assert it matches -
+ * to the command, the shielded `transact` / `transact_with_account` shape:
  *
  *   • EXACTLY ONE `MoveCall`, and it targets
  *     `${SHIELD_PKG}::shielded_pool::transact[_with_account]`
  *     with the package id pinned via `normalizeSuiAddress` (no other package,
  *     no other module, no other function).
  *   • Only the allowed preceding constructor / coin-glue commands
- *     (SplitCoins, MergeCoins, MakeMoveVec) — everything else (TransferObjects,
+ *     (SplitCoins, MergeCoins, MakeMoveVec), everything else (TransferObjects,
  *     Publish, Upgrade, Intents, a second MoveCall, …) is rejected.
  *   • `ExtData.relayer == OUR relayer address` and `ExtData.relayer_fee <= MAX`.
  *     The proof + ext_data are constructed client-side; without this check a
@@ -25,7 +25,7 @@ import "server-only";
  *
  * NOTE on `proof::new` / `ext_data::new`: in the live PTB these are Move
  * constructor calls. But each is a MoveCall, and the on-chain `transact`
- * takes `Proof` + `ExtData` BY VALUE — so a real relayed PTB would contain
+ * takes `Proof` + `ExtData` BY VALUE, so a real relayed PTB would contain
  * MULTIPLE MoveCalls (proof::new, ext_data::new, shielded_pool::transact).
  * To keep this control airtight we DO allow `proof::new` and `ext_data::new`
  * MoveCalls, but ONLY against the SAME pinned package, and we still require
@@ -38,14 +38,14 @@ import "server-only";
  * allowlist that consumes it, so the PTB delivers it with exactly ONE trailing
  * `TransferObjects`. We allow that single command under a tight constraint:
  *   • its sole object operand is the `transact` Result (NestedResult/Result of
- *     the one transact MoveCall) — never a free input/object, so it can only
+ *     the one transact MoveCall), never a free input/object, so it can only
  *     route the proof-bound, ≤$10-capped return coin (NOT the deposit coin);
  *   • its recipient resolves to the relay route's already-screened
  *     `exitAddress` (threaded in by the caller). If no exit was screened
  *     (deposit / internal-transfer legs, whose return coin is a zero coin),
  *     the recipient MUST be our own relayer address.
  * This is additive: it loosens nothing about the proof, caps, or the pinned
- * transact shape — it only lets the mandatory return-coin delivery through.
+ * transact shape, it only lets the mandatory return-coin delivery through.
  */
 
 import { Transaction } from "@mysten/sui/transactions";
@@ -74,7 +74,7 @@ const CONSTRUCTOR_TARGETS = new Set([
  * pure coin/vector glue with no ability to move value to an arbitrary address.
  * Notably ABSENT: TransferObjects (could send the deposit coin anywhere),
  * Publish, Upgrade, MakeMoveVec is allowed (used to build the Receiving vector
- * for the with-account path), $Intent (opaque — reject).
+ * for the with-account path), $Intent (opaque, reject).
  */
 const ALLOWED_NON_MOVECALL_KINDS = new Set([
   "SplitCoins",
@@ -117,7 +117,7 @@ type Input = TxData["inputs"][number];
 /**
  * Parse the serialized PTB, assert it is EXACTLY a shielded `transact` shape,
  * and assert the ExtData relayer + fee. Throws `ShieldValidationError` on ANY
- * deviation — the relay route maps that to a 400 and NEVER forwards the bytes.
+ * deviation, the relay route maps that to a 400 and NEVER forwards the bytes.
  *
  * `txBytes` is the base64 BCS-serialized TransactionKind/Transaction the client
  * built (same `toBase64(tx.build(...))` shape the send routes produce).
@@ -149,7 +149,7 @@ export function validateTransactCommands(
     // `Transaction.from` auto-detects the serialized form. The SDK sends the
     // full serialized transaction as a JSON string (`await tx.toJSON()`, see
     // flow.ts), which is exactly what the relay route's executor also feeds to
-    // `Transaction.from(txBytes)`. Parse the SAME input here — do NOT base64-
+    // `Transaction.from(txBytes)`. Parse the SAME input here, do NOT base64-
     // decode first (that corrupts a JSON string → "Invalid character" and would
     // reject every real PTB). A base64 BCS string is still accepted by
     // `Transaction.from` directly, so this is strictly more compatible.
@@ -185,7 +185,7 @@ export function validateTransactCommands(
     if (kind === "MoveCall") {
       const mc = cmd.MoveCall;
       const cmdPkg = normalizePkg(mc.package);
-      // Every MoveCall MUST be against OUR pinned package — no exceptions.
+      // Every MoveCall MUST be against OUR pinned package, no exceptions.
       if (cmdPkg !== pkg) {
         throw new ShieldValidationError(
           `MoveCall to foreign package ${cmdPkg} (only ${pkg} allowed)`
@@ -200,7 +200,7 @@ export function validateTransactCommands(
         return;
       }
       if (CONSTRUCTOR_TARGETS.has(modFn)) {
-        // proof::new / ext_data::new — allowed assembly calls.
+        // proof::new / ext_data::new, allowed assembly calls.
         return;
       }
       throw new ShieldValidationError(
@@ -217,14 +217,14 @@ export function validateTransactCommands(
       return;
     }
 
-    // Non-MoveCall command — must be on the coin/vector-glue allowlist.
+    // Non-MoveCall command, must be on the coin/vector-glue allowlist.
     if (!ALLOWED_NON_MOVECALL_KINDS.has(kind)) {
       throw new ShieldValidationError(`disallowed command kind ${kind}`);
     }
   });
 
   // `transactCmd` / `transferCmd` are assigned inside the forEach closure, so TS
-  // does not flow-narrow them here — read through explicitly-typed locals.
+  // does not flow-narrow them here, read through explicitly-typed locals.
   const finalTransact = transactCmd as Command | null;
   if (transactCount !== 1 || !finalTransact || finalTransact.$kind !== "MoveCall") {
     throw new ShieldValidationError(
@@ -284,7 +284,7 @@ export function validateTransactCommands(
  * Assert the single `TransferObjects` command does nothing but route the
  * `transact` RETURN coin to an approved recipient:
  *   • its sole `objects` operand is the Result of the one transact MoveCall
- *     (command index {@link transactIdx}) — NOT a free input/object, so it
+ *     (command index {@link transactIdx}), NOT a free input/object, so it
  *     cannot exfiltrate the deposit coin or any other object;
  *   • its recipient resolves to a Pure address that equals either the screened
  *     `exitAddress` (withdraw) or our own relayer address (deposit / internal

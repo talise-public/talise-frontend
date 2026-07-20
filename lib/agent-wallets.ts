@@ -4,12 +4,12 @@ import { db, schemaVersionGate } from "./db";
 import { encryptAtRest, decryptAtRest } from "./crypto-at-rest";
 
 /**
- * Custodial agent wallets — server-signed money for headless agents.
+ * Custodial agent wallets, server-signed money for headless agents.
  *
  * An agent wallet is a CAPPED, REVOCABLE, server-side signer for a user's
  * account. Unlike the normal non-custodial flow (where the client holds the
- * ephemeral key), here the server generates and CUSTODIES the ephemeral key —
- * encrypted at rest — so an agent with no local key can pay via a scoped bearer
+ * ephemeral key), here the server generates and CUSTODIES the ephemeral key -
+ * encrypted at rest, so an agent with no local key can pay via a scoped bearer
  * token. Each wallet has a per-day USD spend cap and can be revoked instantly.
  *
  * FEATURE-GATED OFF by default: `POST /api/agent/pay` 503s unless
@@ -17,8 +17,8 @@ import { encryptAtRest, decryptAtRest } from "./crypto-at-rest";
  * non-custodial norm, so it stays dark until explicitly enabled and reviewed.
  *
  * Secrets stored (all AES-256-GCM encrypted via crypto-at-rest):
- *   jwt, salt        — the OIDC material the zkLogin proof is minted from
- *   ephemeral_sk_b64 — the signing key (the custodial part)
+ *   jwt, salt      , the OIDC material the zkLogin proof is minted from
+ *   ephemeral_sk_b64, the signing key (the custodial part)
  * Plus the binding (ephemeral_pubkey_b64, max_epoch, randomness) the JWT nonce
  * was bound to, and the derived sui_address for display.
  */

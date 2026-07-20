@@ -10,7 +10,7 @@ import { PayoutsTab } from "@/components/app/work/PayoutsTab";
 type Tab = "invoices" | "contracts" | "payouts";
 
 /**
- * /app/work — the Work hub: get paid for work (Invoices) and pay your team
+ * /app/work, the Work hub: get paid for work (Invoices) and pay your team
  * (Contracts, recurring streamed pay). Two tabs over a shared header.
  */
 export default function WorkPage() {
@@ -23,8 +23,8 @@ export default function WorkPage() {
           Work
         </div>
         <h1
-          className="mt-2 text-[clamp(24px,4vw,34px)] font-[800] uppercase tracking-[-0.02em] text-[#15300c]"
-          style={{ fontFamily: "var(--font-display-v2)" }}
+          className="mt-2 text-[clamp(24px,4vw,34px)] font-[500] tracking-[-0.05em] text-[#15300c]"
+          style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
         >
           Get paid. Pay your team.
         </h1>

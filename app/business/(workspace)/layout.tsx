@@ -9,7 +9,7 @@ import type { Me, Balances } from "@/components/app/data";
 export const dynamic = "force-dynamic";
 
 /**
- * /business shell + gate — the business workspace.
+ * /business shell + gate, the business workspace.
  *
  * Same gate + session resolution as /app, but drives the AppShell with the
  * BUSINESS_NAV config (Dashboard / Invoices / Team / Pay / Activity). The

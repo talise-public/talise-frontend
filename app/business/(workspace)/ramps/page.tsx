@@ -6,7 +6,7 @@ import { BankIcon, CreditCardIcon } from "@hugeicons/core-free-icons";
 import { GlassCard, Eyebrow, StatusPill, PrimaryButton } from "@/components/app";
 import { WithdrawToBankSheet } from "@/components/app/ramps/WithdrawToBankSheet";
 
-/** /business/ramps — cash out USDsui to a bank (live), add money (soon). */
+/** /business/ramps, cash out USDsui to a bank (live), add money (soon). */
 export default function BusinessRampsPage() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   return (
@@ -15,8 +15,12 @@ export default function BusinessRampsPage() {
       <header>
         <Eyebrow>Cash flow</Eyebrow>
         <h1
-          className="mt-1 text-[22px] font-medium text-fg"
-          style={{ letterSpacing: "-0.025em" }}
+          className="mt-1 text-[22px] text-fg"
+          style={{
+            fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif',
+            fontWeight: 500,
+            letterSpacing: "-0.03em",
+          }}
         >
           Move money in and out
         </h1>
@@ -26,16 +30,16 @@ export default function BusinessRampsPage() {
         </p>
       </header>
 
-      {/* Cash out — LIVE */}
-      <GlassCard className="p-5">
+      {/* Cash out, LIVE */}
+      <GlassCard radius={10} className="p-5">
         {/* Row: icon chip + label/title + status pill */}
         <div className="flex items-center gap-3.5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-accent-soft text-accent">
             <HugeiconsIcon icon={BankIcon} size={19} strokeWidth={1.9} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[15px] font-medium text-fg">Withdraw to your bank</p>
-            <p className="text-[12px] text-fg-dim">USDsui → NGN · no padded spreads</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-dim">USDsui → NGN · no padded spreads</p>
           </div>
           <StatusPill label="Live" tone="success" />
         </div>
@@ -46,15 +50,15 @@ export default function BusinessRampsPage() {
         </div>
       </GlassCard>
 
-      {/* Add money — SOON */}
-      <GlassCard className="p-5">
+      {/* Add money, SOON */}
+      <GlassCard radius={10} className="p-5">
         <div className="flex items-center gap-3.5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-fg-muted">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-surface-2 text-fg-muted">
             <HugeiconsIcon icon={CreditCardIcon} size={19} strokeWidth={1.9} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[15px] font-medium text-fg">Top up with a card or bank</p>
-            <p className="text-[12px] text-fg-dim">Card or bank transfer — coming soon</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-dim">Card or bank transfer, coming soon</p>
           </div>
           <StatusPill label="Soon" tone="pending" />
         </div>

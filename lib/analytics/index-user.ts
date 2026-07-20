@@ -1,9 +1,9 @@
 /**
  * Per-user on-chain index pass.
  *
- * `indexUser(address)` runs the two analytics sources in parallel — the PRIMARY
+ * `indexUser(address)` runs the two analytics sources in parallel, the PRIMARY
  * gRPC / GraphQL activity pipeline and the SECONDARY (env-gated) BlockVision /
- * SuiVision REST source — then MERGES + DEDUPES the results by transaction
+ * SuiVision REST source, then MERGES + DEDUPES the results by transaction
  * digest and computes a `UserIndex` aggregate for the address.
  *
  * Merge policy: gRPC is authoritative (richer Talise-resolved metadata), so when
@@ -12,7 +12,7 @@
  * SuiVision entry. Digests seen only in SuiVision are added as-is.
  *
  * Resilient: each source returns null on a hard failure ("no data read") and `[]`
- * on a genuine zero-activity address; this function never throws — if both
+ * on a genuine zero-activity address; this function never throws, if both
  * sources yield no usable data the result is an all-zero `UserIndex` with an
  * empty `txs` array.
  */

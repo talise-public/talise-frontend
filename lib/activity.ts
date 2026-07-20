@@ -10,7 +10,7 @@ import { USDSUI_TYPE } from "./usdsui";
 // `0x0000…0002::sui::SUI`), whereas our constants (`"0x2::sui::SUI"`,
 // `USDSUI_TYPE`) and on-chain event payloads can carry the SHORT form.
 // A naive `===` compare therefore SILENTLY misses every native SUI /
-// USDsui balance change — the activity feed then mislabeled real SUI/USDsui
+// USDsui balance change, the activity feed then mislabeled real SUI/USDsui
 // amounts as a generic "other coin" (amountSui/amountUsdsui null,
 // otherCoin = SUI). `normalizeStructTag` zero-pads the address part so both
 // forms collapse to one canonical string; we compare normalized-to-normalized
@@ -45,7 +45,7 @@ import { db } from "./db";
 import { globalRegistryId, namespaceObjectId } from "./payment-kit";
 import { parsePaymentKitNonce, type ParsedTaliseMemo } from "./intents/wrap-payment-kit";
 import { batchCoinMetadata, suiGraphQL } from "./sui-graphql";
-// Autoswap vault archived 2026-05-29 — see `web/_archive/autoswap-2026-05-29/`.
+// Autoswap vault archived 2026-05-29, see `web/_archive/autoswap-2026-05-29/`.
 // The vault-event walk below is now dormant: `opts.vaultId` is read from
 // `users.talise_vault_id` which is no longer populated. We keep the merge
 // path intact so historical rows already classified with direction:"autoswap"
@@ -64,13 +64,13 @@ function vaultPackageIds(): { packageId: string } {
 /**
  * On-chain activity feed.
  *
- * We don't trust our local `tx_history` table as the source of truth —
+ * We don't trust our local `tx_history` table as the source of truth -
  * inbound payments aren't recorded there at all, and outbound rows can be
  * lost across DB resets or failed write-backs. The chain has everything
  * we need: who sent what, to whom, when, in which coin.
  *
  * Approach per address:
- *   1. Query `suix_queryTransactionBlocks` twice — FromAddress + ToAddress
+ *   1. Query `suix_queryTransactionBlocks` twice, FromAddress + ToAddress
  *   2. Parse the `balanceChanges` block of each tx; isolate the user's
  *      net delta in USDsui (or SUI, for non-converted holdings).
  *   3. The counterparty is the other address with the inverse delta.
@@ -79,20 +79,20 @@ function vaultPackageIds(): { packageId: string } {
  *
  * Classification order per tx (most → least authoritative):
  *
- *   A. **Payment Kit PaymentRecord lookup** — if the tx created a
+ *   A. **Payment Kit PaymentRecord lookup**, if the tx created a
  *      `PaymentRecord<…>` dynamic field under the talise registry, we
  *      pull the nonce out of the `processRegistryPayment` MoveCall's
  *      arguments and parse it via `parsePaymentKitNonce`. A successful
  *      parse gives us the AUTHORITATIVE kind + venue + sender/receiver
- *      — the tx was originated by Talise and the on-chain memo carries
+ *    , the tx was originated by Talise and the on-chain memo carries
  *      everything we need.
  *
- *   B. **MoveCall package heuristic** — for pre-PK-wrapper txs (NAVI
+ *   B. **MoveCall package heuristic**, for pre-PK-wrapper txs (NAVI
  *      supply, DeepBook supply, etc. from before the wrapper landed),
  *      fall back to sniffing the venue's package id. Less authoritative
  *      but covers historical activity that doesn't have a PK record.
  *
- *   C. **Plain transfer** — direction from `balanceChanges` (the user's
+ *   C. **Plain transfer**, direction from `balanceChanges` (the user's
  *      net USDsui/SUI delta is the sign).
  */
 
@@ -100,7 +100,7 @@ export type ActivityEntry = {
   digest: string;
   timestampMs: number;
   /**
-   * Coarse motion direction — used by iOS for amount sign + tint.
+   * Coarse motion direction, used by iOS for amount sign + tint.
    * `invest` and `withdraw` are direction-neutral (no counterparty
    * address), but iOS still wants a stable label for the History row.
    */
@@ -113,7 +113,7 @@ export type ActivityEntry = {
   /** Resolved `name@talise` display string, if the counterparty holds a Talise subname. */
   counterpartyName: string | null;
   /**
-   * For invest/withdraw rows: which venue the tx interacted with —
+   * For invest/withdraw rows: which venue the tx interacted with -
    * e.g. "deepbook", "navi". Lets iOS show "Invested in DeepBook"
    * instead of just "Invested". Null for plain send/receive rows.
    */
@@ -124,7 +124,7 @@ export type ActivityEntry = {
    * known escrow address (see `featureLabelFor`). When set, iOS/web can render
    * "Cheque issued" / "Stream funding" etc. instead of a generic Sent/Received.
    * Null for every ordinary transfer, and ALWAYS null when the cheque/stream
-   * env (and therefore the escrow address) is unconfigured — labeling is
+   * env (and therefore the escrow address) is unconfigured, labeling is
    * strictly additive and fail-open.
    */
   featureLabel:
@@ -137,7 +137,7 @@ export type ActivityEntry = {
    * Compound spend+save flag. When a Send PTB included a round-up
    * NAVI supply leg (Phase 2 v2), the tx digest has BOTH a `send`
    * and an `invest` PK PaymentRecord. We collapse them into ONE
-   * activity row — `direction: "sent"`, `amountUsdsui` = the send
+   * activity row, `direction: "sent"`, `amountUsdsui` = the send
    * leg, and `roundupUsdsui` = the auto-saved portion. iOS renders
    * a "Sent + saved" row with both numbers visible.
    * Null on non-compound rows.
@@ -158,7 +158,7 @@ export type ActivityEntry = {
     decimals: number;
   } | null;
   /**
-   * Set when this "sent" row is a USDsui → NGN bank CASH-OUT — i.e. the
+   * Set when this "sent" row is a USDsui → NGN bank CASH-OUT, i.e. the
    * recipient address matched one of the user's Linq off-ramp deposit
    * wallets. The activity route enriches it from `linq_offramps`. Lets the
    * UI label the row "Cash out → {bank}" and render a receipt with the NGN
@@ -197,7 +197,7 @@ const coinInfoCache = new Map<string, { symbol: string; decimals: number }>();
 /**
  * Resolve metadata for a set of coin types in one GraphQL hit, populating
  * the per-process cache. Already-cached types are skipped before the
- * network call — for steady-state refreshes this becomes a no-op.
+ * network call, for steady-state refreshes this becomes a no-op.
  *
  * Falls back to a type-string symbol + 9 decimals on any error, matching
  * the legacy per-call behaviour.
@@ -235,34 +235,34 @@ function coinSymbolFromType(coinType: string): string {
 
 /**
  * Package IDs we recognize as "yield venues" for the heuristic fallback
- * (path B). Anything calling these — that didn't already classify via
- * the PK PaymentRecord (path A) — gets tagged invest / withdraw.
+ * (path B). Anything calling these, that didn't already classify via
+ * the PK PaymentRecord (path A), gets tagged invest / withdraw.
  *
  * IDs were pulled directly from real mainnet user txs (mid-2026):
  *
- * - DeepBook margin: v1 anchor (0x97d9…fb86b — original type-anchor),
- *   the post-upgrade package (0x124b…ff2e — current), and an
+ * - DeepBook margin: v1 anchor (0x97d9…fb86b, original type-anchor),
+ *   the post-upgrade package (0x124b…ff2e, current), and an
  *   intermediate id (0xfbd3…1377). We match all three so neither
  *   pre-upgrade caps nor newly minted ones slip through unlabelled.
  *
  * - NAVI: lending v3 lives in `incentive_v3::*` (entry_deposit /
  *   withdraw_v2 etc.) under 0x1e4a13a0494d…. Oracle prelude
  *   (oracle_pro::update_single_price_v2) is noise we intentionally
- *   don't tag as a "venue" — the real NAVI call always follows it in
+ *   don't tag as a "venue", the real NAVI call always follows it in
  *   the same PTB and is what we classify.
  */
 const VENUE_PACKAGES: Array<{ pkg: string; venue: string }> = [
-  // DeepBook margin protocol — original (v1) and upgraded ids.
+  // DeepBook margin protocol, original (v1) and upgraded ids.
   { pkg: "0x97d9473771b01f77b0940c589484184b49f6444627ec121314fae6a6d36fb86b", venue: "deepbook" },
   { pkg: "0xfbd322126f1452fd4c89aedbaeb9fd0c44df9b5cedbe70d76bf80dc086031377", venue: "deepbook" },
   { pkg: "0x124bb3d8105d6d301c0d40feaa54d65df6b301e4d8ddd5eb8475b0f8a18cff2e", venue: "deepbook" },
-  // NAVI lending — incentive_v3 module.
+  // NAVI lending, incentive_v3 module.
   { pkg: "0x1e4a13a0494d5facdbe8473e74127b838c2d446ecec0ce262e2eddafa77259cb", venue: "navi" },
 ];
 
 /// Function-name substrings that flip a venue call into "withdraw".
 /// Everything else under a venue package (entry_deposit, supply,
-/// mint_supplier_cap, repay, …) folds into "invest" as the default —
+/// mint_supplier_cap, repay, …) folds into "invest" as the default -
 /// better to over-tag as invest than mislabel as sent.
 const WITHDRAW_FN_HINTS = ["withdraw", "redeem", "claim"];
 
@@ -283,7 +283,7 @@ function classifyVenue(tx: RawTx): { venue: string; kind: "invest" | "withdraw" 
 
 /**
  * Talise-OWNED Move modules (goal_vault, cheque, stream) we classify by
- * package id + module + function — a SECOND heuristic alongside
+ * package id + module + function, a SECOND heuristic alongside
  * `classifyVenue` (NAVI/DeepBook). These rails don't always carry a PK
  * PaymentRecord (goal-vault deposit/withdraw is a direct `goal_vault::*`
  * MoveCall; cheque create/claim and stream create/claim are sponsored PTBs
@@ -293,12 +293,12 @@ function classifyVenue(tx: RawTx): { venue: string; kind: "invest" | "withdraw" 
  *
  * FAIL-OPEN: each package id is read from env (`GOAL_VAULT_PACKAGE_ID`,
  * `CHEQUE_PACKAGE_ID`, `STREAM_PACKAGE_ID`). When an id is unset the
- * corresponding rail simply isn't matched — the feed still renders the row
+ * corresponding rail simply isn't matched, the feed still renders the row
  * via the downstream plain/heuristic path. Memoized per-process; the env is
  * fixed for a process lifetime.
  *
  * The mapping targets the fields iOS ALREADY renders (`direction` + `venue`)
- * — there is no new wire field. iOS shows `direction: "invest"` with a
+ *, there is no new wire field. iOS shows `direction: "invest"` with a
  * `venue` string as "Invested in <Venue>" / "+ from <Venue>" (withdraw), and
  * a `venue` marker like "@handle" is special-cased in HistoryRow. We reuse
  * that contract: goal/cheque/stream get a stable, human venue code.
@@ -337,7 +337,7 @@ function taliseModulePackages(): {
 /**
  * Classify a Talise-owned-module tx (goal_vault / cheque / stream) into the
  * iOS-facing `direction` + `venue`. Returns null when the tx touches none of
- * the configured packages — caller then falls through to the next heuristic.
+ * the configured packages, caller then falls through to the next heuristic.
  *
  * Direction mapping (chosen so iOS's existing HistoryRow copy reads right):
  *   • goal_vault deposit / create_with  → invest, venue "goal"      ("Saved to a goal")
@@ -352,7 +352,7 @@ function taliseModulePackages(): {
  *   • stream cancel_and_withdraw         → received, venue "stream" (refund of remainder)
  *
  * For the transfer-flavored rails (cheque / stream) we still want the row's
- * SIGN to follow the user's real balance delta — a claimer's USDsui goes UP,
+ * SIGN to follow the user's real balance delta, a claimer's USDsui goes UP,
  * an issuer's goes DOWN. We therefore return only the `venue` for those and
  * let the caller keep the balance-derived sent/received direction, EXCEPT we
  * pin direction when the move-call function unambiguously implies it. The
@@ -392,7 +392,7 @@ function classifyTaliseModule(tx: RawTx): {
       if (fn === "deposit" || fn.startsWith("create")) {
         return { venue: "goal", direction: "invest", signFromBalance: false };
       }
-      // Any other goal_vault call (e.g. yield-add) — treat as invest.
+      // Any other goal_vault call (e.g. yield-add), treat as invest.
       return { venue: "goal", direction: "invest", signFromBalance: false };
     }
 
@@ -419,7 +419,7 @@ const SPONSOR_ADDRESSES = new Set<string>([
  * Lazily-resolved, lowercased Talise escrow addresses for the cheque + stream
  * rails. FAIL-OPEN: if the env that gates either feature is unset (or the key
  * fails to decode), the corresponding address is null and labeling is simply
- * skipped — the feed still renders every row normally. Memoized per-process so
+ * skipped, the feed still renders every row normally. Memoized per-process so
  * we don't re-derive the address on every activity request.
  */
 let _escrowAddrs: { cheque: string | null; stream: string | null } | null = null;
@@ -448,7 +448,7 @@ function escrowAddresses(): { cheque: string | null; stream: string | null } {
  * the escrow-address heuristic. Money LEAVING the user to the cheque escrow is
  * a cheque they ISSUED; money ARRIVING from it is a cheque CLAIM landing.
  * Same for the stream escrow (funding vs a tranche payment). Returns null for
- * any non-escrow counterparty, or whenever the addresses are unconfigured —
+ * any non-escrow counterparty, or whenever the addresses are unconfigured -
  * so this never changes behaviour for ordinary transfers.
  */
 function featureLabelFor(
@@ -473,12 +473,12 @@ function featureLabelFor(
  * (tx history, vault events, counterparty names, coin metadata) each
  * fanning out into network calls with no upstream timeout. Without
  * fencing, a single slow GraphQL POST stalls the entire response past
- * the iOS URLSession 60s default and the client retries — which is
+ * the iOS URLSession 60s default and the client retries, which is
  * exactly the NSURLErrorTimedOut (-1001) we were chasing.
  *
  * Returns `fallback` and logs `[activity] <leg> timed out after Nms`
  * on timeout, so Vercel logs surface which leg wedged. Errors thrown
- * by the wrapped promise are NOT caught here — the caller already
+ * by the wrapped promise are NOT caught here, the caller already
  * has its own try/catch swallow with leg-appropriate empty fallback.
  */
 function withTimeout<T>(p: Promise<T>, ms: number, leg: string, fallback: T): Promise<T> {
@@ -627,12 +627,12 @@ type GraphQLActivityResponse = {
  * event walk to pull `VaultDeposit` and `VaultAutoSwap` rows.
  *
  * The Sui GraphQL filter `type` accepts a full
- * `0x<pkg>::module::Event` string and matches exactly — same precision
+ * `0x<pkg>::module::Event` string and matches exactly, same precision
  * as JSON-RPC's `MoveEventType` filter, with one round-trip per page.
  *
  * Schema note (2026 post-migration): the filter input is `type` (was
  * `eventType` in the older schema). `Event.contents` is now a typed
- * `MoveValue` directly — we keep reading `contents.json` because
+ * `MoveValue` directly, we keep reading `contents.json` because
  * `MoveValue.json` exists and serializes the parsed Move struct.
  */
 const EVENTS_BY_TYPE_QUERY = /* GraphQL */ `
@@ -678,7 +678,7 @@ type GraphQLEventsResponse<P> = {
  * Adapt a single `transactionBlocks` node into the legacy `RawTx` shape
  * the classifier downstream already understands. We deliberately keep
  * the existing `RawTx` contract so the (long, well-tested) classifier
- * code doesn't need to be ported — we just rebuild the input it
+ * code doesn't need to be ported, we just rebuild the input it
  * expects.
  *
  * Two notable mappings:
@@ -692,7 +692,7 @@ function adaptGraphQLNodeToRawTx(node: GraphQLActivityNode): RawTx {
   const txJson = (node.transactionJson ?? {}) as Record<string, unknown>;
 
   // New schema `balanceChangesJson` is FLAT: `{address, coinType, amount}`.
-  // Legacy classifier reads `b.owner.AddressOwner` — rebuild that wrapper.
+  // Legacy classifier reads `b.owner.AddressOwner`, rebuild that wrapper.
   type FlatBalanceChange = {
     address?: string;
     coinType?: string;
@@ -801,7 +801,7 @@ function adaptGraphQLNodeToRawTx(node: GraphQLActivityNode): RawTx {
         // The classifier only reads pure values via `readPureString`
         // (expects a string OR number[] UTF-8 bytes) and
         // `readU64AsUsdsui` (expects string or number). We decode the
-        // base64 to a number[] of bytes — `readPureString` then
+        // base64 to a number[] of bytes, `readPureString` then
         // round-trips via `Buffer.from(...).toString("utf8")`. For
         // u64 PaymentRecord amounts, `readU64AsUsdsui` reads the
         // pure value as a string; we additionally surface the
@@ -821,14 +821,14 @@ function adaptGraphQLNodeToRawTx(node: GraphQLActivityNode): RawTx {
         if (bytes.length === 8) {
           let n = 0n;
           for (let i = 7; i >= 0; i--) n = (n << 8n) | BigInt(bytes[i]);
-          // Cap at Number.MAX_SAFE_INTEGER fidelity loss is fine — the
+          // Cap at Number.MAX_SAFE_INTEGER fidelity loss is fine, the
           // amounts we read here are micro-USDsui (<2^53 within any
           // realistic Talise tx). Emit a string so both readers
           // (string or BigInt) keep working.
           value = n.toString();
         } else if (bytes.length > 0) {
           // For string-typed pure inputs (Move `vector<u8>` as utf8
-          // string — the nonce), BCS prefixes a ULEB128 length.
+          // string, the nonce), BCS prefixes a ULEB128 length.
           // Decode the length prefix and slice the payload bytes;
           // `readPureString` will then `Buffer.from(...).toString("utf8")`
           // which yields the original string.
@@ -855,7 +855,7 @@ function adaptGraphQLNodeToRawTx(node: GraphQLActivityNode): RawTx {
           valueType: inp.valueType ?? null,
         } as RawSuiCallArg;
       }
-      // Treat any non-pure input as an object reference — the
+      // Treat any non-pure input as an object reference, the
       // classifier only ever reads `pure` values, so this is purely
       // shape-preserving.
       return {
@@ -898,7 +898,7 @@ function adaptGraphQLNodeToRawTx(node: GraphQLActivityNode): RawTx {
       };
     });
   } else {
-    // Legacy fixture path — older schema or hand-built test data.
+    // Legacy fixture path, older schema or hand-built test data.
     type LegacyTxInner = {
       kind?: string;
       inputs?: RawSuiCallArg[];
@@ -942,7 +942,7 @@ type RawObjectChange = {
 };
 
 /**
- * SuiArgument shape — either "GasCoin" (literal string), or an object
+ * SuiArgument shape, either "GasCoin" (literal string), or an object
  * with `Input`/`Result`/`NestedResult` referencing other PTB slots. We
  * only care about `Input` (which indexes into the tx's `inputs[]`).
  */
@@ -967,7 +967,7 @@ type RawTransactionInput = {
 };
 
 /**
- * SuiCallArg — one entry in the PTB's `inputs[]` array. `pure` inputs
+ * SuiCallArg, one entry in the PTB's `inputs[]` array. `pure` inputs
  * carry the actual primitive value (string, number, bool, address). We
  * only need to read the `value` field when the input type is "pure".
  */
@@ -1055,7 +1055,7 @@ function summarize(
         myOtherRaw[b.coinType] =
           (myOtherRaw[b.coinType] ?? 0n) + BigInt(b.amount ?? "0");
       } catch {
-        /* skip non-numeric amounts — never expected, but defensive */
+        /* skip non-numeric amounts, never expected, but defensive */
       }
     }
   }
@@ -1078,7 +1078,7 @@ function summarize(
  * True iff this transaction wrote a PaymentRecord dynamic field under the
  * Talise payment-kit registry. We detect this by inspecting `objectChanges`:
  * any object whose owner is `ObjectOwner == registryId` is a child dynamic
- * field of the registry — i.e. a PaymentRecord we minted. We also accept a
+ * field of the registry, i.e. a PaymentRecord we minted. We also accept a
  * MoveCall against the payment-kit namespace package as a secondary signal,
  * which covers edge cases where the RPC elides the child object change
  * (e.g. when the registry is created inline in the same tx).
@@ -1119,15 +1119,15 @@ function isTaliseTransaction(
 function isPaymentRecordType(objectType: string | undefined): boolean {
   if (!objectType) return false;
   // Two on-chain shapes both count as a PaymentRecord write:
-  //   1. `<pkg>::payment_kit::PaymentRecord<<coinType>>` — the record
+  //   1. `<pkg>::payment_kit::PaymentRecord<<coinType>>`, the record
   //      object itself, with its USDsui type-arg, when it appears as
   //      a direct object change.
   //   2. `0x2::dynamic_field::Field<<pkg>::payment_kit::PaymentKey<...>,
-  //       <pkg>::payment_kit::PaymentRecord>` — the dynamic field
+  //       <pkg>::payment_kit::PaymentRecord>`, the dynamic field
   //      wrapper under the registry; here PaymentRecord appears WITHOUT
   //      its type-arg (the `<` is followed by another type, not USDSUI).
   //
-  // The earlier regex `PaymentRecord</` only matched shape (1) — which
+  // The earlier regex `PaymentRecord</` only matched shape (1), which
   // missed every real Navi supply tx because RPCs surface only the
   // dynamic-field wrapper. Now we accept BOTH shapes: PaymentRecord
   // followed by `<` (with type arg) OR `>` (no type arg, dynamic-field
@@ -1136,7 +1136,7 @@ function isPaymentRecordType(objectType: string | undefined): boolean {
 }
 
 /**
- * AUTHORITATIVE PATH (A) — recover the Talise memo from a tx.
+ * AUTHORITATIVE PATH (A), recover the Talise memo from a tx.
  *
  * Walks two layers of the tx in lockstep:
  *
@@ -1146,7 +1146,7 @@ function isPaymentRecordType(objectType: string | undefined): boolean {
  *
  *   2. Find the `processRegistryPayment` MoveCall (module=payment_kit,
  *      function=process_registry_payment). Its `arguments[1]` is the
- *      `nonce: String` — a pure input. We resolve the `Input: n` index
+ *      `nonce: String`, a pure input. We resolve the `Input: n` index
  *      into the PTB's `inputs[]` and read the pure `value` (a string).
  *
  *   3. Parse the string via `parsePaymentKitNonce`. If it returns null
@@ -1155,10 +1155,10 @@ function isPaymentRecordType(objectType: string | undefined): boolean {
  *
  * Returns null when the tx isn't a Talise PK tx OR when we can find
  * the PaymentRecord object change but can't parse a v1 Talise memo
- * out of the nonce (rare — e.g. legacy invoice-slug payments).
+ * out of the nonce (rare, e.g. legacy invoice-slug payments).
  *
  * All data we read here is already in the `RawTx` that
- * `queryTransactionBlocks` returned (showObjectChanges + showInput) —
+ * `queryTransactionBlocks` returned (showObjectChanges + showInput) -
  * NO additional RPC round-trips per tx.
  */
 /**
@@ -1192,7 +1192,7 @@ function readPureString(input: RawSuiCallArg | undefined): string | null {
  * Read a `pure` input as a u64 micro-USDsui amount and convert to
  * human USDsui (1:1 USD). Sui RPCs emit u64 as a JS string. Some
  * older fullnodes emit it as a number; handle both. Returns 0 on
- * failure rather than null — a zero-amount PK call should sort to
+ * failure rather than null, a zero-amount PK call should sort to
  * the back, not crash classification.
  */
 function readU64AsUsdsui(input: RawSuiCallArg | undefined): number {
@@ -1275,7 +1275,7 @@ function parseAllTalisePaymentRecords(
   return out;
 }
 
-/** Back-compat wrapper — first memo only. Used by callers that don't
+/** Back-compat wrapper, first memo only. Used by callers that don't
  *  care about the compound case (and to keep older code paths intact).
  */
 function classifyFromPaymentRecord(
@@ -1288,12 +1288,12 @@ function classifyFromPaymentRecord(
 
 /**
  * Map a parsed Talise memo to the iOS-facing direction + venue. The
- * memo's `kind` is the canonical source of truth — the user explicitly
+ * memo's `kind` is the canonical source of truth, the user explicitly
  * told us what this tx was when we built the nonce.
  *
  * Direction mapping:
  *   - send / split / recur / agent_pay → user's net delta sign (sent
- *     vs received from the user's POV — these are real transfers, so
+ *     vs received from the user's POV, these are real transfers, so
  *     the user is either sender or receiver and direction follows from
  *     their balance change).
  *   - invest / swap → "invest" (yield-bound)
@@ -1312,7 +1312,7 @@ function memoToClassification(
     case "swap":
       // Swap is value-conserving; for the activity row we treat it as
       // a generic non-transfer. iOS already special-cases swap when
-      // we wire it up — fall back to "invest" tint for now (it's the
+      // we wire it up, fall back to "invest" tint for now (it's the
       // closest direction-neutral label we have).
       return { direction: "invest", venue: memo.refs.venue ?? null };
     case "send":
@@ -1335,7 +1335,7 @@ function memoToClassification(
  * Why this exists: the wallet-side `queryTransactionBlocks` feed only
  * surfaces transactions touching the user's address. Once a user has
  * pointed their @handle at their vault, payments TO the handle land
- * as coins owned by the vault object id (NOT the user's address) —
+ * as coins owned by the vault object id (NOT the user's address) -
  * invisible to the wallet feed. Same for the cron-driven auto-swap:
  * the Onara admin signs the tx, the vault id moves, the user is
  * nowhere in the balanceChanges.
@@ -1347,7 +1347,7 @@ function memoToClassification(
  *   • Filter `parsedJson.vault_id == vaultId` to keep only this user's
  *     events (the package emits these across every user).
  *   • Translate parsedJson into the `ActivityEntry` shape iOS already
- *     understands — `direction: "received"` for deposits, `"autoswap"`
+ *     understands, `direction: "received"` for deposits, `"autoswap"`
  *     for swaps. HistoryRow already maps both correctly.
  */
 async function getVaultEventActivity(
@@ -1372,7 +1372,7 @@ async function getVaultEventActivity(
 
   const vaultNormalized = vaultId.toLowerCase();
 
-  // We scan a bounded recent window — fetching ~limit * 4 events per
+  // We scan a bounded recent window, fetching ~limit * 4 events per
   // type matches the wallet-feed over-fetch. The package is shared
   // across every user so the per-vault hit rate is sparse; cap at 100
   // events scanned per type to keep the cron budget intact.
@@ -1515,7 +1515,7 @@ async function getVaultEventActivity(
       counterparty: p.from ?? null,
       counterpartyName: null,
       // `venue: "@handle"` is a marker that the row is a vault-side
-      // inbound transfer — HistoryRow already special-cases this so
+      // inbound transfer, HistoryRow already special-cases this so
       // the title reads "Received via @handle" instead of "Received".
       venue: "@handle",
       featureLabel: null,
@@ -1536,7 +1536,7 @@ async function getVaultEventActivity(
     // both legs. The source side fills `amountSui` (when it's SUI)
     // or `otherCoin` (anything else); the destination fills
     // `amountUsdsui` when the swap landed in USDsui, else `otherCoin`
-    // — but the auto_swap path only ever produces USDsui today so
+    //, but the auto_swap path only ever produces USDsui today so
     // the common case is `(SUI|other) → USDsui`.
     let amountUsdsui: number | null = null;
     let amountSui: number | null = null;
@@ -1553,12 +1553,12 @@ async function getVaultEventActivity(
         amount: fromAmount.toString(),
         decimals: info.decimals,
       };
-      // `venue` is the source coin symbol — HistoryRow renders
+      // `venue` is the source coin symbol, HistoryRow renders
       // "Auto-swapped <SYMBOL>" when both legs aren't separately
       // formatted (rare, but the fallback exists in the iOS code).
       venue = info.symbol;
     } else if (fromType === USDSUI_TYPE) {
-      // Reverse swap (USDsui → SUI / other) — populate the USDsui
+      // Reverse swap (USDsui → SUI / other), populate the USDsui
       // leg with the FROM amount so the composer renders correctly.
       amountUsdsui = Number(fromAmount) / 1e6;
     }
@@ -1603,7 +1603,7 @@ async function getVaultEventActivity(
  * `includeNonTalise: true` shows every successful USDsui / SUI movement
  * the address has been involved in, regardless of whether the tx flowed
  * through Talise's payment-kit registry. Used by the iOS /api/activity
- * feed (users want to see "money I received" — they don't care about
+ * feed (users want to see "money I received", they don't care about
  * which kit was used). The web feeds keep the curated default so the
  * Talise UI stays branded.
  *
@@ -1611,7 +1611,7 @@ async function getVaultEventActivity(
  * `talise::vault::VaultDeposit` + `VaultAutoSwap` event streams for that
  * vault and merge the resulting rows into the wallet-side feed. Without
  * it, vault-side activity (auto-swap conversions, inbound payments to
- * @handle that land directly on the vault) would be invisible — the
+ * @handle that land directly on the vault) would be invisible, the
  * wallet's tx history only sees txs touching the user's address.
  */
 export async function getRecentActivity(
@@ -1626,7 +1626,7 @@ export async function getRecentActivity(
  * Same as `getRecentActivity`, plus a `complete` flag: false when the
  * tx-history leg timed out or failed and the entries are therefore a
  * PARTIAL (possibly empty) view of the chain. Feed-style callers can
- * ignore it — a short feed is still a feed — but AGGREGATING callers
+ * ignore it, a short feed is still a feed, but AGGREGATING callers
  * (rewards insights) must not present sums computed from an incomplete
  * read as truth (same integrity principle as the 2026-06-11 balances
  * incident: a failed read is not a genuine zero).
@@ -1643,7 +1643,7 @@ export async function getRecentActivityWithMeta(
   // Sui GraphQL caps `first` at 50 (server-enforced
   // `Page size is too large: N > 50` validation error). Any `first` > 50
   // throws a GraphQL validation error which our broad try/catch below
-  // swallowed, returning [] — that was the root cause of the
+  // swallowed, returning [], that was the root cause of the
   // "Nothing yet" / `decoded 0 entries` bug for addresses with a healthy
   // tx history when iOS asked for limit=20 (fetchLimit=80).
   //
@@ -1651,7 +1651,7 @@ export async function getRecentActivityWithMeta(
   // the desired `fetchLimit` or exhaust the user's history. One extra
   // round-trip in the worst case; zero extra for users with <50 txs.
   const PAGE_MAX = 50;
-  // Leg 1: tx-history GraphQL walk. Hard cap at 6s — past that we serve
+  // Leg 1: tx-history GraphQL walk. Hard cap at 6s, past that we serve
   // whatever subset is in `raw` (possibly empty) and continue with the
   // remaining legs so iOS still gets vault rows / cached coin metadata.
   // Without this fence a hung GraphQL POST stalls the whole response
@@ -1661,7 +1661,7 @@ export async function getRecentActivityWithMeta(
     // Sui GraphQL's `transactions` connection orders ASCENDING (oldest
     // first). Paging forward with `first/after` therefore returns a user's
     // OLDEST txs and never reaches recent activity once they have more than
-    // `fetchLimit` total — which froze History at the account's first ~50
+    // `fetchLimit` total, which froze History at the account's first ~50
     // txs. Page BACKWARD from the newest with `last/before` instead so the
     // most recent txs are always in the window. (Downstream sorts by
     // timestamp desc, so within-page order is irrelevant.)
@@ -1673,7 +1673,7 @@ export async function getRecentActivityWithMeta(
       // Pre-migration this site issued TWO `suix_queryTransactionBlocks`
       // calls in parallel (FromAddress + ToAddress) and unioned the
       // results client-side. Sui GraphQL's `affectedAddress` filter
-      // returns BOTH sides in a single query — half the round-trips,
+      // returns BOTH sides in a single query, half the round-trips,
       // same coverage. The downstream classifier still consumes the
       // legacy `RawTx` shape; `adaptGraphQLNodeToRawTx` rebuilds it from
       // the `transactionJson` + `balanceChangesJson` + `objectChanges`
@@ -1741,7 +1741,7 @@ export async function getRecentActivityWithMeta(
       }
     }
     if (allOtherCoinTypes.size > 0) {
-      // Leg 4: coin metadata prime — 2s cap. On timeout `lookupCoinInfo`
+      // Leg 4: coin metadata prime, 2s cap. On timeout `lookupCoinInfo`
       // falls back to the last-segment-of-type symbol with 9 decimals,
       // so rows still render with a sensible label.
       await withTimeout(
@@ -1757,7 +1757,7 @@ export async function getRecentActivityWithMeta(
   for (const tx of byDigest.values()) {
     if (tx.effects?.status?.status !== "success") continue;
     // Web (default): only surface txs that flowed through Talise's
-    // payment-kit registry — keeps the curated feed clean.
+    // payment-kit registry, keeps the curated feed clean.
     // Mobile (includeNonTalise=true): surface every successful USDsui
     // / SUI movement the address was involved in, so the user sees
     // their funding txs and direct transfers from outside Talise.
@@ -1769,7 +1769,7 @@ export async function getRecentActivityWithMeta(
 
     // Pick the dominant non-USDsui/non-SUI movement, if any. We pick the
     // single biggest by absolute raw value rather than emit one row per
-    // coin type — multi-coin txs are dominated by one principal
+    // coin type, multi-coin txs are dominated by one principal
     // transfer and a long tail of dust, so showing the big one keeps
     // the feed readable.
     const otherEntries = Object.entries(myOtherRaw).filter(
@@ -1793,17 +1793,17 @@ export async function getRecentActivityWithMeta(
     }
 
     // --- Classification ------------------------------------------------
-    // A. Authoritative — the on-chain PaymentRecord memo(s), if any.
+    // A. Authoritative, the on-chain PaymentRecord memo(s), if any.
     //    Compound case detected here: a tx with both a `send` PK
-    //    record AND an `invest` PK record is the round-up flow — we
+    //    record AND an `invest` PK record is the round-up flow, we
     //    surface it as a single "Sent + saved" row with the send
     //    amount as primary + the invest amount as `roundupUsdsui`.
-    // B. Heuristic — venue package sniff (covers pre-PK history).
-    // C. Plain — direction from balance-change sign.
+    // B. Heuristic, venue package sniff (covers pre-PK history).
+    // C. Plain, direction from balance-change sign.
     let direction: ActivityEntry["direction"];
     let venue: string | null = null;
     let cpForRow: string | null = counterparty;
-    // Compound state — when set, the row carries both amounts.
+    // Compound state, when set, the row carries both amounts.
     let compoundSendUsdsui: number | null = null;
     let compoundRoundupUsdsui: number | null = null;
 
@@ -1817,7 +1817,7 @@ export async function getRecentActivityWithMeta(
     const sendMemo = allMemos.find((m) => m.kind === "send");
     const investMemo = allMemos.find((m) => m.kind === "invest");
     // Is the VIEWER the one who paid? The compound spend+save treatment
-    // (and the "sent" direction) is only valid from the sender's POV —
+    // (and the "sent" direction) is only valid from the sender's POV -
     // their USDsui/SUI balance went DOWN. The recipient of the very same
     // digest sees a POSITIVE delta and must read it as "received".
     const viewerIsSender = myUsdsui < 0 || mySui < 0;
@@ -1846,7 +1846,7 @@ export async function getRecentActivityWithMeta(
     } else if (taliseModuleClass) {
       // B0. Talise-owned modules (goal_vault / cheque / stream). Checked
       //     BEFORE the generic NAVI/DeepBook venue sniff because a goal-vault
-      //     yield tx also calls NAVI's package in the same PTB — we want the
+      //     yield tx also calls NAVI's package in the same PTB, we want the
       //     "goal"/"navi-yield" framing, not a bare "Invested in NAVI" that
       //     loses the goal context. Fail-open: null (and we fall to B/C)
       //     whenever the relevant package id env is unset.
@@ -1865,7 +1865,7 @@ export async function getRecentActivityWithMeta(
         cpForRow = null;
       }
     } else {
-      // B. heuristic — match VENUE_PACKAGES against the MoveCalls.
+      // B. heuristic, match VENUE_PACKAGES against the MoveCalls.
       const venueClass = classifyVenue(tx);
       if (venueClass) {
         direction = venueClass.kind;
@@ -1874,7 +1874,7 @@ export async function getRecentActivityWithMeta(
       } else {
         // C. plain transfer (or swap). Detect swap first: when the
         // tx moves two different coins for the user in OPPOSITE
-        // directions, it's almost certainly a DEX swap — the
+        // directions, it's almost certainly a DEX swap, the
         // legacy Convert-banner sweep, a direct Cetus call, the
         // vault's auto-swap PTB, etc. We surface this as a single
         // "swap" row with BOTH amounts visible instead of
@@ -1923,7 +1923,7 @@ export async function getRecentActivityWithMeta(
       entryAmountUsdsui = myUsdsui === 0 ? null : Math.abs(myUsdsui);
     }
 
-    // Build the otherCoin payload — only when (a) we tracked a non-
+    // Build the otherCoin payload, only when (a) we tracked a non-
     // zero non-USDsui/non-SUI movement AND (b) USDsui/SUI didn't
     // already cover this row. Resolves coin metadata for the symbol +
     // decimals; falls back to last-segment-of-type if the chain has
@@ -1962,11 +1962,11 @@ export async function getRecentActivityWithMeta(
 
   // Merge in vault-side events (deposits to the vault + auto-swap
   // conversions). These are emitted by the `talise::vault` Move module
-  // and never appear in the user's wallet tx history — without this
+  // and never appear in the user's wallet tx history, without this
   // pass the user can't see "money I received via @handle" nor the
   // cron-driven SUI→USDsui auto-swap.
   // Short-circuit: when the user has no vault id, skip the event walk
-  // entirely — there's nothing to filter against and the bare
+  // entirely, there's nothing to filter against and the bare
   // `events(filter: type)` query has no per-user predicate to lean on,
   // so it would walk the global stream for nothing. The `opts.vaultId`
   // truthiness check already guarded this; the explicit comment keeps
@@ -1997,7 +1997,7 @@ export async function getRecentActivityWithMeta(
   }
 
   // Sort newest first, then dedupe by digest. A single auto-swap tx
-  // emits the `VaultAutoSwap` event AND moves coins on chain — if the
+  // emits the `VaultAutoSwap` event AND moves coins on chain, if the
   // user's address is anywhere in the balanceChanges (e.g. fee rebate)
   // the same digest could appear on both the wallet-side and
   // vault-side pass. Vault rows win because their direction
@@ -2009,7 +2009,7 @@ export async function getRecentActivityWithMeta(
   // Two-pass dedupe so a vault entry seen LATER in the sorted list (e.g.
   // identical timestampMs but stable sort kept the wallet row first)
   // still wins. Vault rows have direction "autoswap" or venue "@handle",
-  // wallet duplicates of the same digest will not — so when we see a
+  // wallet duplicates of the same digest will not, so when we see a
   // duplicate digest, prefer the vault-flavored one.
   const vaultishFlavor = (e: ActivityEntry): boolean =>
     e.direction === "autoswap" || e.venue === "@handle";
@@ -2062,7 +2062,7 @@ export async function getRecentActivityWithMeta(
         if (original && uname) nameCache.set(original, formatHandle(uname));
       }
     } catch {
-      // Fall through — chain resolution below still covers everything.
+      // Fall through, chain resolution below still covers everything.
     }
   }
 

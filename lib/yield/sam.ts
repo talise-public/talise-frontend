@@ -9,7 +9,7 @@ import { sui } from "@/lib/sui";
  * SAM is a non-custodial Sui yield vault: deposit USDC → receive an
  * appreciating share coin (samUSDC) representing a pro-rata claim on a pool
  * that SAM auto-allocates across Scallop / Suilend / NAVI and compounds reward
- * tokens. Yield accrues purely via SHARE PRICE (pool value C ÷ shares S) — no
+ * tokens. Yield accrues purely via SHARE PRICE (pool value C ÷ shares S), no
  * rebasing, no claiming, no lock-up; redeem any time in one tx. SAM is the
  * "engine of engines": it does multi-market aggregation + rebalancing +
  * reward harvesting, so Talise routes idle dollars INTO it rather than
@@ -17,7 +17,7 @@ import { sui } from "@/lib/sui";
  * harvested yield only, never principal). Docs: https://docs.usesam.xyz
  *
  * ── ENV-GATED, like every Talise partner ──────────────────────────────────
- * SAM's public docs are user/math-only — they do NOT publish the package id,
+ * SAM's public docs are user/math-only, they do NOT publish the package id,
  * module, entry-function names, share-coin type, or vault object id. So this
  * adapter is fully configured by env and is DORMANT until those are set:
  * `samConfigured()` is false → reads return null, build* throw a clear error,
@@ -68,7 +68,7 @@ export function samConfigured(): boolean {
 
 // ── Share math (verbatim from docs.usesam.xyz/math) ──────────────────────
 //
-// Pure, exact, and correct regardless of the on-chain wiring — this is the
+// Pure, exact, and correct regardless of the on-chain wiring, this is the
 // honest-accounting core of the engine. All rounding is DOWN on user-facing
 // amounts (SAM's anti-gaming rule); fees round UP.
 
@@ -124,7 +124,7 @@ export type SamVaultState = {
 /**
  * Read the SAM vault's C (pool value) and S (share supply) from its shared
  * object. The FIELD PATHS depend on SAM's struct layout, which the docs don't
- * publish — `SAM_VAULT_VALUE_FIELD` / `SAM_VAULT_SHARES_FIELD` override the
+ * publish, `SAM_VAULT_VALUE_FIELD` / `SAM_VAULT_SHARES_FIELD` override the
  * defaults once known. Returns null when unconfigured or unreadable (callers
  * degrade gracefully).
  */
@@ -153,7 +153,7 @@ export async function fetchSamVaultState(): Promise<SamVaultState | null> {
  * A user's SAM position: their samUSDC share balance × current share price,
  * net of the withdraw fee. `earned` is derived against a caller-supplied cost
  * basis (Talise tracks deposit basis in its ledger), so it's honest and
- * churn-proof — exactly the model SAM documents.
+ * churn-proof, exactly the model SAM documents.
  */
 export async function readSamPosition(
   address: string,
@@ -164,7 +164,7 @@ export async function readSamPosition(
   const [state, balance] = await Promise.all([
     fetchSamVaultState(),
     sui()
-      // gRPC `getBalance` returns `{ balance: { balance } }` — the JSON-RPC
+      // gRPC `getBalance` returns `{ balance: { balance } }`, the JSON-RPC
       // `totalBalance` field doesn't exist on this shape (it always read 0).
       .getBalance({ owner: address, coinType: cfg.shareType })
       .then((b) => Number(b.balance?.balance ?? 0))
@@ -207,7 +207,7 @@ export async function fetchSamApy(): Promise<number | null> {
 //
 // Append a SAM deposit/redeem onto an existing sponsored Transaction. They
 // THROW when SAM isn't configured so a half-wired env can never execute a
-// guessed Move call. Exact arg order may need adjusting to SAM's signature —
+// guessed Move call. Exact arg order may need adjusting to SAM's signature -
 // kept minimal (vault, coin/shares) per the documented deposit/redeem shape.
 
 /** Deposit `usdcCoin` (a Coin<USDC> argument) into the SAM vault; shares to sender. */

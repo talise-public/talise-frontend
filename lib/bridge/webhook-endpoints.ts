@@ -3,7 +3,7 @@ import "server-only";
 import { bridgeFetch } from "./client";
 
 /**
- * Bridge webhook ENDPOINT management (`/v0/webhooks`) — the setup side.
+ * Bridge webhook ENDPOINT management (`/v0/webhooks`), the setup side.
  * (Inbound signature verification lives in `lib/bridge/webhook.ts`.)
  *
  * Flow per the quick-start:
@@ -29,15 +29,15 @@ export type BridgeWebhookEndpoint = {
   id: string; // "wep_…"
   url: string;
   status: "active" | "disabled";
-  /** PEM RSA public key for THIS endpoint — store it for signature verification. */
+  /** PEM RSA public key for THIS endpoint, store it for signature verification. */
   public_key?: string;
   event_categories?: string[];
 };
 
 /**
  * Register a webhook endpoint. `eventEpoch`:
- *   • "webhook_creation" (default) — only events from now on.
- *   • "beginning_of_time" — replay all historical events.
+ *   • "webhook_creation" (default), only events from now on.
+ *   • "beginning_of_time", replay all historical events.
  * Returns the endpoint incl. its `public_key` (save → BRIDGE_WEBHOOK_PUBKEY).
  * The endpoint starts `disabled`; call `activateWebhook` to turn it on.
  */

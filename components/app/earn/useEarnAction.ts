@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useEarnAction — the browser signer for Earn (invest / withdraw) flows.
+ * useEarnAction, the browser signer for Earn (invest / withdraw) flows.
  *
  * Plain sends go through `useSignAndSend` (server returns ready-to-sign
  * TransactionData bytes). The Earn /prepare routes are different: they return
@@ -18,7 +18,7 @@
  *        -> { digest, freshProof? }
  *
  * It reuses the exact same ephemeral key / cached-proof plumbing as
- * `useSignAndSend` (readEphemeralForT2000 / writeCachedProof from zkclient) —
+ * `useSignAndSend` (readEphemeralForT2000 / writeCachedProof from zkclient) -
  * no proof logic is duplicated here. On success it dispatches the global
  * `talise:tx` window event so balances/activity auto-refresh, and returns the
  * digest. If the wallet key isn't present we kick the Google sign-in flow.
@@ -84,7 +84,7 @@ export function useEarnAction() {
       inFlight.current = true;
       setWorking(true);
       try {
-        // 1) Prepare — server builds the transaction KIND for the venue leg.
+        // 1) Prepare, server builds the transaction KIND for the venue leg.
         const prepareBody =
           action.op === "supply"
             ? { venue: action.venue, amount: action.amountUsd }
@@ -97,7 +97,7 @@ export function useEarnAction() {
           body: prepareBody,
         });
 
-        // 2) Sponsor — wrap the kind in full TransactionData with gas data.
+        // 2) Sponsor, wrap the kind in full TransactionData with gas data.
         const sponsor = await api<SponsorResponse>("/api/zk/sponsor", {
           method: "POST",
           body: { transactionKindB64: prep.transactionKindB64 },
@@ -109,7 +109,7 @@ export function useEarnAction() {
           fromBase64(sponsor.bytes)
         );
 
-        // 4) Execute — server wraps the zkLogin sig + sponsor sig, broadcasts.
+        // 4) Execute, server wraps the zkLogin sig + sponsor sig, broadcasts.
         const metaKind = action.op === "supply" ? "invest" : "withdraw";
         const exec = await api<ExecuteResponse>("/api/zk/sponsor-execute", {
           method: "POST",
@@ -146,7 +146,7 @@ export function useEarnAction() {
       } catch (e) {
         if (isSessionExpiryError(e)) {
           void forceFreshSignIn({ reauthNow: true });
-          throw new ApiError(401, "Your session expired — signing you in again…", "SESSION_EXPIRED");
+          throw new ApiError(401, "Your session expired, signing you in again…", "SESSION_EXPIRED");
         }
         throw e;
       } finally {

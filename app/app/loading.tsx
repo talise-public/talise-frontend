@@ -1,6 +1,6 @@
 /**
  * Route-group loading skeleton. Shown instantly on navigation into any
- * `/app/*` route while its client bundle hydrates + first fetch resolves —
+ * `/app/*` route while its client bundle hydrates + first fetch resolves -
  * replaces the blank-flash with a calm, on-theme placeholder.
  */
 export default function AppLoading() {

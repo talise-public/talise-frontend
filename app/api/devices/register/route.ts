@@ -5,7 +5,7 @@ import { registerDeviceToken } from "@/lib/db";
 export const runtime = "nodejs";
 
 /**
- * POST /api/devices/register — register this device's push token for the
+ * POST /api/devices/register, register this device's push token for the
  * authed user. iOS calls this from the AppDelegate's
  * `didRegisterForRemoteNotificationsWithDeviceToken` (with the session bearer
  * attached). The token is upserted (UNIQUE), so re-registration is idempotent.

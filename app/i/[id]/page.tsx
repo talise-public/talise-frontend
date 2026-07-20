@@ -8,7 +8,7 @@ import { InvoicePayView } from "@/components/app/work/InvoicePayView";
 export const dynamic = "force-dynamic";
 
 /**
- * PUBLIC invoice view + pay page — NOT under /app, so it renders standalone
+ * PUBLIC invoice view + pay page, NOT under /app, so it renders standalone
  * without the AppShell chrome (no sidebar / nav). InvoicePayView applies the
  * light-mint skin (`landing-mint`) itself. Anyone with the link can view the
  * invoice and pay it; the "Pay this invoice" button routes into /app/pay
@@ -24,14 +24,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { id } = await params;
   const inv = await workInvoiceById(id).catch(() => null);
-  if (!inv) return { title: "Invoice — Talise" };
+  if (!inv) return { title: "Invoice, Talise" };
   const title = `Invoice for $${inv.amountUsd.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} — Talise`;
+  })}, Talise`;
   return {
     title,
-    description: inv.memo || "Pay this invoice with Talise — gasless digital dollars.",
+    description: inv.memo || "Pay this invoice with Talise, gasless digital dollars.",
     robots: { index: false, follow: false },
   };
 }

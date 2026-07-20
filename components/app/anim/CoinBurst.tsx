@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * CoinBurst — the web port of the iOS send-success "coin drop" (Figma 141:18 /
+ * CoinBurst, the web port of the iOS send-success "coin drop" (Figma 141:18 /
  * SuccessfulTxView's `SuccessCoins` scrapbook entry).
  *
  * A small cluster of warm-gold coins drops in and scatters out, then settles
- * with a low-damping spring — the same "paper cutout pressed onto the page"
+ * with a low-damping spring, the same "paper cutout pressed onto the page"
  * wobble as the iOS `scrapbookEntry` modifier. A soft mint bloom blooms behind
  * them and a few sparkles twinkle once. Tuned for the light-mint app theme:
  * coins are gold (#E8B23A) with a forest rim + mint highlight, sitting on the
- * white lifted cards — never gaudy, never cartoonish.
+ * white lifted cards, never gaudy, never cartoonish.
  *
  * Plays exactly once on mount, ~1.5s, then calls `onDone`. Self-contained SVG;
  * the mobile app's coin asset (public/anim/sui-coin.png). Respects prefers-reduced-motion (renders a single static,
@@ -20,7 +20,7 @@ import { useEffect } from "react";
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 
 // ── Palette ────────────────────────────────────────────────────────────────
-const MINT = "#caffb8"; // accent-light — bloom + sparkles (FILL only)
+const MINT = "#caffb8"; // accent-light, bloom + sparkles (FILL only)
 
 /** Sparkle positions around the cluster (px from center). */
 const SPARKLES: Array<{ x: number; y: number; size: number; delay: number }> = [
@@ -71,7 +71,7 @@ export function CoinBurst({
       className="relative grid place-items-center"
       style={{ width: size, height: size }}
     >
-      {/* Soft mint bloom behind the coins — sets the stage, fades as they land. */}
+      {/* Soft mint bloom behind the coins, sets the stage, fades as they land. */}
       <motion.div
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
@@ -85,7 +85,7 @@ export function CoinBurst({
 
       {/* The mobile app's coin-pile art drops in and settles with the same
           scrapbook wobble. (The old per-coin scatter rendered the iOS
-          SuiCoinMark — pure WHITE on transparent — invisible on the light
+          SuiCoinMark, pure WHITE on transparent, invisible on the light
           theme; the green SuccessCoins pile is the actual iOS success art.) */}
       <motion.div
         className="absolute"
@@ -97,7 +97,7 @@ export function CoinBurst({
         <CoinPile px={pilePx} />
       </motion.div>
 
-      {/* Sparkles — a brief one-shot twinkle once the pile has mostly settled. */}
+      {/* Sparkles, a brief one-shot twinkle once the pile has mostly settled. */}
       {SPARKLES.map((s, i) => (
         <motion.div
           key={`s-${i}`}
@@ -115,7 +115,7 @@ export function CoinBurst({
 }
 
 /**
- * The mobile app's SuccessCoins pile (green halftone coin stacks) — the same
+ * The mobile app's SuccessCoins pile (green halftone coin stacks), the same
  * art iOS shows on SuccessfulTxView. NOT the SuiCoinMark (that asset is pure
  * white on transparent and disappears on the light theme).
  */

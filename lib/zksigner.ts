@@ -6,7 +6,7 @@
  *  - Talks to the Mysten prover service.
  *  - Wraps the proof + ephemeral signature into a final zkLoginSignature.
  *
- * Never expose these helpers to the client bundle — they import server-only
+ * Never expose these helpers to the client bundle, they import server-only
  * crypto via @mysten/sui's zklogin tree.
  */
 
@@ -35,7 +35,7 @@ function cookieDomain(): string | undefined {
 
 /**
  * Prover endpoint resolution order:
- *   1. ZK_PROVER_URL env (our self-hosted prover — required for mainnet
+ *   1. ZK_PROVER_URL env (our self-hosted prover, required for mainnet
  *      since Mysten's hosted mainnet prover whitelists audiences).
  *   2. Mysten's testnet prover (open to all audiences) on testnet.
  *   3. Mysten's mainnet prover as a last resort on mainnet (only works for
@@ -64,7 +64,7 @@ const PROVER_URL = (() => {
  *   ZK_PROVER_CANARY_PCT  - 0..100 (default 0). When >0 a deterministic bucket
  *                           of users gets routed to GPU regardless of PRIMARY,
  *                           the rest fall through to PRIMARY.
- *   ZK_PROVER_TIMEOUT_MS  - per-attempt timeout (default 8000ms — generous
+ *   ZK_PROVER_TIMEOUT_MS  - per-attempt timeout (default 8000ms, generous
  *                           enough for the GPU cold-load on the first call).
  *
  * We keep `shinami` as the default primary so this ships safely. Flip
@@ -224,7 +224,7 @@ function normalizeProverResponse(raw: Record<string, unknown>): ProverResponse {
 
 type WithFallbackOpts = {
   inputs: ProverInputs;
-  /** Used by canary bucketing — stable per-user (address seed or salt-sub). */
+  /** Used by canary bucketing, stable per-user (address seed or salt-sub). */
   canaryKey?: string;
 };
 
@@ -313,7 +313,7 @@ export async function callProverWithFallback(
       );
       lastErr = err;
       if (!retryable && i === 0) {
-        // Non-retryable primary failure (e.g. 4xx — bad JWT). Still fall
+        // Non-retryable primary failure (e.g. 4xx, bad JWT). Still fall
         // through to the fallback once so an upstream auth-flake on one
         // provider doesn't break the whole signing path; provider quirks
         // sometimes surface as 4xx on one and 200 on the other.
@@ -350,13 +350,13 @@ async function invokeBackend(
     });
     return raw;
   }
-  // backend === "mysten" — use the legacy PROVER_URL resolution.
+  // backend === "mysten", use the legacy PROVER_URL resolution.
   return callProver(inputs, { url: PROVER_URL, label: "mysten" });
 }
 
 /**
  * Full zkLogin proof, including the locally-computed `addressSeed`. This is
- * the cacheable artifact — it's valid for the entire ephemeral session
+ * the cacheable artifact, it's valid for the entire ephemeral session
  * (~55 min in the browser, up to `maxEpoch` on chain). Pass it back through
  * later signing calls to skip the 2-4s Shinami round trip.
  */
@@ -370,7 +370,7 @@ export type CachedZkProof = {
 /**
  * Generate a fresh zkLogin proof via the configured prover. Reads the
  * session JWT + salt from the encrypted cookie. The returned object is the
- * cacheable shape — pass it to `assembleZkLoginSignature` on subsequent
+ * cacheable shape, pass it to `assembleZkLoginSignature` on subsequent
  * sends to skip the prover call entirely.
  */
 export async function mintZkProof(opts: {
@@ -426,7 +426,7 @@ export async function mintZkProof(opts: {
  * Returns the signature AND the proof used (whether cached or freshly minted)
  * so callers can persist it for the next send.
  *
- * The proof is `mintZkProof`'s biggest cost — Shinami's Groth16 generator
+ * The proof is `mintZkProof`'s biggest cost, Shinami's Groth16 generator
  * runs 2-4s. Pass `cachedProof` to skip that hop entirely.
  */
 export async function assembleZkLoginSignature(opts: {
@@ -479,14 +479,14 @@ export async function assembleZkLoginSignature(opts: {
  * primes the connection pool so the first real proof mint reuses an
  * already-open socket.
  *
- * Fire-and-forget. Failures are silent — this is best-effort warmth, not
+ * Fire-and-forget. Failures are silent, this is best-effort warmth, not
  * a health check. The Node runtime keeps the socket alive on the HTTP
  * agent for ~5 minutes which covers all but the coldest Vercel cold
  * starts.
  */
 function prewarmProverConnections(): void {
   // Mysten / Shinami: hit the resolved PROVER_URL host. We don't care
-  // about the response — we just want the TCP+TLS+HTTP/2 round trip done.
+  // about the response, we just want the TCP+TLS+HTTP/2 round trip done.
   try {
     const u = new URL(PROVER_URL);
     void fetch(`${u.origin}/`, {
@@ -494,7 +494,7 @@ function prewarmProverConnections(): void {
       signal: AbortSignal.timeout(3000),
     }).catch(() => {});
   } catch {
-    // Malformed URL — ignore. Real calls will fail loudly with the
+    // Malformed URL, ignore. Real calls will fail loudly with the
     // actual error.
   }
   // GPU prover, when configured. Same logic.

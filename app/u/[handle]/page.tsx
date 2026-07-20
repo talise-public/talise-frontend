@@ -29,7 +29,7 @@ export async function generateMetadata({
   const { handle } = await params;
   const h = cleanHandle(handle);
   const title = `@${h} on Talise`;
-  const description = `${h} is on the Talise waitlist — the gasless dollar wallet on Sui. Claim your own name and skip the line.`;
+  const description = `${h} is on the Talise waitlist, the gasless dollar wallet on Sui. Claim your own name and skip the line.`;
   return {
     title,
     description,
@@ -54,23 +54,34 @@ export default async function ProfilePage({
   const joinHref = `/waitlist?ref=${encodeURIComponent(code)}`;
 
   return (
-    <main className="landing-mint min-h-screen bg-[var(--color-bg)] px-5 py-10 text-[var(--color-fg)]">
-      <div className="mx-auto flex max-w-[420px] flex-col items-center gap-6">
+    <main className="bp-page relative min-h-screen overflow-hidden text-[var(--color-fg)]">
+      <div
+        className="bp-frame relative mx-auto flex min-h-screen flex-col items-center gap-6 px-5 py-10"
+        style={{ maxWidth: 420 }}
+      >
+        <span aria-hidden className="bp-tick bp-tick-tl" />
+        <span aria-hidden className="bp-tick bp-tick-tr" />
+        <span aria-hidden className="bp-tick bp-tick-bl" />
+        <span aria-hidden className="bp-tick bp-tick-br" />
+
         {/* brand */}
         <Link
           href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--color-fg-dim)] transition hover:text-[var(--color-fg)]"
+          className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--color-accent)] transition hover:text-[var(--color-fg)]"
         >
           Talise
         </Link>
 
         <div className="text-center">
-          <h1 className="text-[22px] font-semibold tracking-tight text-[var(--color-fg)]">
+          <h1
+            className="text-[22px] font-medium tracking-[-0.03em] text-[var(--color-fg)]"
+            style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}
+          >
             <span className="text-[var(--color-accent-deep)]">@{user.talise_username}</span>{" "}
             is on Talise
           </h1>
           <p className="mx-auto mt-2 max-w-[320px] text-[13px] leading-[1.6] text-[var(--color-fg-muted)]">
-            The gasless dollar wallet on Sui. Send digital dollars like a text —
+            The gasless dollar wallet on Sui. Send digital dollars like a text -
             no gas, no seed phrases. Claim your name before launch.
           </p>
         </div>
@@ -84,15 +95,15 @@ export default async function ProfilePage({
           />
         </div>
 
-        {/* CTA — carries the owner's referral code into the waitlist */}
+        {/* CTA, carries the owner's referral code into the waitlist */}
         <Link
           href={joinHref}
-          className="inline-flex w-full items-center justify-center rounded-full bg-[var(--color-accent-deep)] px-6 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_22px_-8px_rgba(35,78,20,0.5)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-accent-deep)_88%,white)]"
+          className="inline-flex w-full items-center justify-center rounded-[8px] bg-[var(--color-accent-deep)] px-6 py-3.5 font-mono text-[12px] font-medium uppercase tracking-[0.12em] text-white transition-colors hover:bg-[color-mix(in_srgb,var(--color-accent-deep)_88%,white)]"
         >
           Claim your Talise name
         </Link>
-        <p className="text-center text-[11px] text-[var(--color-fg-dim)]">
-          Free. Sign in with Google — your name mints to your wallet instantly.
+        <p className="text-center font-mono text-[11px] tracking-[0.02em] text-[var(--color-fg-dim)]">
+          Free. Sign in with Google, your name mints to your wallet instantly.
         </p>
       </div>
     </main>

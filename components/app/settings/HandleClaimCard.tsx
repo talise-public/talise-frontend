@@ -151,7 +151,7 @@ export function HandleClaimCard({ onClaimed }: { onClaimed: () => void }) {
               : state === "invalid"
                 ? "Use 3–20 lowercase letters, digits, or underscores."
                 : state === "rpc"
-                  ? "Couldn't verify on-chain — you can still claim it."
+                  ? "Couldn't verify on-chain, you can still claim it."
                   : "";
 
   return (
@@ -187,7 +187,7 @@ export function HandleClaimCard({ onClaimed }: { onClaimed: () => void }) {
           spellCheck={false}
           inputMode="text"
           aria-label="Choose your handle"
-          className="min-w-0 flex-1 bg-transparent text-[17px] font-medium tracking-[-0.01em] text-[#15300c] outline-none placeholder:text-[#3d7a29]"
+          className="min-w-0 flex-1 bg-transparent text-[17px] font-medium tracking-[-0.05em] text-[#15300c] outline-none placeholder:text-[#3d7a29]"
         />
         <span className="shrink-0 font-mono text-[13px] text-[#3a5230]">
           .talise.sui

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useSignAndSend — the browser send pipeline for plain USDsui / SUI transfers.
+ * useSignAndSend, the browser send pipeline for plain USDsui / SUI transfers.
  *
  * Reuses the zkLogin ephemeral key that `web/lib/zkclient.ts` provisions in
  * sessionStorage. The server builds the sponsor-ready (or gasless) bytes, we
@@ -69,7 +69,7 @@ export function useSignAndSend() {
 
     const eph = readEphemeralForT2000();
     if (!eph) {
-      // No wallet key in this tab — bounce through Google and come back here.
+      // No wallet key in this tab, bounce through Google and come back here.
       triggerOauthSignIn({ returnTo: typeof location !== "undefined" ? location.pathname : "/app" });
       throw new ApiError(401, "Sign in to continue.", "NOT_SIGNED_IN");
     }
@@ -109,7 +109,7 @@ export function useSignAndSend() {
         },
       });
 
-      // First successful tx this session returns a freshly-minted proof —
+      // First successful tx this session returns a freshly-minted proof -
       // persist it so the next send skips the prover round trip.
       if (exec.freshProof) {
         try {
@@ -124,7 +124,7 @@ export function useSignAndSend() {
       }
 
       // Surface the server's rail + Save decisions from prepare alongside the
-      // digest — the success UI derives its atomic-step list from these (never
+      // digest, the success UI derives its atomic-step list from these (never
       // from client guesses).
       return { digest: exec.digest, mode: prep.mode, roundupUsd: prep.roundupUsd ?? 0 };
     } catch (e) {
@@ -133,7 +133,7 @@ export function useSignAndSend() {
       // they started in a fresh session.
       if (isSessionExpiryError(e)) {
         void forceFreshSignIn({ reauthNow: true });
-        throw new ApiError(401, "Your session expired — signing you in again…", "SESSION_EXPIRED");
+        throw new ApiError(401, "Your session expired, signing you in again…", "SESSION_EXPIRED");
       }
       throw e;
     } finally {

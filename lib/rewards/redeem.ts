@@ -9,7 +9,7 @@ import {
 import { findSku, type RedeemSKU } from "./catalogue";
 
 /**
- * Talise Rewards — redemption (Phase 4).
+ * Talise Rewards, redemption (Phase 4).
  *
  * Spend `points_total` against a catalogue SKU. The math is:
  *
@@ -20,7 +20,7 @@ import { findSku, type RedeemSKU } from "./catalogue";
  *      can't double-redeem `fx_boost_3bp_30d` while a previous one is
  *      still valid).
  *   3. Insert a `redemptions` row with the right status (`pending`
- *      for the `pending` kind; `fulfilled` for `instant`/`flagged` —
+ *      for the `pending` kind; `fulfilled` for `instant`/`flagged` -
  *      the effect of `flagged` is deferred but the row is closed out
  *      since redeem-time is the only time we touch it).
  *   4. Mint a `rewards_events` row with `kind: "redeemed"` and a
@@ -34,7 +34,7 @@ import { findSku, type RedeemSKU } from "./catalogue";
  * + points update. The 5-minute debounce read happens BEFORE the
  * batch; if two requests race past it, the points balance would go
  * negative once but the second request would have already been
- * accepted. We tolerate this — the 5-minute window is debounce, not
+ * accepted. We tolerate this, the 5-minute window is debounce, not
  * a strict transactional invariant, and the affordability check on
  * the second request would have failed only if the first hadn't yet
  * deducted. In practice the iOS confirm sheet single-flights this
@@ -77,7 +77,7 @@ const DEBOUNCE_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * Read the user's last redemption of `sku` if it landed in the
- * debounce window. Cheap — single indexed query.
+ * debounce window. Cheap, single indexed query.
  */
 async function recentRedemption(
   userId: number,
@@ -123,7 +123,7 @@ async function isAlreadyActive(
           activeUntilMs = parsed.activeUntilMs;
         }
       } catch {
-        /* malformed metadata — treat as no expiry */
+        /* malformed metadata, treat as no expiry */
       }
     }
     // No `activeUntilMs` stamped → treat as permanent (e.g. early_access_v2).
@@ -165,14 +165,14 @@ export async function redeemSku(opts: {
     );
   }
 
-  // 5-minute debounce — double-tap on the confirm sheet, fat-fingered
+  // 5-minute debounce, double-tap on the confirm sheet, fat-fingered
   // duplicates, retries on a network flake. We don't want any of those
   // to charge twice.
   const recent = await recentRedemption(opts.userId, opts.sku, DEBOUNCE_WINDOW_MS);
   if (recent) {
     throw new RedeemError(
       "debounced",
-      `recently redeemed — try again in a few minutes`,
+      `recently redeemed, try again in a few minutes`,
       429
     );
   }
@@ -242,7 +242,7 @@ export async function redeemSku(opts: {
 
   // Re-read the inserted redemption (we filed it `now`, and that's the
   // sort key). Tolerant of the rare case where another writer
-  // beats us by a millisecond — we still pick the row by created_at +
+  // beats us by a millisecond, we still pick the row by created_at +
   // sku.
   const after = await c.execute({
     sql: `SELECT * FROM redemptions

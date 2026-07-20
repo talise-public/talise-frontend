@@ -1,4 +1,9 @@
-# Railway deployment config. Source of truth for the build/run pipeline.
+# Railway deployment config for the build/run pipeline.
+#
+# LEGACY / ALTERNATIVE: production runs on Vercel + Postgres (see DEPLOY.md).
+# This file is kept for the Railway/Docker fallback path only. Regardless of
+# host, the app requires a Postgres `DATABASE_URL` (postgres://…) — there is no
+# SQLite/libSQL code path.
 # Docs: https://docs.railway.com/reference/config-as-code
 
 [build]
@@ -18,7 +23,7 @@ nixpacksPlan = ""
 # `next start` honours $PORT. Railway injects PORT; Next picks it up.
 startCommand = "pnpm start"
 
-# Restart if the container dies. Useful for SIGSEGV / OOM in libSQL native.
+# Restart if the container dies (e.g. OOM).
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 

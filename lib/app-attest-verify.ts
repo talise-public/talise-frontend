@@ -6,7 +6,7 @@ import { decode as cborDecode } from "cbor-x";
 /**
  * Apple App Attest verification (F4). Implements the two verifications from
  * Apple's spec ("Validating Apps That Connect to Your Server"):
- *   - verifyAttestation: on register — decode the CBOR attestation, extract +
+ *   - verifyAttestation: on register, decode the CBOR attestation, extract +
  *     return the credential P-256 public key, run the deterministic checks
  *     (rpIdHash, AAGUID, signCount==0), AND verify the full x5c chain → the
  *     pinned Apple App Attestation Root CA, the nonce (SHA256(authData ‖
@@ -14,7 +14,7 @@ import { decode as cborDecode } from "cbor-x";
  *     and key identity (credential key == leaf cert key, credentialId ==
  *     SHA256(key)). Returns `chainVerified`; register requires it in enforce
  *     mode (see lib/app-attest.ts appAttestMode()).
- *   - verifyAssertion: per money request — verify the ECDSA-P256 signature over
+ *   - verifyAssertion: per money request, verify the ECDSA-P256 signature over
  *     SHA256(authenticatorData ‖ clientDataHash) against the stored key, the
  *     rpIdHash, and strict counter monotonicity (clone/replay defense). FULLY
  *     unit-tested against a synthetic key (see __tests__).
@@ -189,7 +189,7 @@ export function verifyAttestation(input: {
         }
       }
       // nonce = SHA256(authData ‖ clientDataHash). The client hashes the RAW
-      // challenge bytes — iOS does SHA256(Data(base64Encoded: challenge)) — so
+      // challenge bytes, iOS does SHA256(Data(base64Encoded: challenge)), so
       // decode the base64 challenge STRING here, not its utf8 bytes.
       const clientDataHash = sha256(Buffer.from(input.challenge, "base64"));
       const expectedNonce = sha256(authData, clientDataHash);
@@ -197,7 +197,7 @@ export function verifyAttestation(input: {
       const nonceOk = certNonce != null && certNonce.equals(expectedNonce);
       // Key identity (Apple step 6): the credential key in authData MUST be the
       // leaf cert's public key, and the credentialId MUST equal SHA256(that key)
-      // — i.e. Apple's keyId. Binds the attested key to the attestation cert.
+      //, i.e. Apple's keyId. Binds the attested key to the attestation cert.
       const leafSpki = credCert.publicKey.export({ format: "der", type: "spki" }) as Buffer;
       const keyMatches =
         ad.credentialPublicKeyDer != null && leafSpki.equals(ad.credentialPublicKeyDer);
@@ -242,7 +242,7 @@ export type AssertionResult = { newCounter: number };
 
 /**
  * Verify a per-request assertion. Throws on failure. FULLY testable with a
- * synthetic P-256 key (no Apple cert involved — the attested key was captured
+ * synthetic P-256 key (no Apple cert involved, the attested key was captured
  * at register time).
  */
 export function verifyAssertion(input: {
@@ -273,7 +273,7 @@ export function verifyAssertion(input: {
   const sigOk = crypto.verify("sha256", data, key, Buffer.from(obj.signature));
   if (!sigOk) throw new Error("assertion signature invalid");
 
-  // Strict counter monotonicity — defeats replay + cloned-key reuse.
+  // Strict counter monotonicity, defeats replay + cloned-key reuse.
   if (ad.signCount <= input.storedCounter) {
     throw new Error(`assertion counter ${ad.signCount} <= stored ${input.storedCounter}`);
   }

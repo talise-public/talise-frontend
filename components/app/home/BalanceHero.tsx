@@ -2,12 +2,12 @@
 
 /**
  * Hero balance block. Two forms:
- *   • inline (Home) — a single calm BALANCE CARD: "Your balance" eyebrow → big
+ *   • inline (Home), a single calm BALANCE CARD: "Your balance" eyebrow → big
  *     ink figure → a quiet identity row (@handle + short address with copy) →
  *     two inline actions (Send solid accent, Request soft mint). The loose
  *     stack (bare number + action discs + separate identity card) is merged
  *     into this one card so Home reads calm on mobile.
- *   • carded (Business dashboard) — the same balance content inside a GlassCard
+ *   • carded (Business dashboard), the same balance content inside a GlassCard
  *     so it pairs with the identity card at equal height (no identity row /
  *     actions; those live in the dashboard's own composition).
  * Pulls fresh once after first paint so the snapshot number reconciles against
@@ -64,7 +64,7 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
     usdsui < 0.01 ? `${usdsui.toFixed(4)} USDsui` : `${usdsui.toFixed(2)} USDsui`;
 
   // When hidden, keep the leading currency symbol from the formatted figure
-  // visible (e.g. "$") and mask only the digits — so the chip still reads as money.
+  // visible (e.g. "$") and mask only the digits, so the chip still reads as money.
   const formattedTotal = formatLocal(total);
   const symbolPrefix = formattedTotal.match(/^[^\d]*/)?.[0] ?? "";
   const maskedBalance = `${symbolPrefix}${MASK_BALANCE}`;
@@ -81,11 +81,11 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
     <button
       type="button"
       onClick={() => void refreshFresh()}
-      className="font-[800] uppercase tabular-nums opacity-70"
-      style={{ fontFamily: "var(--font-display-v2)", fontSize: numberSize, lineHeight: 1.02, letterSpacing: "-0.02em" }}
-      aria-label="Couldn't load balance — tap to retry"
+      className="tabular-nums opacity-70"
+      style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontWeight: 500, fontSize: numberSize, lineHeight: 1.02, letterSpacing: "-0.06em" }}
+      aria-label="Couldn't load balance, tap to retry"
     >
-      —
+      -
     </button>
   ) : (
     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
@@ -97,8 +97,8 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
         aria-pressed={hidden}
       >
         <span
-          className="font-[800] uppercase tabular-nums"
-          style={{ fontFamily: "var(--font-display-v2)", fontSize: numberSize, lineHeight: 1.02, letterSpacing: "-0.02em" }}
+          className="tabular-nums"
+          style={{ fontFamily: '"Google Sans Variable", var(--font-sans-v2), system-ui, sans-serif', fontWeight: 500, fontSize: numberSize, lineHeight: 1.02, letterSpacing: "-0.06em" }}
         >
           {hidden ? maskedBalance : formatLocal(total)}
         </span>
@@ -112,7 +112,7 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
     </div>
   );
 
-  // Currency SWITCHER — the flag chip on the eyebrow row opens a small menu
+  // Currency SWITCHER, the flag chip on the eyebrow row opens a small menu
   // of display currencies (display-only; the wallet settles in USDsui).
   const currencyChip = (
     <CurrencySwitcher currency={currency} flagCode={flagCode} onPick={setCurrency} />
@@ -136,7 +136,7 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
       <span className="font-mono text-[12px] text-[#CAFFB8]/70">·</span>
       <Link
         href="/app/earn"
-        className="font-mono text-[12px] font-medium tracking-[-0.01em] text-[#CAFFB8] underline-offset-2 hover:underline"
+        className="font-mono text-[12px] font-medium tracking-[-0.05em] text-[#CAFFB8] underline-offset-2 hover:underline"
       >
         Earn on idle balance
       </Link>
@@ -145,7 +145,7 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
 
   // ── Business dashboard form: balance content inside a light bento card. ────
   // Same data as the forest Home card, but on the light cream surface so it
-  // pairs with the light IdentityCard on the business dashboard — its meta row
+  // pairs with the light IdentityCard on the business dashboard, its meta row
   // uses the ink/forest tones rather than the forest-card's cream/mint.
   const metaLight = showError ? (
     <button
@@ -165,7 +165,7 @@ export function BalanceHero({ inline = false, me = null }: { inline?: boolean; m
       <span className="font-mono text-[12px] text-[#3d7a29]">·</span>
       <Link
         href="/app/earn"
-        className="font-mono text-[12px] font-medium tracking-[-0.01em] text-[#3d7a29] underline-offset-2 hover:underline"
+        className="font-mono text-[12px] font-medium tracking-[-0.05em] text-[#3d7a29] underline-offset-2 hover:underline"
       >
         Earn on idle balance
       </Link>
@@ -214,7 +214,7 @@ function BalanceCard({
   const [copied, setCopied] = useState(false);
 
   const address = me?.suiAddress ?? "";
-  const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "—";
+  const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "-";
   const handle = me?.taliseHandle ?? null;
 
   async function copyAddress() {
@@ -231,9 +231,11 @@ function BalanceCard({
 
   return (
     <div
-      className="flex h-full flex-col rounded-[28px] bg-gradient-to-br from-[#3d7a29] to-[#1c4513] p-7 text-[#f7fcf2] md:p-9"
-      style={{ boxShadow: "10px 10px 0 #15300c" }}
+      className="bp-brackets-mint relative flex h-full flex-col rounded-[16px] bg-gradient-to-br from-[#2f6a1f] to-[#16340f] p-7 text-[#f7fcf2] md:p-9"
+      style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.18), 0 22px 44px -24px rgba(0,0,0,0.5)" }}
     >
+      <span aria-hidden className="bp-bracket" />
+      <span aria-hidden className="bp-bracket-2" />
       <div className="flex items-center justify-between gap-3">
         <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#CAFFB8]">
           {eyebrow}
@@ -243,7 +245,7 @@ function BalanceCard({
       <div className="mt-2">{figure}</div>
       {meta}
 
-      {/* Quiet identity row — @handle + short address with copy. mt-auto pins
+      {/* Quiet identity row, @handle + short address with copy. mt-auto pins
           identity+actions to the card's bottom when the grid stretches it. */}
       <div className="mt-5 flex items-center gap-2 pt-4 text-[12px] lg:mt-auto lg:pt-4">
         {handle ? (
@@ -272,21 +274,23 @@ function BalanceCard({
         </button>
       </div>
 
-      {/* Inline primary actions — Send (mint fill) + Request (mint outline). On
+      {/* Inline primary actions, Send (mint fill) + Request (mint outline). On
           the forest card the mint pop carries the action; ink text reads on mint. */}
       <div className="mt-4 grid grid-cols-2 gap-2.5">
         <Link
           href="/app/pay"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#CAFFB8] px-5 py-2.5 text-[14px] font-semibold text-[#15300c] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#CAFFB8]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1c4513]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[4px] bg-[#CAFFB8] text-[12px] uppercase tracking-[0.06em] text-[#15300c] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#CAFFB8]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1c4513]"
+          style={{ fontFamily: "var(--font-mono), monospace" }}
         >
-          <HugeiconsIcon icon={SentIcon} size={17} strokeWidth={2} color="currentColor" />
+          <HugeiconsIcon icon={SentIcon} size={16} strokeWidth={2} color="currentColor" />
           Send
         </Link>
         <Link
           href="/app/pay/request"
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#CAFFB8] px-5 py-2.5 text-[14px] font-semibold text-[#CAFFB8] transition-colors hover:bg-[#CAFFB8] hover:text-[#15300c] active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#CAFFB8]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1c4513]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[4px] border border-[#CAFFB8] text-[12px] uppercase tracking-[0.06em] text-[#CAFFB8] transition-colors hover:bg-[#CAFFB8] hover:text-[#15300c] active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[#CAFFB8]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1c4513]"
+          style={{ fontFamily: "var(--font-mono), monospace" }}
         >
-          <HugeiconsIcon icon={MoneyReceive02Icon} size={17} strokeWidth={2} color="currentColor" />
+          <HugeiconsIcon icon={MoneyReceive02Icon} size={16} strokeWidth={2} color="currentColor" />
           Request
         </Link>
       </div>
@@ -350,6 +354,7 @@ function CurrencySwitcher({
         <ul
           role="listbox"
           aria-label="Display currency"
+          data-lenis-prevent
           className="absolute right-0 z-30 mt-2 max-h-72 w-52 overflow-y-auto rounded-2xl border border-[#15300c]/10 bg-[#f7fcf2] p-1.5 shadow-[0_16px_40px_-16px_rgba(21,48,12,0.35)]"
         >
           {CURRENCIES.map((c) => {

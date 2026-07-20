@@ -5,7 +5,7 @@ import { grantAppAccess, revokeAppAccess, listAppAccess } from "@/lib/db";
 export const runtime = "nodejs";
 
 /**
- * ADMIN — manage the private-beta app allowlist (/app + /business gate).
+ * ADMIN, manage the private-beta app allowlist (/app + /business gate).
  *
  *   GET  /api/admin/app-access                  → { entries: [...] }
  *   POST /api/admin/app-access                  → grant / revoke

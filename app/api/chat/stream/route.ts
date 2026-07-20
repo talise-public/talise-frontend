@@ -1,12 +1,12 @@
 /**
- * Talise agent — streaming chat for the iOS Chat tab.
+ * Talise agent, streaming chat for the iOS Chat tab.
  *
  * Wire format: Server-Sent Events. Each frame is `data: <json>\n\n`.
  * Event types (compact form for iOS):
- *   - `{"type":"text","value":"…"}` — incremental assistant text token(s)
- *   - `{"type":"done"}`             — terminal frame
+ *   - `{"type":"text","value":"…"}`, incremental assistant text token(s)
+ *   - `{"type":"done"}`           , terminal frame
  *
- * Provider stack — same brain the web `/api/chat` route uses, just
+ * Provider stack, same brain the web `/api/chat` route uses, just
  * presented over the iOS-friendly SSE wire format:
  *   - System prompt + structured Payment-Intent rules from `lib/chat/ai.ts`
  *   - Live user context (USDsui + SUI balance, yield venues, subname) via
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
   // The Talise agent grounds every reply in the user's actual balance /
   // yield positions / recent activity. Doing this server-side rather
   // than letting the model "ask a tool" cuts a round-trip per chat
-  // turn — we pay one bulk hydrate up front and stream the answer.
+  // turn, we pay one bulk hydrate up front and stream the answer.
   const [bal, usd, yields, sub, recentTxs] = await Promise.all([
     getSuiBalance(user.sui_address).catch(() => ({ sui: 0, mist: "0" })),
     getUsdsuiBalance(user.sui_address).catch(() => ({ usdsui: 0, raw: "0" })),
@@ -165,7 +165,7 @@ export async function POST(req: Request) {
   if (!deepSeekConfig()) {
     const stub =
       "Chat is configured but the AI provider keys aren't set in this " +
-      "environment — set DEEPSEEK_API_KEY and DEEPSEEK_BASE_URL to enable " +
+      "environment, set DEEPSEEK_API_KEY and DEEPSEEK_BASE_URL to enable " +
       "Talise's agent.";
     const sseStream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -191,7 +191,7 @@ export async function POST(req: Request) {
   // The MEMORY WRITE runs in `after()` (Vercel keeps the function alive via
   // waitUntil), NOT inside the stream: iOS closes the SSE connection the instant
   // it sees the "done" frame, and Vercel would kill an in-stream await the moment
-  // the client disconnects — dropping the write. `after()` survives that, so the
+  // the client disconnects, dropping the write. `after()` survives that, so the
   // exchange (user turn + the reply, incl. any handle the agent resolved) lands
   // on Walrus and is recallable in future chats.
   let capturedReply = "";

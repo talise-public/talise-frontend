@@ -10,12 +10,12 @@ const REGISTRY_NAME = "talise";
 
 /**
  * Lazily mints the global `talise` PaymentRegistry on chain if it doesn't
- * exist yet. Idempotent — repeated calls within the process lifetime no-op
+ * exist yet. Idempotent, repeated calls within the process lifetime no-op
  * after the first success, and across processes the on-chain object check
  * short-circuits the mint.
  *
  * Without this, `processRegistryPayment` aborts and the tx falls back to
- * a plain transfer — which is exactly why suivision was showing "none" as
+ * a plain transfer, which is exactly why suivision was showing "none" as
  * the transaction kind.
  *
  * Called from `/api/zk/warmup` so the registry is ready before the user's
@@ -45,7 +45,7 @@ export async function ensurePaymentRegistry() {
     }
 
     // Need to mint. The operator key (the same wallet that owns talise.sui
-    // and mints subnames) pays its own gas — one-time ~0.005 SUI cost.
+    // and mints subnames) pays its own gas, one-time ~0.005 SUI cost.
     const key = process.env.TALISE_PK_OPERATOR_KEY ?? process.env.TALISE_SUINS_OPERATOR_KEY;
     if (!key) {
       throw new Error(
@@ -57,7 +57,7 @@ export async function ensurePaymentRegistry() {
 
     const tx = new Transaction();
     // `payment_kit::create_registry` returns `(PaymentRegistry,
-    // RegistryAdminCap)` — verified against the on-chain Move source.
+    // RegistryAdminCap)`, verified against the on-chain Move source.
     // Earlier revision aborted with `CommandArgumentError
     // InvalidResultArity { result_idx: 0 }` because it treated the
     // tuple as a single value (transferring the registry instead of
@@ -81,7 +81,7 @@ export async function ensurePaymentRegistry() {
     const bytes = await tx.build({ client: client as never });
     const { signature } = await operator.signTransaction(bytes);
 
-    // gRPC `executeTransaction` — discriminated-union response.
+    // gRPC `executeTransaction`, discriminated-union response.
     const result = (await client.executeTransaction({
       transaction: bytes,
       signatures: [signature],
@@ -94,7 +94,7 @@ export async function ensurePaymentRegistry() {
         | undefined;
       const err = failed?.effects?.status?.error;
       throw new Error(
-        `ensurePaymentRegistry: mint failed — ${
+        `ensurePaymentRegistry: mint failed, ${
           (typeof err === "string" && err) ||
           (typeof err === "object" &&
             err !== null &&
@@ -114,7 +114,7 @@ export async function ensurePaymentRegistry() {
     if (txInner?.effects?.status && txInner.effects.status.success === false) {
       const err = txInner.effects.status.error;
       throw new Error(
-        `ensurePaymentRegistry: mint failed — ${
+        `ensurePaymentRegistry: mint failed, ${
           (typeof err === "string" && err) ||
           (typeof err === "object" &&
             err !== null &&

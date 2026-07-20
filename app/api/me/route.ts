@@ -9,20 +9,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/me — current user, shape matches the iOS UserDTO.
+ * GET /api/me, current user, shape matches the iOS UserDTO.
  *
  * This is on the iOS LAUNCH GATE: AppSession.bootstrap() awaits it before
  * the app reaches `.ready`. So it must be FAST. The handle is the only
  * field that ever needed the chain, and we already know it:
  *
- *   1. `users.talise_username` — the claimed handle, backfilled at claim
+ *   1. `users.talise_username`, the claimed handle, backfilled at claim
  *      time. When present we return it instantly (the subname is just
  *      `<handle>.talise.sui`), with NO RPC.
- *   2. `users.suins_subname` — a cached resolved subname for users who own
+ *   2. `users.suins_subname`, a cached resolved subname for users who own
  *      an on-chain name but somehow lack `talise_username`.
  *   3. Only when neither is known do we pay the live reverse-SuiNS lookup
  *      (`findTaliseSubnameForOwner`, up to 4 listOwnedObjects pages + a
- *      getNameRecord) — and we persist the result so it's never paid again.
+ *      getNameRecord), and we persist the result so it's never paid again.
  *
  * `?fresh=1` forces the live lookup (e.g. right after a handle claim) so a
  * just-minted name surfaces immediately.
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
   // an idle one lapses and the next /api/me 401s → client auto-logs-out.
   await refreshSessionCookie();
 
-  // Server-driven feature gates — flip these in Vercel (Project → Settings →
+  // Server-driven feature gates, flip these in Vercel (Project → Settings →
   // Environment Variables) to open a feature WITHOUT shipping a new build.
   // DEFAULT CLOSED: a feature is on only when its env var is exactly "true".
   // iOS hides the corresponding entry point when the flag is false.
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
 
   const fresh = new URL(req.url).searchParams.get("fresh") === "1";
 
-  // Fast path: handle is already known in Postgres — no RPC on the gate.
+  // Fast path: handle is already known in Postgres, no RPC on the gate.
   if (!fresh) {
     const claimed = user.talise_username?.trim();
     if (claimed) {

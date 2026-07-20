@@ -5,7 +5,7 @@ import { requireAdminApi } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/admin/waitlist — read-only browser over the two waitlist
+ * GET /api/admin/waitlist, read-only browser over the two waitlist
  * tables.
  *
  *   list   'signups' (canonical waitlist_signups) | 'legacy' (waitlist)
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
   ]);
   const counts = { signups, legacy, confirmed, claimed };
 
-  // Build the WHERE clause from whitelisted conditions only — no raw
+  // Build the WHERE clause from whitelisted conditions only, no raw
   // interpolation of user input.
   const where: string[] = [];
   const args: unknown[] = [];
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
       where.push(`(email ILIKE ${p} OR claimed_handle ILIKE ${p})`);
     }
   } else {
-    // legacy waitlist — 'claimed' filter is N/A, treat as 'all'.
+    // legacy waitlist, 'claimed' filter is N/A, treat as 'all'.
     if (filter === "confirmed") where.push(`confirmation_sent_at IS NOT NULL`);
     else if (filter === "unconfirmed") where.push(`confirmation_sent_at IS NULL`);
 

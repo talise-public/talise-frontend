@@ -11,27 +11,27 @@ import {
 } from "@/lib/automations";
 
 /**
- * Programmable money / rules — money that runs itself, NON-CUSTODIALLY.
+ * Programmable money / rules, money that runs itself, NON-CUSTODIALLY.
  *
  * A rule pairs a TRIGGER (schedule | on-inflow | threshold) with an ACTION. For
  * launch the only action is a scheduled `send` ("pay rent on the 1st", "send mum
  * $50 weekly").
  *
  * Each rule is backed by an on-chain `talise_automations::standing_order` object
- * (the audited, non-custodial primitive). The SMART CONTRACT is the automation —
+ * (the audited, non-custodial primitive). The SMART CONTRACT is the automation -
  * there is no cron and no scheduler key:
- *   • CREATE — the user signs an Onara-sponsored `standing_order::create` that
+ *   • CREATE, the user signs an Onara-sponsored `standing_order::create` that
  *     funds the rule's pot (they own the object; only THEY can cancel/withdraw).
- *   • EXECUTE — `execute_due` is PERMISSIONLESS; the owner's app triggers any due
+ *   • EXECUTE, `execute_due` is PERMISSIONLESS; the owner's app triggers any due
  *     rules when it's open (Onara-sponsored, owner-signed). The contract releases
  *     the pre-set `amount_per` to the pre-set `recipient` only once the Clock
- *     passes `next_due_ms` — the caller can't change destination, amount, or fire
+ *     passes `next_due_ms`, the caller can't change destination, amount, or fire
  *     early, so triggering is trustless.
- *   • CANCEL — the user signs `cancel`, which refunds the entire remaining pot.
+ *   • CANCEL, the user signs `cancel`, which refunds the entire remaining pot.
  *
  * The DB row mirrors the on-chain schedule for display + to surface which rules
  * are due to trigger; the money + the authoritative cursor live on chain. Gated
- * by automationsEnabled() (AUTOMATIONS_PACKAGE_ID + REGISTRY_ID) — unset → off.
+ * by automationsEnabled() (AUTOMATIONS_PACKAGE_ID + REGISTRY_ID), unset → off.
  */
 
 export function moneyRulesEnabled(): boolean {
@@ -39,8 +39,8 @@ export function moneyRulesEnabled(): boolean {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-export const MIN_SEND_MICROS = 10_000n; // 0.01 USDsui — the gasless minimum per leg
-export const MAX_SEND_MICROS = 10_000_000_000n; // 10,000 USDsui — per-execution ceiling
+export const MIN_SEND_MICROS = 10_000n; // 0.01 USDsui, the gasless minimum per leg
+export const MAX_SEND_MICROS = 10_000_000_000n; // 10,000 USDsui, per-execution ceiling
 const MIN_INTERVAL_MINUTES = 1;
 const THRESHOLD_RECHECK_MS = 3_600_000; // re-evaluate threshold/on-inflow rules hourly
 const ADDRESS_RE = /^0x[a-f0-9]{64}$/i;
@@ -348,7 +348,7 @@ function validateRule(input: CreateRuleInput): NormalizedRule {
 }
 
 /**
- * STEP 1 — validate the rule + return the Onara-sponsored `standing_order::create`
+ * STEP 1, validate the rule + return the Onara-sponsored `standing_order::create`
  * bytes the user signs to fund the rule's pot. `prefundMicros` (>= amount) is how
  * much to load now; the client can fund several periods up front. Moves no money
  * until the user signs.
@@ -374,7 +374,7 @@ export async function prepareCreateRule(
 }
 
 /**
- * STEP 2 — after the user signs the create, parse the new StandingOrder object id
+ * STEP 2, after the user signs the create, parse the new StandingOrder object id
  * from the funding `digest` and insert the ACTIVE rule. The DB row mirrors the
  * on-chain schedule (the cron reads `next_due_at` and triggers `execute_due`).
  */
@@ -483,7 +483,7 @@ export async function deleteRule(id: string, userId: number): Promise<boolean> {
  * `next_due_at` has passed and that have an on-chain order). The client fetches
  * these when the app opens and triggers each via prepare→sign→record. The
  * on-chain Clock is the real gate, so a stale `next_due_at` only ever means the
- * trigger no-ops with ENotDue — never an early or wrong payment.
+ * trigger no-ops with ENotDue, never an early or wrong payment.
  *
  * `threshold`/`on-inflow` rules aren't surfaced here: they need a balance check
  * the client can't authoritatively make, so they're held until that poller lands.
@@ -502,7 +502,7 @@ export async function listDueRules(userId: number, nowMs: number = Date.now()): 
 }
 
 /**
- * STEP 1 of a trigger — return the Onara-sponsored `execute_due` bytes for a due
+ * STEP 1 of a trigger, return the Onara-sponsored `execute_due` bytes for a due
  * rule the caller owns. Builds against the OWNER as sender (their app signs);
  * the contract still enforces the schedule, so this is safe even if the rule
  * isn't actually due (it would just abort ENotDue on submit). Returns null when
@@ -516,7 +516,7 @@ export async function prepareExecuteRule(id: string, userId: number): Promise<{ 
 }
 
 /**
- * STEP 2 of a trigger — record a confirmed on-chain release. Advances the
+ * STEP 2 of a trigger, record a confirmed on-chain release. Advances the
  * `next_due_at` mirror by one interval, bumps the counter, and appends to the
  * ledger. Idempotent on (rule_id, triggered_at): a double-record is a no-op, and
  * the on-chain Clock already prevents a double PAY.

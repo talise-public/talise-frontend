@@ -5,7 +5,7 @@ import { runIndexBatch, type BatchResult } from "@/lib/analytics/reindex";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/analytics/reindex — run a single on-chain index batch.
+ * POST /api/analytics/reindex, run a single on-chain index batch.
  *
  * Drives the resumable indexer one chunk forward: advances the cursor over the
  * ordered user list, walks each user's on-chain tx history, and persists the

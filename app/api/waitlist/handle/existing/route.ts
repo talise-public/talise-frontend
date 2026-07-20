@@ -11,13 +11,13 @@ export const dynamic = "force-dynamic";
  *
  * Auth-required: identity is derived SOLELY from the web session cookie.
  * The endpoint NEVER accepts an email (or any identifier) from the
- * request — so it cannot be turned into an "is this email on the
+ * request, so it cannot be turned into an "is this email on the
  * waitlist / does it own a handle" enumeration oracle. A caller can only
  * ever learn about THEIR OWN claim.
  *
  * Returns:
- *   200 { existing: { handle: "alice" } }   — caller already has a handle
- *   200 { existing: null }                   — caller has no handle (or not signed in)
+ *   200 { existing: { handle: "alice" } } , caller already has a handle
+ *   200 { existing: null }                 , caller has no handle (or not signed in)
  *
  * Source of truth is `users.talise_username` (the USER's name), with a
  * fallback to `waitlist_signups.claimed_handle` keyed by the session

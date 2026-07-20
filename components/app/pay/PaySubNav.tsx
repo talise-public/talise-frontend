@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PaySubNav — the sub-navigation pill row for the Pay area.
+ * PaySubNav, the sub-navigation pill row for the Pay area.
  *
  * The Pay landing (/app/pay) is the Send flow; Request, Cheques (claimable
  * links) and Stream (streamed payouts) live on sibling routes that previously
@@ -10,7 +10,7 @@
  * state). Active state is derived from the current pathname.
  *
  * Text-only labels (no icons): the founder asked for a quieter, less noisy Pay
- * page — the four icon+label pills read as competing chrome. Plain labels in
+ * page, the four icon+label pills read as competing chrome. Plain labels in
  * pills keep navigation clear without the visual weight.
  */
 

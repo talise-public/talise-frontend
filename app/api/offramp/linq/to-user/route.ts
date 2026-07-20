@@ -22,7 +22,7 @@ export const runtime = "nodejs";
  * (recomputed from the order's LOCKED rate, mirroring /create). The sender's
  * client then sends that USDSUI via the normal sponsored send and polls
  * /api/offramp/linq/status/[orderId]. The sender NEVER receives the
- * recipient's full account number — only a masked "<BankName> ••••<last4>".
+ * recipient's full account number, only a masked "<BankName> ••••<last4>".
  *
  * The linq_offramps row is keyed to the SENDER's user id (it's the sender's
  * cash-out), with the bank fields set to the RECIPIENT's primary bank.
@@ -30,7 +30,7 @@ export const runtime = "nodejs";
  * Body: { recipient: string (@handle or 0x address), amountNgn: number }
  */
 export async function POST(req: Request) {
-  // Product gate (FEATURE_CASHOUT) — closed for launch.
+  // Product gate (FEATURE_CASHOUT), closed for launch.
   if (!cashoutFeatureOpen()) {
     return NextResponse.json({ error: CASHOUT_CLOSED_MESSAGE, code: "CASHOUT_CLOSED" }, { status: 503 });
   }
@@ -42,11 +42,11 @@ export async function POST(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
-  // Private-beta guardrail: signed-in is not enough — the account must be on
+  // Private-beta guardrail: signed-in is not enough, the account must be on
   // the app allowlist before it can originate any value-moving call.
   const denied = await denyUnlessAppApproved(userId);
   if (denied) return denied;
-  // Same tight cap as /create — each call creates a real Linq order.
+  // Same tight cap as /create, each call creates a real Linq order.
   const rl = await rateLimitAsync({
     key: `offramp-linq-to-user:user:${userId}`,
     limit: 6,
@@ -155,7 +155,7 @@ export async function POST(req: Request) {
       bankName,
       accountName,
       // The SENDER funds the deposit, so a failed payout refunds to the
-      // sender — never the recipient (who never sent anything).
+      // sender, never the recipient (who never sent anything).
       refundAddress: sender.sui_address,
       customerRef: String(userId),
       idempotencyKey: id,
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
   }
 
   // CRITICAL: send EXACTLY what Linq recorded on the order (order.amountStableCoin)
-  // — that's the amount its deposit watcher matches. Recomputing the send figure
+  //, that's the amount its deposit watcher matches. Recomputing the send figure
   // from the locked rate drifted from what Linq expected whenever the rate ticked
   // between the rate fetch and create, so the deposit was never recognized →
   // timeout → failed payout. Credit order.amountNGN (Linq's locked computation).
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
       args: [
         id,
         order.id,
-        // Keyed to the SENDER — it's the sender's cash-out — even though the
+        // Keyed to the SENDER, it's the sender's cash-out, even though the
         // bank fields belong to the recipient.
         String(userId),
         sendUsdsui,
@@ -212,7 +212,7 @@ export async function POST(req: Request) {
       ],
     });
   } catch (e) {
-    // Order exists at Linq even if our persist hiccuped — surface it anyway so
+    // Order exists at Linq even if our persist hiccuped, surface it anyway so
     // the client can still send + poll; reconcile via webhook/status by orderId.
     console.warn("[offramp/linq/to-user] persist failed:", (e as Error).message);
   }
@@ -226,7 +226,7 @@ export async function POST(req: Request) {
     amountNgn: creditNgn,
     rate: lockedRate,
     recipientName: accountName,
-    // Masked — the sender sees the bank + last 4 only, never the full number.
+    // Masked, the sender sees the bank + last 4 only, never the full number.
     recipientBankLabel: `${bankName} ••••${last4(accountNumber)}`,
     // The client now sends exactly `amountUsdsui` USDSUI to `walletAddress`
     // (normal sponsored send), then polls /api/offramp/linq/status/[orderId].

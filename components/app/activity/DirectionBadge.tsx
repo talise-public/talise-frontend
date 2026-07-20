@@ -9,7 +9,7 @@ import {
 import type { Category } from "./types";
 
 /**
- * Directional palette — v2 brand-fill treatment. The disc is a solid brand
+ * Directional palette, v2 brand-fill treatment. The disc is a solid brand
  * fill and the glyph sits in a deep ink so it reads on the coloured disc:
  *   sent     → coral fill, muted-coral glyph   (outflow)
  *   received → mint fill, forest glyph          (inflow credit)

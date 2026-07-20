@@ -70,7 +70,7 @@ export function parseAssistantMessage(raw: string): {
   return { text: before, intent };
 }
 
-/** Stable user-facing label for a step — used in confirm UI. */
+/** Stable user-facing label for a step, used in confirm UI. */
 export function stepLabel(step: ChatStep): string {
   switch (step.kind) {
     case "send":
@@ -103,7 +103,7 @@ export function stepLabel(step: ChatStep): string {
 }
 
 /**
- * Read-only steps don't need a signature — the UI can run them inline
+ * Read-only steps don't need a signature, the UI can run them inline
  * (e.g. by re-rendering the dashboard) instead of opening a confirm card.
  */
 export function isReadOnly(step: ChatStep): boolean {

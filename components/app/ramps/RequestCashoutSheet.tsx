@@ -8,7 +8,7 @@ import { Sheet, Field, PrimaryButton } from "@/components/app";
 /**
  * Concierge cash-out sheet (closed-alpha off-ramp).
  *
- * Captures a payout request — amount + Nigerian bank coordinates — and posts it
+ * Captures a payout request, amount + Nigerian bank coordinates, and posts it
  * to /api/offramp/request, which records it for manual fulfilment and pings the
  * team. The automated Linq flow (WithdrawToBankSheet) replaces this once it's
  * live. Deliberately simple: amount, bank, account, name → "request received".

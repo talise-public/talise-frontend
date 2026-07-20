@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 const ADDRESS_RE = /^0x[a-f0-9]{64}$/i;
 const MAX_USD = 10_000;
 
-/** GET /api/rules — the caller's money rules (newest first). `enabled` is false
+/** GET /api/rules, the caller's money rules (newest first). `enabled` is false
  *  when the automations engine isn't configured (UI shows "coming soon"). */
 export async function GET(req: Request) {
   const userId = await readEntryIdFromRequest(req);
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 }
 
 /**
- * POST /api/rules — PREPARE a scheduled-payment rule (non-custodial).
+ * POST /api/rules, PREPARE a scheduled-payment rule (non-custodial).
  *
  * Body: { name, trigger:'schedule', action:'send', intervalMinutes?|dayOfMonth?,
  *         toRecipient, amountUsd, prefundUsd? }

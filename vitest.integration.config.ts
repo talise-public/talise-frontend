@@ -25,6 +25,12 @@ export default defineConfig({
     setupFiles: ["__tests__/sui/_setup.integration.ts"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    // These tests hit real Sui mainnet RPC, which occasionally drifts,
+    // rate-limits, or disconnects mid-run (e.g. a transient "tx fetch failed"
+    // instead of the expected verification result). Retry a couple of times so
+    // a flaky upstream blip doesn't red the build; a real regression still
+    // fails all attempts.
+    retry: 2,
     // Mainnet rate-limits aggressive parallelism; one test file at a time is
     // enough today, so we don't need explicit pool/forks config — Vitest's
     // default is fine. If we add more test files and start hitting limits,

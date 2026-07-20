@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/offramp/linq/rate
  *
- * Public display rate (1 USDSUI = `rate` NGN). No auth — mirrors Linq's own
+ * Public display rate (1 USDSUI = `rate` NGN). No auth, mirrors Linq's own
  * public /b2b/rate. Lets the cash-out UI show a live "≈ ₦X" estimate as the
  * user types the amount. The order locks its own rate at creation time, so
  * this is display-only.

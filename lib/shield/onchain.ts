@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Talise shielded-pool — on-chain config (Workstream C, off-chain infra).
+ * Talise shielded-pool, on-chain config (Workstream C, off-chain infra).
  *
  * Mirrors the env-gated pattern of `lib/yield/onchain.ts`: this entire
  * privacy subsystem (indexer cron, merkle-path service, the `/api/shield/*`
@@ -10,17 +10,17 @@ import "server-only";
  * returns false everywhere and every route 503s with "privacy not yet live".
  *
  * The published `talise_privacy` package id is intentionally NOT hard-coded
- * (unlike YIELD_ROUTER) — the shielded pool has no mainnet money before the
+ * (unlike YIELD_ROUTER), the shielded pool has no mainnet money before the
  * Phase-2 ceremony + audit + legal gates clear (see PRIVACY-BUILD-PLAN.md), so
  * there is no live address to commit. It is supplied entirely via env when a
  * testnet / spike deployment exists.
  *
- *   SHIELD_PKG               — published `talise_privacy` Move package id.
- *   SHIELD_REGISTRY_ID       — shared pool registry (NewPool index / admin caps).
- *   SHIELD_POOL_USDSUI       — the `ShieldedPool<USDsui>` shared object id.
- *   SHIELD_FIRST_CHECKPOINT  — checkpoint to begin the event scan from (so the
+ *   SHIELD_PKG             , published `talise_privacy` Move package id.
+ *   SHIELD_REGISTRY_ID     , shared pool registry (NewPool index / admin caps).
+ *   SHIELD_POOL_USDSUI     , the `ShieldedPool<USDsui>` shared object id.
+ *   SHIELD_FIRST_CHECKPOINT, checkpoint to begin the event scan from (so the
  *                              indexer doesn't replay all of mainnet history).
- *   SUI_FULLNODE_URL         — JSON-RPC fullnode (shared with the yield routes).
+ *   SUI_FULLNODE_URL       , JSON-RPC fullnode (shared with the yield routes).
  */
 
 export const SHIELD = {
@@ -47,7 +47,7 @@ export const SHIELD_RPC =
 /**
  * THE single feature gate. Every route / cron / indexer entrypoint checks
  * this first; when false the privacy subsystem is a no-op. Requires the
- * package id AND the USDsui pool id — without a pool there is no event stream
+ * package id AND the USDsui pool id, without a pool there is no event stream
  * to index and no tree to serve paths from.
  */
 export function shieldConfigured(): boolean {
@@ -57,7 +57,7 @@ export function shieldConfigured(): boolean {
 /** Fully-qualified Move event type for a `talise_privacy::events` struct. */
 export function shieldEventType(struct: string): string {
   if (!SHIELD.packageId) {
-    throw new Error("SHIELD_PKG not set — privacy subsystem is dormant");
+    throw new Error("SHIELD_PKG not set, privacy subsystem is dormant");
   }
   return `${SHIELD.packageId}::${SHIELD.module}::${struct}`;
 }

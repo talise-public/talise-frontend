@@ -11,7 +11,7 @@ import { memoTtl } from "@/lib/perf-cache";
 export const runtime = "nodejs";
 
 /**
- * GET /api/wallet/balances — every coin in the authed user's PLAIN wallet,
+ * GET /api/wallet/balances, every coin in the authed user's PLAIN wallet,
  * enriched for the Token Bucket UI.
  *
  * "Verified" = the coin has a liquid Cetus pool (coins-verified.ts, which now
@@ -155,7 +155,7 @@ export async function GET(req: Request) {
       }
 
       // Logo: curated PNGs first (AsyncImage-safe for the majors), then the
-      // on-chain icon, then the Cetus pool logo (some are SVG — fine on web; the
+      // on-chain icon, then the Cetus pool logo (some are SVG, fine on web; the
       // iOS gradient-initial fallback covers any that don't decode).
       const logoUrl =
         logoForSymbol(symbol) || meta.logoUrl || cetus.logo.get(norm) || null;

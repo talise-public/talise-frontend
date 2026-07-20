@@ -18,7 +18,7 @@ export async function GET() {
   try {
     const epoch = await getCurrentEpoch();
     // The epoch is GLOBAL and flips only ~every 24h, and the only consumer
-    // (`maxEpoch = epoch + 2`) tolerates a ~2-epoch window — so this is safe
+    // (`maxEpoch = epoch + 2`) tolerates a ~2-epoch window, so this is safe
     // to serve from Vercel's CDN. Edge-caching it keeps sign-in fast: a cold
     // serverless instance otherwise pays an ~850ms gRPC read here BEFORE the
     // Google screen opens.

@@ -18,7 +18,7 @@ import { getPrimaryBankAccount, last4 } from "@/lib/bank-accounts";
 export const runtime = "nodejs";
 
 /**
- * POST /api/agent/cashout/prepare — chat-driven cash-out to the user's LINKED
+ * POST /api/agent/cashout/prepare, chat-driven cash-out to the user's LINKED
  * primary bank. Body: { amountUsd }.
  *
  * Mirrors /api/offramp/linq/create, but the bank details come from the user's
@@ -118,14 +118,14 @@ export async function POST(req: Request) {
   } catch (e) {
     // FAIL CLOSED (mirrors /api/offramp/linq/create): the Linq order exists but
     // we could not record it. Returning the deposit wallet anyway would let the
-    // user fund an order we cannot reconcile, refund, or cap. Refuse — no funds
+    // user fund an order we cannot reconcile, refund, or cap. Refuse, no funds
     // have moved, and the orphaned Linq order (logged) can be cancelled ops-side.
     console.error(
-      `[agent/cashout] persist failed — refusing to return deposit wallet. Orphaned Linq order=${order.id} user=${userId}:`,
+      `[agent/cashout] persist failed, refusing to return deposit wallet. Orphaned Linq order=${order.id} user=${userId}:`,
       (e as Error).message
     );
     return NextResponse.json(
-      { error: "Could not record your cash-out. No funds were moved — please try again." },
+      { error: "Could not record your cash-out. No funds were moved, please try again." },
       { status: 500 }
     );
   }

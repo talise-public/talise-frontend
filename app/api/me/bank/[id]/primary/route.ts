@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * POST /api/me/bank/[id]/primary
  *
  * Make one of the caller's linked NGN bank accounts their PRIMARY payout
- * target — the bank a sender hits when they choose "pay to their bank"
+ * target, the bank a sender hits when they choose "pay to their bank"
  * against this user's @handle. Sets `is_primary = true` on this row and
  * unsets every other one of the caller's accounts (two statements as a
  * logical transaction). Scoped to the caller: targeting a row that isn't

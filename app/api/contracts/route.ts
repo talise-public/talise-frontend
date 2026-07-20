@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 /**
  * Work contracts API.
  *
- * The MONEY moves through the EXISTING stream endpoints — the client funds the
+ * The MONEY moves through the EXISTING stream endpoints, the client funds the
  * stream first (POST /api/streams/create-prepare → sign → POST
  * /api/streams/record) and then calls THIS route to persist the contract
  * metadata that wraps the resulting stream id. This route never moves money;
@@ -26,7 +26,7 @@ export const runtime = "nodejs";
  *   { payeeAddress, payeeHandle?, title, rateUsd, cadence, periods, streamId,
  *     fundingDigest? } → { ok, contract }
  *   The streamId MUST belong to a stream the caller is the SENDER of (verified
- *   against the streams row) — you can't attach a contract to someone else's
+ *   against the streams row), you can't attach a contract to someone else's
  *   stream.
  *
  * GET /api/contracts → { contracts: ProjectedContract[] }
@@ -79,12 +79,12 @@ export async function POST(req: Request) {
   }
 
   // The contract may only wrap a stream the caller actually owns (is sender of).
-  // This is the authority check — without it a user could attach a contract to
+  // This is the authority check, without it a user could attach a contract to
   // any stream id and pollute another user's contract list / progress view.
   const stream = await streamById(streamId);
   if (!stream) {
     return NextResponse.json(
-      { error: "stream not found — fund the contract first", code: "STREAM_NOT_FOUND" },
+      { error: "stream not found, fund the contract first", code: "STREAM_NOT_FOUND" },
       { status: 404 }
     );
   }

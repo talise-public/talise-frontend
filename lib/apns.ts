@@ -4,16 +4,16 @@ import http2 from "node:http2";
 import { importPKCS8, SignJWT } from "jose";
 
 /**
- * APNs (Apple Push Notification service) sender — token-based auth.
+ * APNs (Apple Push Notification service) sender, token-based auth.
  *
  * ENV-GATED: with no Apple credentials in env, `sendApnsPush` cleanly no-ops
  * (returns `{ skipped: true }`) so the rest of the notify path runs unchanged.
  * To activate, set (the `.p8` key contents may use literal `\n` for newlines):
- *   APNS_KEY_P8   — the contents of the AuthKey_XXXX.p8 (PKCS#8 PEM)
- *   APNS_KEY_ID   — the 10-char Key ID for that key
- *   APNS_TEAM_ID  — your 10-char Apple Team ID
- *   APNS_BUNDLE_ID— the app bundle id / apns-topic (e.g. io.talise.app)
- *   APNS_ENV      — "production" (default) or "sandbox" (dev/TestFlight)
+ *   APNS_KEY_P8 , the contents of the AuthKey_XXXX.p8 (PKCS#8 PEM)
+ *   APNS_KEY_ID , the 10-char Key ID for that key
+ *   APNS_TEAM_ID, your 10-char Apple Team ID
+ *   APNS_BUNDLE_ID- the app bundle id / apns-topic (e.g. io.talise.app)
+ *   APNS_ENV    , "production" (default) or "sandbox" (dev/TestFlight)
  */
 
 type ApnsResult = {
@@ -55,7 +55,7 @@ async function providerToken(
 }
 
 /**
- * Send a single alert push. Never throws — returns a result the caller logs.
+ * Send a single alert push. Never throws, returns a result the caller logs.
  * `{ skipped: true }` means APNs isn't configured (the common dev/local case).
  */
 export async function sendApnsPush(
@@ -78,7 +78,7 @@ export async function sendApnsPush(
     relevanceScore?: number;
     /** App-icon badge count. */
     badge?: number;
-    /** mutable-content:1 — lets a Notification Service Extension attach a
+    /** mutable-content:1, lets a Notification Service Extension attach a
      *  branded image later without another server change. */
     mutableContent?: boolean;
     /** Absolute URL of a branded card image. Rides as the top-level
