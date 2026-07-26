@@ -10,7 +10,7 @@ import { completeSignIn } from "@/lib/auth-exchange";
 export const runtime = "nodejs";
 
 /**
- * POST /api/auth/exchange { code, state } → { ok, dest } | { ok:false, err }
+ * POST /api/auth/exchange { code, state, ref? } → { ok, dest } | { ok:false, err }
  *
  * The WEB half of the OAuth callback. /auth/callback bounces the browser to
  * /auth/finish (the staged-loader page) without doing any work; that page
@@ -20,9 +20,18 @@ export const runtime = "nodejs";
  * State is validated against the same httpOnly cookie the authorize leg set -
  * identical CSRF posture to the old single-request flow, just split across
  * two requests of the same browser session.
+ *
+ * `ref` is OPTIONAL and additive: the signed `talise_ref` cookie remains the
+ * primary web signal, but a caller that already knows the inviter's code can
+ * pass it here. That covers the browsers where a `.talise.io` cookie does not
+ * survive the hop (ITP/third-party-cookie blocking, a private window opened
+ * from the invite), and it is the same parameter any non-browser client uses.
+ * It is NOT trusted beyond the existing guards: `attributeReferral` still
+ * rejects self-referral and still requires the atomic
+ * `referred_by_user_id IS NULL` claim, and it only runs on a FIRST sign-in.
  */
 export async function POST(req: Request) {
-  let body: { code?: string; state?: string };
+  let body: { code?: string; state?: string; ref?: string };
   try {
     body = await req.json();
   } catch {
@@ -47,6 +56,7 @@ export async function POST(req: Request) {
       // used at authorize-time (Vercel may 307 apex↔www between legs).
       redirectUri: googleRedirectUri(),
       country: req.headers.get("x-vercel-ip-country"),
+      ref: body.ref ?? null,
     });
     if (!result.ok) {
       return NextResponse.json({ ok: false, err: result.err }, { status: 401 });

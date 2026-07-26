@@ -4,11 +4,13 @@ import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { userById } from "@/lib/db";
 import { resolveRecipient } from "@/lib/suins";
+import { resolveDisplayNames } from "@/lib/display-name";
 import { screenTransfer } from "@/lib/screening";
 import {
   moneyRulesEnabled,
   prepareCreateRule,
   listRules,
+  type MoneyRule,
   type TriggerType,
 } from "@/lib/money-rules";
 
@@ -30,7 +32,61 @@ export async function GET(req: Request) {
 
   if (!moneyRulesEnabled()) return NextResponse.json({ rules: [], enabled: false });
   const rules = await listRules(userId);
-  return NextResponse.json({ rules, enabled: true });
+  return NextResponse.json({ rules: await withPayeeNames(rules), enabled: true });
+}
+
+/**
+ * Attach a live payee name to each rule, for DISPLAY only.
+ *
+ * `actionConfig.toHandle` is a snapshot frozen when the rule was created, and a
+ * poor one: `resolveRecipient` returns an already-truncated address for a pasted
+ * hex recipient, so the stored "handle" is frequently the literal string
+ * `0x1234…abcd` and stays that way even after the payee claims a name. So we
+ * reverse-resolve `toAddress` for the whole list in ONE batched query and put
+ * the live name in front of the snapshot.
+ *
+ * Two shapes are written because the clients read two shapes: iOS reads the
+ * nested `actionConfig.toHandle`, the Expo app reads flat
+ * `toHandle`/`toAddress`/`amountUsd` (which the API never actually emitted, so
+ * its rule rows showed no payee and no amount at all). Both now get the same
+ * resolved name, and the amount is flattened alongside it.
+ *
+ * The mutated objects are freshly projected from DB rows on every request and
+ * are never written back, so nothing here can reach the stored rule. On any
+ * resolver fault the rules pass through exactly as they are today.
+ */
+async function withPayeeNames(rules: MoneyRule[]): Promise<unknown[]> {
+  try {
+    const addressOf = (r: MoneyRule): string | null => {
+      const v = (r.actionConfig as { toAddress?: unknown } | null)?.toAddress;
+      return typeof v === "string" && v ? v : null;
+    };
+    const names = await resolveDisplayNames(rules.map(addressOf), { form: "full" });
+    return rules.map((r) => {
+      const toAddress = addressOf(r);
+      const stored = (r.actionConfig as { toHandle?: unknown } | null)?.toHandle;
+      const toHandle =
+        names.get(toAddress) ?? (typeof stored === "string" && stored ? stored : null);
+      // `amountUsd` lives ONLY inside actionConfig, and the Expo app reads it
+      // flat (`mobile/src/api/rules.ts` types it as a top-level number), so its
+      // rule rows rendered an amount of `undefined` next to the payee. Flatten
+      // it for the same reason toHandle/toAddress are flattened. Read as a
+      // number and drop anything non-finite rather than forwarding a NaN that
+      // would render as "$NaN".
+      const rawAmount = (r.actionConfig as { amountUsd?: unknown } | null)?.amountUsd;
+      const parsedAmount = Number(rawAmount);
+      const amountUsd = Number.isFinite(parsedAmount) ? parsedAmount : undefined;
+      return {
+        ...r,
+        actionConfig: { ...r.actionConfig, toHandle },
+        toAddress,
+        toHandle,
+        ...(amountUsd === undefined ? {} : { amountUsd }),
+      };
+    });
+  } catch {
+    return rules;
+  }
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   type KycTier,
 } from "@/lib/kyc";
 import { verifyIdentity } from "@/lib/ekyc";
+import { trackKycStarted } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,6 +125,12 @@ export async function POST(req: Request) {
     ],
   });
   const intentId = inserted.rows[0]?.id;
+
+  // GROWTH: the intent row exists, so a verification attempt genuinely started.
+  // Gives the kyc_started → kyc_completed conversion rate, which had no
+  // numerator at all before. `fullName` / `country` / document refs are NOT
+  // passed on — the analytics store holds no PII.
+  trackKycStarted(userId, { surface: "kyc.intent", tier: requestedTier });
 
   return NextResponse.json({
     ok: true,

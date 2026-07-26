@@ -39,10 +39,13 @@ export const runtime = "nodejs";
  */
 
 const SLIPPAGE_BPS = 100; // 1.00%
-/** Talise swap fee, 1% of the swap output, routed to the treasury on every
- *  swap / auto-swap. Based on the min-out so the on-chain split never exceeds
- *  the actual output coin. */
-const SWAP_FEE_BPS = 100; // 1.00%
+/** Talise swap fee, 1% of the swap output, routed to the treasury. Taken only
+ *  on NON-stablecoin swaps (SUI, DEEP, …); stablecoin↔stablecoin swaps such as
+ *  USDC → USDsui are fee-free. Taken natively via the aggregator overlay. */
+const SWAP_FEE_BPS = 100; // 1.00% (non-stablecoin swaps only)
+/** Stablecoin coin types. The swap target is always USDsui, so a stablecoin
+ *  source (USDC) makes the whole swap stablecoin↔stablecoin → fee-free. */
+const STABLE_TYPES = new Set<string>([COIN_TYPES.USDC, USDSUI_TYPE]);
 
 // ─── Route table ────────────────────────────────────────────────────
 // Maps the allowed `fromCoinType` strings to (a) the DeepBook pool key
@@ -297,15 +300,20 @@ export async function POST(req: Request) {
 
     // ─── Cetus aggregator swap ──────────────────────────────────────────
     // Route across 20+ Sui DEXs for the best fill (deeper than a single
-    // DeepBook pair). The 1% Talise fee is taken NATIVELY by the aggregator's
-    // overlay fee → treasury during the swap (no manual coin split). Routing
-    // was verified live for SUI→USDsui. NOTE: smoke-test a real swap on the
-    // next build, the DeepBook path remains in git history as a fallback.
+    // DeepBook pair). The Talise fee is taken NATIVELY by the aggregator's
+    // overlay fee → treasury during the swap (no manual coin split) — but ONLY
+    // for non-stablecoin sources; USDC → USDsui is fee-free. Every swap stays
+    // sponsored. Routing was verified live for SUI→USDsui.
+    const swapFeeBps = STABLE_TYPES.has(fromCoinType) ? 0 : SWAP_FEE_BPS;
     const aggregator = new AggregatorClient({
       client,
       signer: user.sui_address,
-      overlayFeeRate: SWAP_FEE_BPS / 10_000, // 1.00% → treasury
-      overlayFeeReceiver: TREASURY_WALLET,
+      ...(swapFeeBps > 0
+        ? {
+            overlayFeeRate: swapFeeBps / 10_000, // → treasury
+            overlayFeeReceiver: TREASURY_WALLET,
+          }
+        : {}),
     });
     // Bound the aggregator lookup: a slow/unresponsive Cetus router must not
     // hang the request. On timeout we fall through to the SAME NO_ROUTE / 503

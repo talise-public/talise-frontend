@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { db, ensureSchema } from "@/lib/db";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { rateLimitAsync } from "@/lib/rate-limit";
-import { getOrderStatus, phaseFromStatus, linqConfigured } from "@/lib/linq";
+import { getOrderStatus, linqConfigured } from "@/lib/linq";
+import { ProviderUnavailableError } from "@/lib/offramp/breaker";
+import { applyLinqStatus, phaseOf } from "@/lib/offramp/status";
 
 export const runtime = "nodejs";
 
@@ -14,13 +16,19 @@ interface Row {
   amount_usdsui: string | number;
   amount_ngn: string | number;
   status: string;
+  status_reason: string | null;
 }
 
 /**
  * GET /api/offramp/linq/status/[id]
  *
  * Poll a Linq off-ramp order by OUR row id. Proxies Linq's status, mirrors it
- * into `linq_offramps`, and returns a coarse phase the UI can render.
+ * into `linq_offramps` MONOTONICALLY, and returns a coarse phase the UI renders.
+ *
+ * FIXED: the poll used to write the provider's status with an unconditional
+ * UPDATE, so it raced the webhook and could walk a settled payout backwards to
+ * "processing". Both writers now go through `applyLinqStatus`, where terminal
+ * states are sticky and the UPDATE is guarded on the observed status.
  */
 export async function GET(
   req: Request,
@@ -57,23 +65,40 @@ export async function GET(
   }
 
   let status = row.status;
+  let providerReachable = true;
   try {
     const live = await getOrderStatus(row.linq_order_id);
-    status = live.status || status;
-    await c.execute({
-      sql: "UPDATE linq_offramps SET status = ?, updated_at = ? WHERE id = ?",
-      args: [status, Date.now(), id],
-    });
+    if (live.status) {
+      const write = await applyLinqStatus({
+        linqOrderId: row.linq_order_id,
+        status: live.status,
+        source: "poll",
+      });
+      // Show the provider's answer when we accepted it; otherwise keep the
+      // stored status, which is the one we refused to walk backwards from.
+      status = write.applied ? live.status : row.status;
+    }
   } catch (e) {
-    // Linq unreachable, fall back to the last stored status.
-    console.warn("[offramp/linq/status] getOrderStatus failed:", (e as Error).message);
+    // Provider unreachable (or its circuit is open): fall back to the last
+    // stored status rather than inventing one. A degraded provider must never
+    // make an in-flight payout look failed.
+    providerReachable = false;
+    const degraded = e instanceof ProviderUnavailableError;
+    console.warn(
+      `[offramp/linq/status] getOrderStatus ${degraded ? "skipped (circuit open)" : "failed"}:`,
+      (e as Error).message
+    );
   }
 
   return NextResponse.json({
     orderId: id,
     status,
-    phase: phaseFromStatus(status),
+    phase: phaseOf(status),
     amountUsdsui: Number(row.amount_usdsui),
     amountNgn: Number(row.amount_ngn),
+    // Surfaced so the client can say "we can't reach the bank rail right now"
+    // instead of implying the payout itself is stuck.
+    providerReachable,
+    statusReason: row.status_reason ?? null,
   });
 }

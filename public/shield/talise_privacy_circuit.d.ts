@@ -2,6 +2,45 @@
 /* eslint-disable */
 
 /**
+ * Deserialize the compressed proving key ONCE and keep it. Time this call to
+ * get the one-off stage-2 cost.
+ */
+export function bench_cache_pk(proving_key_hex: string): number;
+
+/**
+ * Stage 2 as `prove()` does it today: hex-decode + compressed deserialize with
+ * full validation. Returns the key's point count.
+ */
+export function bench_load_pk_compressed(proving_key_hex: string): number;
+
+/**
+ * Same, skipping subgroup validation. Isolates how much of stage 2 is the
+ * subgroup check versus the point decompression.
+ */
+export function bench_load_pk_compressed_unchecked(proving_key_hex: string): number;
+
+/**
+ * Stage 2 if the key were served UNCOMPRESSED. Expects hex of an
+ * arkworks-uncompressed proving key (see `bench_recompress_pk_uncompressed`).
+ */
+export function bench_load_pk_uncompressed(proving_key_hex: string): number;
+
+/**
+ * Prove a representative deposit against the cached key — stages 3 + 4 only,
+ * no key reload. Returns the same JSON shape as `wasm::prove`, so
+ * `wasm::verify` can check it.
+ */
+export function bench_prove_deposit_cached(amount: bigint, out0: bigint, out1: bigint): string;
+
+/**
+ * One-shot converter so the benchmark can produce an uncompressed key in the
+ * browser without a new build asset: compressed hex in, uncompressed hex out.
+ * This is a measurement convenience, NOT how a real deployment should do it —
+ * a real deployment would ship the uncompressed key as the static asset.
+ */
+export function bench_recompress_pk_uncompressed(proving_key_hex: string): string;
+
+/**
  * Build a valid DEPOSIT [`ProofInput`] JSON for a pool, without the caller
  * having to reimplement Poseidon in JS. Mirrors the native
  * `prover::build_deposit_circuit_for_pool`: dummy (zero) input notes + two
@@ -48,6 +87,12 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly bench_cache_pk: (a: number, b: number) => [number, number, number];
+    readonly bench_load_pk_compressed: (a: number, b: number) => [number, number, number];
+    readonly bench_load_pk_compressed_unchecked: (a: number, b: number) => [number, number, number];
+    readonly bench_load_pk_uncompressed: (a: number, b: number) => [number, number, number];
+    readonly bench_prove_deposit_cached: (a: bigint, b: bigint, c: bigint) => [number, number, number, number];
+    readonly bench_recompress_pk_uncompressed: (a: number, b: number) => [number, number, number, number];
     readonly build_deposit_input: (a: number, b: number, c: number, d: number, e: bigint, f: bigint, g: bigint) => [number, number, number, number];
     readonly prove: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly verify: (a: number, b: number, c: number, d: number) => [number, number, number];

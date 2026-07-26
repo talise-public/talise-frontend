@@ -8,10 +8,21 @@
  * upserts per-user aggregates + a bounded recent-transaction feed. The
  * dashboard serves whatever is cached so far (with progress).
  *
- * Three Postgres tables (all idempotent, created by ensureAnalyticsSchema):
+ * Postgres tables (all idempotent, created by ensureAnalyticsSchema):
  *   • analytics_user_stats, one row per indexed user (aggregates).
  *   • analytics_recent_tx , newest-first recent-transaction feed (PK digest).
  *   • analytics_index_state, singleton (id=1) cursor + run timestamps.
+ *   • analytics_snapshots , append-only public metrics checkpoints.
+ *   • analytics_tx_ledger + analytics_totals — see lib/analytics/ledger.ts.
+ *
+ * IMPORTANT — which table is allowed to produce a headline number.
+ * `analytics_recent_tx` is a BOUNDED FEED: trimmed to the newest
+ * RECENT_TX_KEEP rows on every pass. It exists for DISPLAY (it carries the
+ * handle / counterparty fields) and for nothing else. Lifetime totals
+ * (transactions, active accounts, volume) come exclusively from the durable
+ * `analytics_tx_ledger` via its materialized rollup. Deriving a lifetime total
+ * from the feed is the exact bug that made published volume stop growing and
+ * then drift down once activity passed the feed bound.
  *
  * Resilient like /api/admin/overview: a failed sub-query yields its zero/empty
  * fallback rather than throwing, so the dashboard always renders. Writes are
@@ -20,6 +31,11 @@
 
 import { db } from "@/lib/db";
 import { countUsers } from "@/lib/analytics/users";
+import {
+  ensureLedgerSchema,
+  getLifetimeTotals,
+  LIFETIME_TOTALS_SELECT,
+} from "@/lib/analytics/ledger";
 import type {
   AnalyticsSnapshot,
   AnalyticsSummary,
@@ -145,6 +161,13 @@ export async function ensureAnalyticsSchema(): Promise<void> {
           ON CONFLICT (id) DO NOTHING`,
     args: [],
   });
+
+  // Durable lifetime ledger + rollup, and the snapshot `basis` provenance
+  // column. Memoized per process instance and idempotent; must run AFTER the
+  // tables above because it backfills from analytics_recent_tx and indexes
+  // analytics_user_stats. Best-effort: a failure here leaves the legacy
+  // (feed-derived) reads working rather than breaking the indexer.
+  await ensureLedgerSchema().catch(() => {});
 }
 
 /**
@@ -234,7 +257,12 @@ export async function recordRecentTxs(
 
 /**
  * Trim the recent-tx feed to the newest `keep` rows by `ts`, deleting the rest.
- * Bounds table growth across full passes. No-op / resilient on failure.
+ * Bounds table growth across full passes.
+ *
+ * Safe to keep trimming now that NO lifetime metric reads this table: the feed
+ * is the display/enrichment window (handle + counterparty for rendered rows),
+ * while analytics_tx_ledger holds every transaction forever. No-op / resilient
+ * on failure.
  */
 export async function trimRecentTxs(keep: number): Promise<void> {
   const safeKeep = Math.max(0, Math.floor(Number.isFinite(keep) ? keep : 0));
@@ -333,30 +361,21 @@ export async function getSummary(): Promise<AnalyticsSummary> {
     .then((r) => num(r.rows[0]?.n))
     .catch(() => 0);
 
-  // Headline totals come from analytics_recent_tx — the digest-keyed, deduped
-  // feed — using the SAME query as the public /api/analytics page, so the admin
-  // dashboard, the public /analytics page, and the pitch deck all report the
-  // identical figures. (SUM over analytics_user_stats both double-counts
-  // internal transfers AND reflects only the latest, sometimes source-degraded,
-  // per-user snapshot, so it drifted low and diverged from the public numbers.)
-  const aggregates = await db()
-    .execute({
-      sql: `SELECT COUNT(*) AS txs,
-                   COALESCE(SUM(amount_usd) FILTER (
-                     WHERE direction IN ('sent','swap','withdraw','invest')),0) AS vol
-              FROM analytics_recent_tx`,
-      args: [],
-    })
-    .then((r) => ({
-      stablecoinVolumeUsd: num(r.rows[0]?.vol),
-      transactions: num(r.rows[0]?.txs),
-      indexedUsers,
-    }))
-    .catch(() => ({
-      stablecoinVolumeUsd: 0,
-      transactions: 0,
-      indexedUsers,
-    }));
+  // Headline totals come from the DURABLE ledger's materialized rollup — one
+  // row, one round trip — so the admin dashboard, the public /analytics page,
+  // and the pitch deck all report identical, lifetime-correct figures.
+  //
+  // They used to be COUNT(*)/SUM over analytics_recent_tx, which is trimmed to
+  // the newest RECENT_TX_KEEP rows every pass: past that bound the totals
+  // pinned and then fell. (SUM over analytics_user_stats is also wrong here —
+  // it double-counts internal transfers and reflects only each user's latest,
+  // sometimes source-degraded, snapshot.)
+  const totals = await getLifetimeTotals();
+  const aggregates = {
+    stablecoinVolumeUsd: totals.volumeUsd,
+    transactions: totals.txCount,
+    indexedUsers,
+  };
 
   // Newest-first recent-transaction feed.
   const recent = await db()
@@ -403,14 +422,109 @@ export async function getSummary(): Promise<AnalyticsSummary> {
   };
 }
 
+/** Map a raw analytics_recent_tx row to a RecentTx. */
+function toRecentTx(row: Record<string, unknown>): RecentTx {
+  return {
+    digest: String(row.digest ?? ""),
+    ts: num(row.ts),
+    direction: String(row.direction ?? ""),
+    amountUsd: numOrNull(row.amount_usd),
+    handle: strOrNull(row.handle),
+    address: strOrNull(row.address),
+    counterparty: strOrNull(row.counterparty),
+    counterpartyName: strOrNull(row.counterparty_name),
+  };
+}
+
+/** Hard cap on a single transactions page — keeps Postgres + payloads bounded. */
+const TX_PAGE_MAX = 100;
+
+/**
+ * One page of the full transaction history, newest-first, with an optional
+ * free-text filter (handle / address / counterparty / direction / digest).
+ *
+ * Pages the DURABLE ledger, not the trimmed feed. That matters for more than
+ * completeness: the public table's page count is derived from the headline
+ * transaction total, which is now the lifetime figure. Paging the feed would
+ * promise thousands of rows and serve empty pages past the trim bound.
+ *
+ * Display fields are joined on rather than stored twice — `analytics_recent_tx`
+ * supplies counterparty detail for the recent window, `analytics_user_stats`
+ * supplies the handle for the whole history (one durable row per user). Rows
+ * older than the feed window simply render without a counterparty label.
+ *
+ * `total` is the count for the current filter so the client can compute page
+ * bounds. limit/offset are clamped + integer-coerced, so they interpolate
+ * safely; the search needle is passed as a bound parameter.
+ */
+export async function getRecentTxPage(opts: {
+  limit: number;
+  offset: number;
+  q?: string;
+}): Promise<{ rows: RecentTx[]; total: number }> {
+  const limit = Math.min(Math.max(1, Math.floor(opts.limit) || RECENT_LIMIT), TX_PAGE_MAX);
+  const offset = Math.max(0, Math.floor(opts.offset) || 0);
+  const q = (opts.q ?? "").trim().toLowerCase();
+
+  const FROM = `FROM analytics_tx_ledger l
+                LEFT JOIN analytics_recent_tx r  ON r.digest  = l.digest
+                LEFT JOIN analytics_user_stats u ON u.address = l.address`;
+
+  // Single concatenated haystack keeps this to ONE bound param and one pass.
+  const where = q
+    ? `WHERE LOWER(COALESCE(r.handle, u.handle, '') || ' ' || COALESCE(l.address,'') || ' ' ||
+             COALESCE(r.counterparty,'') || ' ' || COALESCE(r.counterparty_name,'') || ' ' ||
+             COALESCE(l.direction,'') || ' ' || l.digest) LIKE ?`
+    : "";
+  const whereArgs: unknown[] = q ? [`%${q}%`] : [];
+
+  // Unfiltered page count is the lifetime rollup — a single-row read instead of
+  // a COUNT(*) over the whole ledger on every page turn. Only a filtered
+  // request pays for a scan.
+  const total = q
+    ? await db()
+        .execute({ sql: `SELECT COUNT(*) AS n ${FROM} ${where}`, args: whereArgs })
+        .then((r) => num(r.rows[0]?.n))
+        .catch(() => 0)
+    : await getLifetimeTotals().then((t) => t.txCount);
+
+  const rows = await db()
+    .execute({
+      sql: `SELECT l.digest                        AS digest,
+                   l.address                       AS address,
+                   COALESCE(r.handle, u.handle)    AS handle,
+                   l.direction                     AS direction,
+                   l.amount_usd                    AS amount_usd,
+                   r.counterparty                  AS counterparty,
+                   r.counterparty_name             AS counterparty_name,
+                   l.ts                            AS ts
+              ${FROM}
+              ${where}
+             ORDER BY l.ts DESC
+             LIMIT ${limit} OFFSET ${offset}`,
+      args: whereArgs,
+    })
+    .then((r) => r.rows.map((row) => toRecentTx(row as Record<string, unknown>)))
+    .catch((): RecentTx[] => []);
+
+  return { rows, total };
+}
+
 // ── public checkpoints ─────────────────────────────────────────────────────
 
 /** The aggregate numbers a checkpoint captures (order-independent compare). */
-type SnapshotMetrics = Omit<AnalyticsSnapshot, "id" | "createdAt">;
+type SnapshotMetrics = Omit<AnalyticsSnapshot, "id" | "createdAt" | "basis">;
 
-/** Read the current public aggregates (same figures as getPublicAnalytics). */
+/**
+ * Read the current public aggregates (same figures as getPublicAnalytics).
+ *
+ * ONE round trip: the product counts and the three lifetime figures are folded
+ * into a single SELECT by cross-joining the rollup's one-row projection. The
+ * lifetime figures come from analytics_tx_ledger, so every checkpoint written
+ * from here carries basis='ledger' and is safe to publish.
+ */
 async function currentSnapshotMetrics(): Promise<SnapshotMetrics> {
-  const counts = await db()
+  const row = await db()
     .execute({
       sql: `SELECT
               (SELECT COUNT(*) FROM shield_commitments) AS notes,
@@ -419,36 +533,27 @@ async function currentSnapshotMetrics(): Promise<SnapshotMetrics> {
               (SELECT COUNT(*) FROM streams)            AS streams,
               (SELECT COUNT(*) FROM savings_goals)      AS goals,
               (SELECT COUNT(*) FROM users)              AS accounts,
-              (SELECT COUNT(*) FROM waitlist_signups)   AS waitlist`,
-      args: [],
-    })
-    .then((r) => r.rows[0] ?? {})
-    .catch(() => ({}) as Record<string, unknown>);
-
-  const tx = await db()
-    .execute({
-      sql: `SELECT
-              COUNT(*)                AS txcount,
-              COUNT(DISTINCT address) AS active,
-              COALESCE(SUM(amount_usd) FILTER (
-                WHERE direction IN ('sent','swap','withdraw','invest')),0) AS vol
-            FROM analytics_recent_tx`,
+              (SELECT COUNT(*) FROM waitlist_signups)   AS waitlist,
+              lt.lifetime_tx_count,
+              lt.lifetime_active_accounts,
+              lt.lifetime_volume_usd
+            FROM (${LIFETIME_TOTALS_SELECT}) AS lt`,
       args: [],
     })
     .then((r) => r.rows[0] ?? {})
     .catch(() => ({}) as Record<string, unknown>);
 
   return {
-    accounts: num((counts as Record<string, unknown>).accounts),
-    activeAccounts: num((tx as Record<string, unknown>).active),
-    txCount: num((tx as Record<string, unknown>).txcount),
-    volumeUsd: num((tx as Record<string, unknown>).vol),
-    privateNotes: num((counts as Record<string, unknown>).notes),
-    privateSpent: num((counts as Record<string, unknown>).spent),
-    cheques: num((counts as Record<string, unknown>).cheques),
-    streams: num((counts as Record<string, unknown>).streams),
-    goals: num((counts as Record<string, unknown>).goals),
-    waitlist: num((counts as Record<string, unknown>).waitlist),
+    accounts: num(row.accounts),
+    activeAccounts: num(row.lifetime_active_accounts),
+    txCount: num(row.lifetime_tx_count),
+    volumeUsd: num(row.lifetime_volume_usd),
+    privateNotes: num(row.notes),
+    privateSpent: num(row.spent),
+    cheques: num(row.cheques),
+    streams: num(row.streams),
+    goals: num(row.goals),
+    waitlist: num(row.waitlist),
   };
 }
 
@@ -474,8 +579,9 @@ export async function recordSnapshotIfChanged(now: number): Promise<void> {
     await db().execute({
       sql: `INSERT INTO analytics_snapshots
               (created_at, accounts, active_accounts, tx_count, volume_usd,
-               private_notes, private_spent, cheques, streams, goals, waitlist)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               private_notes, private_spent, cheques, streams, goals, waitlist,
+               basis)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ledger')`,
       args: [
         now,
         metrics.accounts,
@@ -495,20 +601,42 @@ export async function recordSnapshotIfChanged(now: number): Promise<void> {
   }
 }
 
-/** Read the newest `limit` checkpoints, newest-first. Resilient → [] on error. */
+/**
+ * Read the newest `limit` checkpoints, newest-first. Resilient → [] on error.
+ *
+ * ## Handling the checkpoints poisoned by the feed-cap bug
+ *
+ * Rows written before the ledger existed hold capped-window figures: their
+ * tx_count / active_accounts / volume_usd under-report the truth and can step
+ * DOWN from one checkpoint to the next. Two deliberate choices:
+ *
+ *   • The stored rows are never rewritten or deleted. The table's contract is
+ *     append-only, and it is the only record of what was published when —
+ *     silently restating history would be worse than the artefact. Each row
+ *     instead carries `basis`, so a consumer can label or mute the estimated
+ *     era honestly.
+ *   • The three lifetime series are clamped to a running maximum in ascending
+ *     time before being returned. These are cumulative by definition, so a
+ *     decrease is provably an artefact and not a signal. Clamping can only
+ *     raise a value toward the truth, never inflate past a figure that was
+ *     already measured, and it stops any chart from rendering lifetime volume
+ *     going backwards. `accounts` and `waitlist` are NOT clamped — those can
+ *     legitimately fall when an account is deleted.
+ */
 export async function getSnapshots(limit = 90): Promise<AnalyticsSnapshot[]> {
   const cap = Math.max(1, Math.min(500, Math.floor(limit)));
   try {
     const r = await db().execute({
       sql: `SELECT id, created_at, accounts, active_accounts, tx_count,
                    volume_usd, private_notes, private_spent, cheques, streams,
-                   goals, waitlist
+                   goals, waitlist, basis
               FROM analytics_snapshots
              ORDER BY created_at DESC, id DESC
              LIMIT ${cap}`,
       args: [],
     });
-    return r.rows.map(
+
+    const rows = r.rows.map(
       (row): AnalyticsSnapshot => ({
         id: num(row.id),
         createdAt: num(row.created_at),
@@ -522,8 +650,24 @@ export async function getSnapshots(limit = 90): Promise<AnalyticsSnapshot[]> {
         streams: num(row.streams),
         goals: num(row.goals),
         waitlist: num(row.waitlist),
+        basis: row.basis === "ledger" ? "ledger" : "capped_window",
       })
     );
+
+    // Clamp oldest → newest, then hand back newest-first as promised.
+    let maxTx = 0;
+    let maxActive = 0;
+    let maxVol = 0;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const s = rows[i];
+      maxTx = Math.max(maxTx, s.txCount);
+      maxActive = Math.max(maxActive, s.activeAccounts);
+      maxVol = Math.max(maxVol, s.volumeUsd);
+      s.txCount = maxTx;
+      s.activeAccounts = maxActive;
+      s.volumeUsd = maxVol;
+    }
+    return rows;
   } catch {
     return [];
   }

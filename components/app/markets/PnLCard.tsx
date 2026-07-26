@@ -1,5 +1,7 @@
 "use client";
 
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Download04Icon } from "@hugeicons/core-free-icons";
 import { AssetIcon } from "@/components/app/markets/AssetIcon";
 import { assetMeta } from "@/lib/waterx-assets";
 
@@ -14,10 +16,19 @@ export type PnLCardData = {
 };
 
 const fmtP = (n: number) => (n >= 1000 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : n >= 1 ? n.toFixed(3) : n.toFixed(4));
+const CARD_FONT = '"Google Sans Variable", "Google Sans", system-ui, sans-serif';
+
+const loadImg = (src: string) =>
+  new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
 
 /**
- * Shareable PnL card, a happy green anime scene for profit, a somber red one
+ * Shareable PnL card — a happy green anime scene for profit, a somber red one
  * for a loss (art via Higgsfield), with the trade stats blended cleanly on top.
+ * Download composites the WHOLE card (art + scrim + stats) onto a canvas, not
+ * just the raw background image.
  */
 export function PnLCard({ data, onClose }: { data: PnLCardData; onClose: () => void }) {
   const win = data.pnlUsd >= 0;
@@ -33,6 +44,63 @@ export function PnLCard({ data, onClose }: { data: PnLCardData; onClose: () => v
       if (navigator.share) await navigator.share({ text, url: "https://talise.io" });
       else { await navigator.clipboard.writeText(`${text}, https://talise.io`); }
     } catch { /* cancelled */ }
+  };
+
+  // Composite the full card (art + scrim + overlaid stats) at 3× and download it.
+  const download = async () => {
+    try {
+      const W = 360, H = 480, SC = 3;
+      const cv = document.createElement("canvas");
+      cv.width = W * SC; cv.height = H * SC;
+      const c = cv.getContext("2d"); if (!c) return;
+      c.scale(SC, SC);
+      try { await document.fonts.ready; } catch { /* */ }
+
+      roundRect(c, 0, 0, W, H, 28); c.clip();
+
+      // background (cover-fit) + scrim
+      const bg = await loadImg(win ? "/pnl/win.png" : "/pnl/loss.png");
+      const ar = bg.width / bg.height, car = W / H;
+      let dw = W, dh = H, dx = 0, dy = 0;
+      if (ar > car) { dh = H; dw = H * ar; dx = (W - dw) / 2; } else { dw = W; dh = W / ar; dy = (H - dh) / 2; }
+      c.drawImage(bg, dx, dy, dw, dh);
+      const g = c.createLinearGradient(0, 0, 0, H);
+      const stops: [number, string][] = win
+        ? [[0, "rgba(4,16,3,0.55)"], [0.3, "rgba(4,16,3,0.05)"], [0.62, "rgba(4,16,3,0.35)"], [1, "rgba(4,16,3,0.9)"]]
+        : [[0, "rgba(18,3,6,0.6)"], [0.3, "rgba(18,3,6,0.05)"], [0.62, "rgba(18,3,6,0.4)"], [1, "rgba(18,3,6,0.92)"]];
+      for (const [o, col] of stops) g.addColorStop(o, col);
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+      c.textAlign = "left"; c.textBaseline = "alphabetic";
+      // brand
+      try { const logo = await loadImg("/logo.png"); c.save(); c.filter = "invert(1) brightness(1.6)"; c.drawImage(logo, 20, 20, 20, 20); c.restore(); } catch { /* */ }
+      c.fillStyle = "#fff"; c.font = `700 15px ${CARD_FONT}`; c.fillText("talise", 46, 35);
+      const tw = c.measureText("talise").width;
+      c.font = `600 9.5px ${CARD_FONT}`; const pw = c.measureText("PERPS").width, px = 46 + tw + 8;
+      c.fillStyle = "rgba(255,255,255,0.16)"; roundRect(c, px, 24, pw + 14, 15, 7); c.fill();
+      c.fillStyle = "#fff"; c.fillText("PERPS", px + 7, 35);
+
+      // asset + side
+      try { const ic = await loadImg(`/api/asset-icon/${data.ticker.toUpperCase()}`); c.save(); roundRect(c, 20, 250, 26, 26, 13); c.clip(); c.drawImage(ic, 20, 250, 26, 26); c.restore(); } catch { /* */ }
+      c.fillStyle = "#fff"; c.font = `600 16px ${CARD_FONT}`; c.fillText(`${m.sym}/USD`, 54, 268);
+      const sw = c.measureText(`${m.sym}/USD`).width;
+      const badge = `${data.isLong ? "LONG" : "SHORT"}${data.leverage ? ` ${data.leverage.toFixed(0)}x` : ""}`;
+      c.font = `700 11px ${CARD_FONT}`; const bw = c.measureText(badge).width, bx = 54 + sw + 8;
+      c.fillStyle = win ? "rgba(47,158,68,0.5)" : "rgba(224,87,79,0.5)"; roundRect(c, bx, 255, bw + 12, 17, 5); c.fill();
+      c.fillStyle = "#fff"; c.fillText(badge, bx + 6, 268);
+
+      // pnl
+      c.fillStyle = accent; c.font = `800 58px ${CARD_FONT}`; c.fillText(`${data.pnlPct >= 0 ? "+" : ""}${data.pnlPct.toFixed(1)}%`, 20, 350);
+      c.fillStyle = "#fff"; c.font = `700 20px ${CARD_FONT}`; c.fillText(`${win ? "+" : "-"}$${Math.abs(data.pnlUsd).toFixed(2)}`, 20, 378);
+
+      // footer
+      c.font = `400 12px ${CARD_FONT}`; c.fillStyle = "rgba(255,255,255,0.7)"; c.fillText("Entry", 20, 420); c.fillText("Mark", 120, 420);
+      c.fillStyle = "#fff"; c.font = `600 12px ${CARD_FONT}`; c.fillText(`$${fmtP(data.entryPriceUsd)}`, 20, 436); c.fillText(`$${fmtP(data.markPriceUsd)}`, 120, 436);
+      c.font = `400 10.5px ${CARD_FONT}`; c.fillStyle = "rgba(255,255,255,0.72)"; c.textAlign = "center"; c.fillText("talise.io · gasless perps on Sui", W / 2, 462);
+
+      const a = document.createElement("a"); a.href = cv.toDataURL("image/png"); a.download = `talise-pnl-${m.sym.toLowerCase()}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch { /* */ }
   };
 
   return (
@@ -78,7 +146,9 @@ export function PnLCard({ data, onClose }: { data: PnLCardData; onClose: () => v
             </div>
             <div className="mt-3 flex items-center gap-2">
               <button onClick={share} className="flex-1 rounded-xl bg-white/90 py-2.5 text-[14px] font-bold text-[#15300c]">Share</button>
-              <a href={win ? "/pnl/win.png" : "/pnl/loss.png"} download className="rounded-xl bg-white/15 px-3 py-2.5 text-[13px] font-semibold text-white backdrop-blur-sm">↓</a>
+              <button onClick={download} aria-label="Download PnL card" className="flex items-center justify-center rounded-xl bg-white/15 px-3.5 py-2.5 text-white backdrop-blur-sm">
+                <HugeiconsIcon icon={Download04Icon} size={18} />
+              </button>
             </div>
             <div className="mt-2 text-center text-[10.5px] opacity-70">talise.io · gasless perps on Sui</div>
           </div>

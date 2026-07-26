@@ -5,15 +5,16 @@ import {
   mobileSigningContext,
   isMobileRequest,
 } from "@/lib/mobile-sessions";
-import { userById, enqueueRoundup } from "@/lib/db";
+import { userById } from "@/lib/db";
 import { assembleZkLoginSignature, readSigningCookie } from "@/lib/zksigner";
 import { sui } from "@/lib/sui";
 import { fromBase64 } from "@mysten/sui/utils";
 import { awardForTx, type EarnTrigger } from "@/lib/rewards/earn";
 import { requireAppAttestStructural } from "@/lib/app-attest";
-import { takePendingRoundup, takePendingInbound } from "@/lib/perf-cache";
+import { takePendingInbound } from "@/lib/perf-cache";
 import { notifyInboundSettlement } from "@/lib/notify";
 import { rateLimitAsync } from "@/lib/rate-limit";
+import { trackConfirmedExecution } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 
@@ -167,31 +168,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // Deferred Spend-and-Save, fire-and-forget. The gasless rail
-    // can't co-bundle the NAVI supply (PTB allowlist), so
-    // sponsor-prepare stashed the rounded-up USDsui amount under
-    // this user; we now hand it to the `roundup_queue` for the cron
-    // worker to drain. Done AFTER we have a confirmed digest so we
-    // never enqueue a save that didn't actually accompany a send.
-    //
-    // Two layers of detachment intentionally:
-    //   1. `takePendingRoundup` is synchronous (in-memory map).
-    //   2. `enqueueRoundup` is awaited inside a void-returning IIFE so
-    //      the response isn't gated on the DB write, a queue insert
-    //      failure must not surface as a failed send.
-    const pendingRoundupUsd = takePendingRoundup(userId);
-    if (pendingRoundupUsd && pendingRoundupUsd > 0) {
-      void (async () => {
-        try {
-          await enqueueRoundup({ userId, amountUsd: pendingRoundupUsd });
-        } catch (e) {
-          console.warn(
-            `[send/gasless-submit] enqueueRoundup failed (user=${userId}, amount=${pendingRoundupUsd}):`,
-            (e as Error).message
-          );
-        }
-      })();
-    }
+    // Spend + Save never reaches this rail. A Save-ON send is routed onto
+    // the SPONSORED rail by `/api/send/sponsor-prepare` precisely because
+    // the gasless rail cannot carry the NAVI supply: it builds with
+    // gasPrice=0, gasBudget=0, an empty gas payment and an offline BCS
+    // build, and the validator's gasless allowlist admits only
+    // `0x2::balance::send_funds<T>`. So there is no round-up bookkeeping to
+    // do here, and no amount to read out of a stash. See
+    // lib/rewards/roundup.ts.
 
     // Notify the recipient that money landed (email now; push once APNs is
     // wired). Fire-and-forget, never gates the response, never throws.
@@ -203,6 +187,21 @@ export async function POST(req: Request) {
         senderName: inbound.senderName,
       });
     }
+
+    // GROWTH: the gasless rail's confirmation point. The abort branch above has
+    // already returned, and a missing digest already 500'd, so a plain
+    // `0x2::coin::send_funds` send that reaches this line landed. Without this
+    // the whole gasless rail — the default for plain USDsui sends — would be
+    // invisible to `send_completed` / `first_send_at`. Same non-blocking contract
+    // as in sponsor-execute: sync, void, self-guarded, writes in `after()`.
+    trackConfirmedExecution({
+      userId,
+      digest,
+      kind: body.meta?.kind,
+      amountUsd: body.meta?.amountUsd,
+      venue: body.meta?.venue,
+      surface: "send.gasless",
+    });
 
     // Rewards earn, fire-and-forget, same shape as sponsor-execute.
     const meta = body.meta;

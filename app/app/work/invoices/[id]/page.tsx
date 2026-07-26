@@ -41,6 +41,8 @@ type OwnerInvoice = {
   paidAt: number | null;
   payDigest: string | null;
   paidByAddress: string | null;
+  /** Live-resolved name for the payer, or null when they have none. */
+  paidByName?: string | null;
 };
 
 const ORIGIN = publicOrigin();
@@ -313,8 +315,10 @@ export default function InvoiceDetailPage() {
               {invoice.paidByAddress && (
                 <div className="rounded-2xl border border-[#15300c]/15 px-4 py-3.5">
                   <MicroLabel>Paid by</MicroLabel>
+                  {/* The payer's live name when they have one; the address is
+                      the fallback, not the default. */}
                   <p className="mt-1.5 break-all font-mono text-[12px] text-[#15300c]">
-                    {shortAddr(invoice.paidByAddress)}
+                    {invoice.paidByName || shortAddr(invoice.paidByAddress)}
                   </p>
                 </div>
               )}

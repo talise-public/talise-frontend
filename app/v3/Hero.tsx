@@ -55,7 +55,7 @@ export default function Hero() {
         >
           <Reveal className="talise-collage-art relative mx-auto -mb-12 w-full max-w-[1180px]">
             <Image
-              src="/talise-app-collage.png"
+              src="/hero/talise-app-collage.png"
               alt="Three Talise app screens, a savings screen, a review-send screen showing no network fee, and a transaction-successful screen"
               width={1650}
               height={879}

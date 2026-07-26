@@ -1,60 +1,63 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { Transaction } from "@mysten/sui/transactions";
-import { fromBase64 } from "@mysten/sui/utils";
 import { db, ensureSchema, schemaVersionGate } from "@/lib/db";
-import { sui } from "@/lib/sui";
-import { USDSUI_TYPE } from "@/lib/usdsui";
-import { getChainIdentifier, getCurrentEpoch } from "@/lib/sui-epoch";
+import {
+  teamStreamsOnchainEnabled,
+  buildTeamStreamCreateSponsored,
+  buildReleaseDueTrancheSponsored,
+  buildTeamStreamCancelSponsored,
+  parseCreatedTeamStreamId,
+  verifyStreamTxTouched,
+} from "@/lib/team-streams-onchain";
 
 /**
- * Team streaming payments, fund a pot once, then a gasless scheduler releases an
- * EQUAL share of each tranche to every member of a saved payroll team, on an
- * interval, until the pot is exhausted.
+ * Team streaming payments, fund a pot once, then an EQUAL share of each tranche
+ * goes to every member of a saved payroll team, on an interval, until the
+ * schedule is done.
  *
- * Reuses the proven server-custodied escrow model (mirrors lib/cheques.ts):
- *   • The creator funds the FULL amount into a Talise-controlled escrow address
- *     over the normal gasless send rail (a `0x2::balance::send_funds<USDSUI>`
- *     that credits the escrow's Address Balance accumulator).
- *   • A Vercel cron (`/api/cron/process-team-streams`) releases each due tranche
- *     by signing escrow→member `send_funds` transfers with the server escrow key
- *     (`PAYROLL_STREAM_ESCROW_SK`). Gasless: zero gas price/budget, no gas payment,
- *     epoch-bounded expiration, identical to the cheque escrow release recipe.
+ * NON-CUSTODIAL + PERMISSIONLESS, on the same model as money rules
+ * (`talise_automations::standing_order`). There is NO escrow key, NO scheduler
+ * key and NO cron:
+ *   • CREATE, the creator signs one Onara-sponsored `team_stream::create` that
+ *     moves the WHOLE pot into a `TeamStream<USDSUI>` shared object they own.
+ *     Funding and creation are the same transaction, so a stream can only exist
+ *     fully funded — there is nothing to "verify was credited" afterwards, and
+ *     Talise never holds the money (the old escrow was server-custodied AND
+ *     commingled across streams; that risk class is gone).
+ *   • RELEASE, `release_due_tranche` is PERMISSIONLESS; the creator's app fires
+ *     any due tranche when it's open (Onara-sponsored). The contract pays exactly
+ *     the pre-set share to each hardwired member, only once the Clock passes
+ *     `next_due_ms`, at most `num_tranches` times. Double-releasing a tranche is
+ *     IMPOSSIBLE on chain, which replaces the old atomic DB claim.
+ *   • CANCEL, the creator signs `cancel`, which refunds the entire remaining pot
+ *     (unreleased tranches + rounding dust) to them.
  *
- * The escrow holds money commingled across streams; the DB is the ledger that
- * bounds each stream to exactly what it funded. Gated by PAYROLL_STREAM_ESCROW_SK
- * (unset → feature off, nothing in prod changes).
+ * The rows below are a DISPLAY MIRROR of the on-chain schedule plus the list of
+ * "which streams are due to fire". The money and the authoritative cursor live on
+ * chain, so a stale mirror can only ever cause a no-op abort (ENotDue /
+ * EExhausted / ECancelled), never an early, double, or wrong payment.
+ *
+ * Gated by teamStreamsOnchainEnabled() (TEAM_STREAM_PACKAGE_ID +
+ * TEAM_STREAM_REGISTRY_ID). Unset → the feature is off and the routes 503.
  */
 
-// ── Escrow key (server-custodied) ───────────────────────────────────────────
-let _escrow: Ed25519Keypair | null = null;
-
 export function teamStreamsEnabled(): boolean {
-  return !!process.env.PAYROLL_STREAM_ESCROW_SK;
-}
-
-function escrowKeypair(): Ed25519Keypair {
-  if (_escrow) return _escrow;
-  const k = process.env.PAYROLL_STREAM_ESCROW_SK;
-  if (!k) throw new Error("PAYROLL_STREAM_ESCROW_SK missing, the team-stream escrow key");
-  _escrow = Ed25519Keypair.fromSecretKey(k);
-  return _escrow;
-}
-
-export function teamStreamEscrowAddress(): string {
-  return escrowKeypair().getPublicKey().toSuiAddress();
+  return teamStreamsOnchainEnabled();
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-export const MIN_PER_MEMBER_MICROS = 10_000n; // 0.01 USDsui, the gasless minimum per leg
+/** 0.01 USDsui — the product floor for one person's share of one payout. The
+ *  contract only requires a non-zero share; this is the UX guard. */
+export const MIN_PER_MEMBER_MICROS = 10_000n;
+/** Must not exceed the contract's MAX_MEMBERS (one release pays everyone in one tx). */
 const MAX_MEMBERS = 50;
+/** Must not exceed the contract's MAX_TRANCHES. */
 const MAX_TRANCHES = 365;
 
 // ── Schema ─────────────────────────────────────────────────────────────────
 let _schemaReady: Promise<void> | null = null;
-const SCHEMA_VERSION = "2026-06-26.1";
+const SCHEMA_VERSION = "2026-07-25.1";
 
 export function ensureTeamStreamsSchema(): Promise<void> {
   if (_schemaReady) return _schemaReady;
@@ -89,10 +92,13 @@ export function ensureTeamStreamsSchema(): Promise<void> {
         updated_at        BIGINT NOT NULL
       )
     `);
+    // The on-chain `TeamStream<USDSUI>` object this row mirrors. NULL means the
+    // row predates the on-chain rail (a legacy escrow stream) or is still a draft.
+    await c.execute(`ALTER TABLE team_streams ADD COLUMN IF NOT EXISTS stream_object_id TEXT`);
     await c.execute(`CREATE INDEX IF NOT EXISTS idx_team_streams_user ON team_streams(sender_user_id, created_at DESC)`);
-    // Cron read: active streams ordered by their next due time.
+    // "Which of my streams are due to fire" read (listDueTeamStreams).
     await c.execute(`CREATE INDEX IF NOT EXISTS idx_team_streams_due ON team_streams(state, next_tranche_at)`);
-    // Append-only release ledger; the unique index is the double-pay guard.
+    // Append-only release ledger, mirroring confirmed on-chain releases.
     await c.execute(`
       CREATE TABLE IF NOT EXISTS team_stream_tranches (
         id            SERIAL PRIMARY KEY,
@@ -103,7 +109,11 @@ export function ensureTeamStreamsSchema(): Promise<void> {
         paid_at       BIGINT NOT NULL
       )
     `);
+    // The release transaction digest. Unique, so re-posting the same digest can
+    // never advance the mirror twice (the chain already can't double-pay).
+    await c.execute(`ALTER TABLE team_stream_tranches ADD COLUMN IF NOT EXISTS digest TEXT`);
     await c.execute(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_team_stream_tranche ON team_stream_tranches(stream_id, tranche_index)`);
+    await c.execute(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_team_stream_tranche_digest ON team_stream_tranches(digest)`);
 
     await gate.stamp();
   })().catch((err) => {
@@ -138,6 +148,7 @@ interface Row {
   next_tranche_at: number | string;
   state: string;
   funding_digest: string | null;
+  stream_object_id: string | null;
   last_tranche_at: number | string | null;
   created_at: number | string;
   updated_at: number | string;
@@ -150,27 +161,42 @@ export interface TeamStream {
   members: TeamStreamMember[];
   memberCount: number;
   totalUsd: number;
+  /** What leaves the pot per payout — exactly `perMemberUsd × memberCount`. */
   trancheUsd: number;
   perMemberUsd: number;
   numTranches: number;
   tranchesDone: number;
   releasedUsd: number;
+  /** Rounding remainder the schedule can't pay out; the creator reclaims it on cancel. */
+  dustUsd: number;
   intervalMs: number;
   startMs: number;
   nextTrancheAt: number;
   state: string;
   fundingDigest: string | null;
+  /** The on-chain object. `null` ⇒ draft, or a legacy escrow-era stream. */
+  streamObjectId: string | null;
+  /** True for pre-on-chain rows: never fired by the client trigger. */
+  legacy: boolean;
+  /** The client fires these on app-open (mirror view; the contract is the gate). */
+  dueNow: boolean;
   createdAt: number;
 }
 
 const usd = (micros: number | string) => Number(BigInt(micros)) / 1e6;
 
-function project(row: Row): TeamStream {
+function project(row: Row, nowMs: number = Date.now()): TeamStream {
   let members: TeamStreamMember[] = [];
   try {
     const parsed = JSON.parse(row.members || "[]");
     if (Array.isArray(parsed)) members = parsed as TeamStreamMember[];
   } catch { /* tolerate */ }
+  const total = BigInt(row.total_micros);
+  const tranche = BigInt(row.tranche_micros);
+  const done = Number(row.tranches_done);
+  const num = Number(row.num_tranches);
+  const nextAt = Number(row.next_tranche_at);
+  const onchain = row.stream_object_id;
   return {
     id: row.id,
     teamId: row.team_id,
@@ -180,40 +206,47 @@ function project(row: Row): TeamStream {
     totalUsd: usd(row.total_micros),
     trancheUsd: usd(row.tranche_micros),
     perMemberUsd: usd(row.per_member_micros),
-    numTranches: Number(row.num_tranches),
-    tranchesDone: Number(row.tranches_done),
+    numTranches: num,
+    tranchesDone: done,
     releasedUsd: usd(row.released_micros),
+    dustUsd: Number(total - tranche * BigInt(num)) / 1e6,
     intervalMs: Number(row.interval_ms),
     startMs: Number(row.start_ms),
-    nextTrancheAt: Number(row.next_tranche_at),
+    nextTrancheAt: nextAt,
     state: row.state,
     fundingDigest: row.funding_digest,
+    streamObjectId: onchain,
+    legacy: !onchain && row.state !== "draft",
+    dueNow: row.state === "active" && !!onchain && done < num && nextAt <= nowMs,
     createdAt: Number(row.created_at),
   };
 }
 
-// ── Create / record / read / cancel ──────────────────────────────────────────
+// ── Create (prepare → sign → record) ─────────────────────────────────────────
 export function newTeamStreamId(): string {
   return `tstr_${randomBytes(12).toString("hex")}`;
 }
 
-/**
- * Insert a DRAFT team stream. `members` are already-resolved addresses (the route
- * resolves + screens them). Validates the per-member tranche clears the gasless
- * minimum. The pot is split equally: each tranche pays `total/numTranches`, and
- * that tranche is split equally across members.
- */
-export async function createDraftTeamStream(input: {
+export interface PrepareTeamStreamInput {
   senderUserId: number;
   senderAddress: string;
   teamId: string | null;
   teamName: string;
+  /** Already resolved + compliance-screened by the route. */
   members: TeamStreamMember[];
   totalMicros: bigint;
   numTranches: number;
   intervalMs: number;
-}): Promise<TeamStream> {
-  await ensureTeamStreamsSchema();
+}
+
+/**
+ * Validate the schedule and compute the split EXACTLY as the contract does:
+ * `per_member = (total / num_tranches) / member_count` (both divisions truncate),
+ * and `tranche = per_member * member_count` is what actually leaves the pot. The
+ * remainder (`total - tranche * num_tranches`) is dust the schedule can never pay
+ * out; it sits in the pot until the creator cancels (which refunds it).
+ */
+function validate(input: PrepareTeamStreamInput): { perMemberMicros: bigint; trancheMicros: bigint } {
   const n = input.members.length;
   if (n === 0) throw new Error("This team has no members.");
   if (n > MAX_MEMBERS) throw new Error(`A team stream supports at most ${MAX_MEMBERS} members.`);
@@ -221,17 +254,40 @@ export async function createDraftTeamStream(input: {
     throw new Error(`Number of payouts must be between 1 and ${MAX_TRANCHES}.`);
   }
   if (input.intervalMs < 60_000) throw new Error("Interval must be at least a minute.");
+  if (input.totalMicros <= 0n) throw new Error("Enter an amount to stream.");
 
-  const trancheMicros = input.totalMicros / BigInt(input.numTranches);
-  const perMemberMicros = trancheMicros / BigInt(n);
+  const perMemberMicros = input.totalMicros / BigInt(input.numTranches) / BigInt(n);
   if (perMemberMicros < MIN_PER_MEMBER_MICROS) {
     throw new Error("Each person's share per payout must be at least 0.01 USDsui. Fund more or use fewer payouts.");
   }
+  return { perMemberMicros, trancheMicros: perMemberMicros * BigInt(n) };
+}
+
+/**
+ * STEP 1: insert a DRAFT row and return the Onara-sponsored `team_stream::create`
+ * bytes the creator signs. Signing that one transaction both funds the pot and
+ * creates the on-chain stream — no money moves until they sign, and a draft that
+ * is never signed can never pay anyone.
+ *
+ * The `firstDueMs` handed to the contract is the SAME value mirrored on the row,
+ * so the DB's "due" view can never run ahead of the chain's cursor.
+ */
+export async function prepareCreateTeamStream(input: PrepareTeamStreamInput): Promise<{
+  stream: TeamStream;
+  bytes: string;
+  sponsor: string;
+  firstDueMs: number;
+}> {
+  await ensureTeamStreamsSchema();
+  if (!teamStreamsOnchainEnabled()) throw new Error("Team streaming isn't available yet.");
+  const { perMemberMicros, trancheMicros } = validate(input);
 
   const now = Date.now();
+  const firstDueMs = now + input.intervalMs;
   const id = newTeamStreamId();
-  // First tranche is due one interval after funding (set on record()).
-  const startMs = now + input.intervalMs;
+
+  // Row FIRST, bytes second: a draft with no signature can never pay anyone, but
+  // bytes with no row would let a user fund a stream the app can't see.
   await db().execute({
     sql: `INSERT INTO team_streams
             (id, sender_user_id, sender_address, team_id, team_name, members, member_count,
@@ -240,30 +296,72 @@ export async function createDraftTeamStream(input: {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, 'draft', ?, ?)`,
     args: [
       id, input.senderUserId, input.senderAddress, input.teamId, input.teamName,
-      JSON.stringify(input.members), n,
+      JSON.stringify(input.members), input.members.length,
       input.totalMicros.toString(), trancheMicros.toString(), perMemberMicros.toString(),
-      input.numTranches, input.intervalMs, startMs, startMs, now, now,
+      input.numTranches, input.intervalMs, firstDueMs, firstDueMs, now, now,
     ],
   });
-  return getTeamStream(id, input.senderUserId) as Promise<TeamStream>;
+
+  const { bytes, sponsor } = await buildTeamStreamCreateSponsored({
+    sender: input.senderAddress,
+    members: input.members.map((m) => m.address),
+    numTranches: input.numTranches,
+    intervalMs: input.intervalMs,
+    firstDueMs,
+    totalMicros: input.totalMicros,
+  });
+
+  const stream = await getTeamStream(id, input.senderUserId);
+  if (!stream) throw new Error("Couldn't draft the stream.");
+  return { stream, bytes, sponsor, firstDueMs };
 }
 
-/** Activate a draft once its funding send has landed. */
+/**
+ * STEP 2: activate a drafted stream once the creator's `create` transaction has
+ * landed. The object id is parsed FROM THE CHAIN (the created `TeamStream`), so
+ * a client can't activate a stream that wasn't funded: no object id ⇒ no
+ * activation, and the pot is inside that very object.
+ *
+ * A `create` digest can only ever activate one row (replay guard).
+ */
 export async function activateTeamStream(id: string, userId: number, fundingDigest: string): Promise<TeamStream | null> {
   await ensureTeamStreamsSchema();
-  const now = Date.now();
   const stream = await getTeamStream(id, userId);
   if (!stream) return null;
-  const nextAt = now + stream.intervalMs;
+  if (stream.state !== "draft") return stream; // already activated (idempotent)
+
+  const dupe = await db().execute({
+    sql: "SELECT id FROM team_streams WHERE funding_digest = ? AND id <> ? LIMIT 1",
+    args: [fundingDigest, id],
+  });
+  if (dupe.rows.length > 0) {
+    console.warn(`[team-streams] activation rejected: digest already used digest=${fundingDigest}`);
+    return null;
+  }
+
+  // The digest is CLIENT-supplied, so the create must have been signed by this
+  // row's own creator (fails closed otherwise).
+  const expectedSender = await senderAddress(id);
+  const objectId = await parseCreatedTeamStreamId(fundingDigest, expectedSender);
+  if (!objectId) {
+    // Either the tx failed (nothing was funded, nothing to activate) or the
+    // fullnode hasn't caught up yet. Ask the client to retry with the same digest,
+    // which is safe: activation is idempotent and the pot is already in the object.
+    console.warn(`[team-streams] activation deferred: no TeamStream created in digest=${fundingDigest}`);
+    throw new Error("Couldn't confirm the on-chain stream yet. Wait a moment and retry.");
+  }
+
+  const now = Date.now();
   await db().execute({
     sql: `UPDATE team_streams
-             SET state = 'active', funding_digest = ?, start_ms = ?, next_tranche_at = ?, updated_at = ?
+             SET state = 'active', funding_digest = ?, stream_object_id = ?, updated_at = ?
            WHERE id = ? AND sender_user_id = ? AND state = 'draft'`,
-    args: [fundingDigest, nextAt, nextAt, now, id, userId],
+    args: [fundingDigest, objectId, now, id, userId],
   });
   return getTeamStream(id, userId);
 }
 
+// ── Read ─────────────────────────────────────────────────────────────────────
 export async function getTeamStream(id: string, userId: number): Promise<TeamStream | null> {
   await ensureTeamStreamsSchema();
   const r = await db().execute({
@@ -280,40 +378,134 @@ export async function listTeamStreams(userId: number): Promise<TeamStream[]> {
     sql: "SELECT * FROM team_streams WHERE sender_user_id = ? ORDER BY created_at DESC LIMIT 100",
     args: [userId],
   });
-  return (r.rows as unknown as Row[]).map(project);
+  const now = Date.now();
+  return (r.rows as unknown as Row[]).map((row) => project(row, now));
+}
+
+// ── Client-triggered release (no cron) ───────────────────────────────────────
+
+/**
+ * The caller's streams with a tranche DUE to release. The client fetches these
+ * when the app opens and fires each via prepare → sign → record.
+ *
+ * On-chain streams only (`stream_object_id IS NOT NULL`): legacy escrow-era rows
+ * have no object to call and are never surfaced here. The on-chain Clock is the
+ * real gate, so a stale `next_tranche_at` can only make a trigger no-op with
+ * ENotDue — never an early or duplicate payout.
+ */
+export async function listDueTeamStreams(userId: number, nowMs: number = Date.now()): Promise<TeamStream[]> {
+  await ensureTeamStreamsSchema();
+  const r = await db().execute({
+    sql: `SELECT * FROM team_streams
+           WHERE sender_user_id = ? AND state = 'active' AND stream_object_id IS NOT NULL
+             AND next_tranche_at <= ? AND tranches_done < num_tranches
+           ORDER BY next_tranche_at ASC LIMIT 50`,
+    args: [userId, nowMs],
+  });
+  return (r.rows as unknown as Row[]).map((row) => project(row, nowMs));
 }
 
 /**
- * Cancel a stream and refund the unspent remainder to the sender (gasless escrow
- * send). Idempotent: only an active/paused stream cancels.
+ * STEP 1 of a release: the Onara-sponsored, PERMISSIONLESS `release_due_tranche`
+ * bytes for a stream the caller owns. Built with the CREATOR as sender (their app
+ * signs); the contract enforces the schedule, so signing a not-yet-due stream just
+ * aborts ENotDue on submit. Returns null when there's no on-chain stream (legacy).
  */
-export async function cancelTeamStream(id: string, userId: number): Promise<TeamStream | null> {
+export async function prepareReleaseTeamStream(id: string, userId: number): Promise<{ bytes: string; sponsor: string } | null> {
+  const stream = await getTeamStream(id, userId);
+  if (!stream || !stream.streamObjectId) return null;
+  if (stream.state !== "active") return null;
+  const senderAddr = await senderAddress(id);
+  if (!senderAddr) return null;
+  return buildReleaseDueTrancheSponsored({
+    sender: senderAddr,
+    streamObjectId: stream.streamObjectId,
+    memberCount: stream.memberCount,
+  });
+}
+
+/**
+ * STEP 2 of a release: record a CONFIRMED on-chain release. Verifies the digest
+ * succeeded and touched this stream object, then advances the display mirror by
+ * one tranche. Idempotent three ways over: the ledger's unique digest index, the
+ * guarded `tranches_done` update, and — decisively — the contract, which cannot
+ * release the same tranche twice no matter what the mirror says.
+ */
+export async function recordTeamStreamRelease(id: string, userId: number, digest: string): Promise<TeamStream | null> {
   await ensureTeamStreamsSchema();
   const stream = await getTeamStream(id, userId);
   if (!stream) return null;
-  if (stream.state !== "active" && stream.state !== "paused") return stream;
+  if (!stream.streamObjectId) return stream;
 
-  // Claim the cancel atomically so the cron can't release concurrently.
-  const claim = await db().execute({
-    sql: `UPDATE team_streams SET state = 'cancelling', updated_at = ?
-           WHERE id = ? AND sender_user_id = ? AND state IN ('active','paused')`,
-    args: [Date.now(), id, userId],
+  const ok = await verifyStreamTxTouched({ digest, streamObjectId: stream.streamObjectId });
+  if (!ok) {
+    console.warn(`[team-streams] release record rejected: digest didn't release ${stream.id} digest=${digest}`);
+    return stream;
+  }
+
+  const now = Date.now();
+  const idx = stream.tranchesDone;
+  const trancheMicros = BigInt(Math.round(stream.trancheUsd * 1e6));
+
+  // Ledger FIRST: the unique (stream_id, tranche_index) + unique (digest) indexes
+  // make a replayed digest a no-op, so the mirror never double-counts.
+  const ledger = await db().execute({
+    sql: `INSERT INTO team_stream_tranches (stream_id, tranche_index, total_micros, digest, digests, paid_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT DO NOTHING`,
+    args: [stream.id, idx, trancheMicros.toString(), digest, JSON.stringify([digest]), now],
   });
-  if ((claim.rowsAffected ?? 0) === 0) return getTeamStream(id, userId);
+  if ((ledger.rowsAffected ?? 0) === 0) return stream; // already recorded
 
-  const remainingMicros = BigInt(Math.round((stream.totalUsd - stream.releasedUsd) * 1e6));
-  if (remainingMicros >= MIN_PER_MEMBER_MICROS) {
-    try {
-      const refundTo = await senderAddress(id);
-      await escrowSendFunds(stream.id, "refund", [{ address: refundTo, micros: remainingMicros }]);
-    } catch (err) {
-      console.warn(`[team-streams] refund on cancel failed for ${id}: ${(err as Error).message}`);
-      // Leave state 'cancelling' → a later manual sweep can retry; do not crash cancel.
+  const willComplete = idx + 1 >= stream.numTranches;
+  await db().execute({
+    sql: `UPDATE team_streams
+             SET tranches_done = ?, released_micros = released_micros + ?,
+                 next_tranche_at = next_tranche_at + interval_ms,
+                 last_tranche_at = ?, state = ?, updated_at = ?
+           WHERE id = ? AND sender_user_id = ? AND state = 'active' AND tranches_done = ?`,
+    args: [idx + 1, trancheMicros.toString(), now, willComplete ? "completed" : "active", now, stream.id, userId, idx],
+  });
+  return getTeamStream(id, userId);
+}
+
+// ── Cancel (prepare → sign → record) ─────────────────────────────────────────
+
+/**
+ * STEP 1 of a cancel: the creator-signed `cancel` bytes. The PTB refunds the
+ * ENTIRE remaining pot (unreleased tranches + the rounding dust) to the creator.
+ * Returns null when there's no on-chain stream (a draft or legacy row, which the
+ * route then just closes off in the mirror).
+ */
+export async function prepareCancelTeamStream(id: string, userId: number): Promise<{ bytes: string; sponsor: string } | null> {
+  const stream = await getTeamStream(id, userId);
+  if (!stream || !stream.streamObjectId) return null;
+  if (stream.state === "cancelled") return null;
+  const senderAddr = await senderAddress(id);
+  if (!senderAddr) return null;
+  return buildTeamStreamCancelSponsored({ sender: senderAddr, streamObjectId: stream.streamObjectId });
+}
+
+/**
+ * STEP 2 of a cancel: mark the mirror cancelled once the on-chain `cancel` has
+ * landed. If the client never gets here the chain is still authoritative — a later
+ * release trigger simply aborts ECancelled and the client skips it.
+ */
+export async function recordTeamStreamCancelled(id: string, userId: number, digest: string | null): Promise<TeamStream | null> {
+  await ensureTeamStreamsSchema();
+  const stream = await getTeamStream(id, userId);
+  if (!stream) return null;
+  if (stream.streamObjectId && digest) {
+    const ok = await verifyStreamTxTouched({ digest, streamObjectId: stream.streamObjectId });
+    if (!ok) {
+      console.warn(`[team-streams] cancel record rejected: digest didn't touch ${stream.id} digest=${digest}`);
+      return stream;
     }
   }
   await db().execute({
-    sql: `UPDATE team_streams SET state = 'cancelled', updated_at = ? WHERE id = ?`,
-    args: [Date.now(), id],
+    sql: `UPDATE team_streams SET state = 'cancelled', updated_at = ?
+           WHERE id = ? AND sender_user_id = ? AND state IN ('draft','active','completed')`,
+    args: [Date.now(), id, userId],
   });
   return getTeamStream(id, userId);
 }
@@ -321,123 +513,4 @@ export async function cancelTeamStream(id: string, userId: number): Promise<Team
 async function senderAddress(id: string): Promise<string> {
   const r = await db().execute({ sql: "SELECT sender_address FROM team_streams WHERE id = ? LIMIT 1", args: [id] });
   return String((r.rows[0] as { sender_address?: string } | undefined)?.sender_address ?? "");
-}
-
-// ── Release engine (cron) ─────────────────────────────────────────────────────
-
-/**
- * Release every due tranche across all active streams. Each tranche is claimed
- * atomically (bump `tranches_done` via a guarded UPDATE) before any payout, so a
- * concurrent/duplicate cron can never double-pay. Returns a summary for the cron.
- */
-export async function releaseDueTeamStreams(nowMs: number = Date.now()): Promise<{ processed: number; released: number; errors: number }> {
-  await ensureTeamStreamsSchema();
-  const due = await db().execute({
-    sql: `SELECT * FROM team_streams
-           WHERE state = 'active' AND next_tranche_at <= ? AND tranches_done < num_tranches
-           ORDER BY next_tranche_at ASC LIMIT 50`,
-    args: [nowMs],
-  });
-  let processed = 0, released = 0, errors = 0;
-  for (const raw of due.rows as unknown as Row[]) {
-    processed++;
-    try {
-      if (await releaseOneTranche(project(raw))) released++;
-    } catch (err) {
-      errors++;
-      console.warn(`[team-streams] release failed for ${raw.id}: ${(err as Error).message}`);
-    }
-  }
-  return { processed, released, errors };
-}
-
-async function releaseOneTranche(stream: TeamStream): Promise<boolean> {
-  const idx = stream.tranchesDone;
-  // CLAIM the tranche: only the worker that flips tranches_done from idx→idx+1 proceeds.
-  const now = Date.now();
-  const nextAt = stream.nextTrancheAt + stream.intervalMs;
-  const willComplete = idx + 1 >= stream.numTranches;
-  const trancheMicros = BigInt(Math.round(stream.trancheUsd * 1e6));
-  const claim = await db().execute({
-    sql: `UPDATE team_streams
-             SET tranches_done = ?, released_micros = released_micros + ?,
-                 next_tranche_at = ?, last_tranche_at = ?, state = ?, updated_at = ?
-           WHERE id = ? AND state = 'active' AND tranches_done = ?`,
-    args: [
-      idx + 1, trancheMicros.toString(), nextAt, now,
-      willComplete ? "completed" : "active", now, stream.id, idx,
-    ],
-  });
-  if ((claim.rowsAffected ?? 0) === 0) return false; // someone else claimed it
-
-  // Pay each member their equal share (gasless escrow send_funds).
-  const perMemberMicros = BigInt(Math.round(stream.perMemberUsd * 1e6));
-  const legs = stream.members.map((m) => ({ address: m.address, micros: perMemberMicros }));
-  const digests = await escrowSendFunds(stream.id, `tranche:${idx}`, legs);
-
-  // Ledger the tranche (idempotent on the unique index).
-  await db().execute({
-    sql: `INSERT INTO team_stream_tranches (stream_id, tranche_index, total_micros, digests, paid_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT (stream_id, tranche_index) DO NOTHING`,
-    args: [stream.id, idx, trancheMicros.toString(), JSON.stringify(digests), now],
-  });
-  return true;
-}
-
-/**
- * Sign + submit one gasless escrow `send_funds` per leg with the server escrow key.
- * Mirrors lib/cheques.ts::escrowTransfer exactly (zero gas, epoch-bounded expiration,
- * empty gas payment). One tx per leg, the gasless rail permits a single send_funds.
- */
-async function escrowSendFunds(
-  streamId: string,
-  ref: string,
-  legs: Array<{ address: string; micros: bigint }>,
-): Promise<string[]> {
-  const kp = escrowKeypair();
-  const sender = kp.getPublicKey().toSuiAddress();
-  const client = sui();
-  const [chainId, currentEpoch] = await Promise.all([getChainIdentifier(), getCurrentEpoch()]);
-  const epoch = BigInt(currentEpoch);
-  const digests: string[] = [];
-
-  for (const leg of legs) {
-    if (leg.micros < MIN_PER_MEMBER_MICROS) continue;
-    const tx = new Transaction();
-    tx.setSender(sender);
-    tx.moveCall({
-      target: "0x2::balance::send_funds",
-      typeArguments: [USDSUI_TYPE],
-      arguments: [tx.balance({ type: USDSUI_TYPE, balance: leg.micros }), tx.pure.address(leg.address)],
-    });
-    tx.setGasPrice(0n);
-    tx.setGasBudget(0n);
-    tx.setExpiration({
-      ValidDuring: {
-        minEpoch: String(epoch),
-        maxEpoch: String(epoch + 1n),
-        minTimestamp: null,
-        maxTimestamp: null,
-        chain: chainId,
-        nonce: randomBytes(4).readUInt32BE(0),
-      },
-    });
-    tx.setGasPayment([]);
-    const bytes = await tx.build({ client: client as never });
-    const { signature } = await kp.signTransaction(bytes);
-    const result = (await client.executeTransaction({
-      transaction: fromBase64(Buffer.from(bytes).toString("base64")),
-      signatures: [signature],
-    })) as Record<string, unknown>;
-    const inner =
-      (result.Transaction as { digest?: string } | undefined) ??
-      (result.FailedTransaction as { digest?: string } | undefined);
-    const digest = (result.digest as string | undefined) ?? inner?.digest;
-    if (!digest || (result.$kind as string | undefined) === "FailedTransaction") {
-      throw new Error(`escrow release failed (${ref}) → ${leg.address}`);
-    }
-    digests.push(digest);
-  }
-  return digests;
 }

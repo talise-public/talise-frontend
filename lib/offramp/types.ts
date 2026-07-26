@@ -39,7 +39,8 @@ export type PayoutCurrency =
   | "PHP" // Philippines, (SG→ASEAN payout network)
   | "IDR" // Indonesia  , (SG→ASEAN payout network)
   | "VND" // Vietnam    , (SG→ASEAN payout network)
-  | "USD"; // United States, RTP/FedNow/ACH
+  | "USD" // United States, ACH/wire  , Bridge (live)
+  | "EUR"; // Euro area   , SEPA      , Bridge (live)
 
 /**
  * The corridor-agnostic payout lifecycle. Generalizes the Linq

@@ -176,6 +176,13 @@ export function SendFlow() {
   // receipt + gasless indicator on the success screen. See useSignAndSend.
   const [sendMode, setSendMode] = useState<string>("");
   const [savedUsd, setSavedUsd] = useState(0);
+  // The SERVER-VERIFIED outcome of the Spend + Save leg. Held separately from
+  // `savedUsd` because the amount alone must never drive the receipt: a send
+  // can carry a save leg that we then couldn't confirm, or that failed, and the
+  // receipt has to say so rather than paint a green "Rounded up $X".
+  const [saveStatus, setSaveStatus] =
+    useState<"none" | "saved" | "pending" | "failed">("none");
+  const [saveReason, setSaveReason] = useState<string | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
 
@@ -406,13 +413,19 @@ export function SendFlow() {
         invoiceId && !userTouchedAmount.current && linkAmountUsd != null
           ? linkAmountUsd
           : amountUsd;
-      const { digest: d, mode, roundupUsd } = await send({
+      const { digest: d, mode, save } = await send({
         to: resolved.address,
         amountUsd: amountToSend,
       });
       setDigest(d);
       setSendMode(mode);
-      setSavedUsd(roundupUsd);
+      // Report what the save ACTUALLY did, from the server's chain-verified
+      // outcome. `savedUsd` is only ever the confirmed figure for a `saved`
+      // outcome; for pending it's the amount being confirmed, and for failed
+      // there is nothing to show.
+      setSaveStatus(save.status);
+      setSaveReason(save.status === "failed" ? save.message : undefined);
+      setSavedUsd(save.status === "saved" || save.status === "pending" ? save.savedUsd : 0);
       setStep("success");
       if (invoiceId) void settleInvoice(invoiceId, d);
     } catch (e) {
@@ -434,6 +447,8 @@ export function SendFlow() {
     setDigest(null);
     setSendMode("");
     setSavedUsd(0);
+    setSaveStatus("none");
+    setSaveReason(undefined);
     setErrorMsg(null);
     setResetSignal((s) => s + 1);
   }, []);
@@ -530,6 +545,8 @@ export function SendFlow() {
             digest={digest}
             mode={sendMode}
             savedUsd={savedUsd}
+            saveStatus={saveStatus}
+            saveReason={saveReason}
             onShareCopied={() => toast("Receipt link copied", "success")}
             onDone={() => router.push("/app")}
             onAgain={resetAll}
@@ -990,6 +1007,8 @@ function SuccessStep({
   digest,
   mode,
   savedUsd,
+  saveStatus,
+  saveReason,
   onShareCopied,
   onDone,
   onAgain,
@@ -999,8 +1018,12 @@ function SuccessStep({
   digest: string;
   /** Server rail label: "gasless" | "sponsored" | "sponsored-*-fallback". */
   mode: string;
-  /** USD rounded up into NAVI on this send (0 → no Save leg ran). */
+  /** USD rounded up into NAVI on this send (0 → nothing to show). */
   savedUsd: number;
+  /** Server-verified outcome of the Save leg; drives the receipt row. */
+  saveStatus: "none" | "saved" | "pending" | "failed";
+  /** Why the save failed, when the server told us. */
+  saveReason?: string;
   onShareCopied: () => void;
   onDone: () => void;
   onAgain: () => void;
@@ -1047,6 +1070,8 @@ function SuccessStep({
           amountText={formatUsd(amountUsd)}
           recipientDisplay={to?.displayName ?? "recipient"}
           savedText={savedUsd > 0 ? formatUsd(savedUsd) : undefined}
+          saveStatus={saveStatus}
+          saveReason={saveReason}
           digest={digest}
         />
       </div>

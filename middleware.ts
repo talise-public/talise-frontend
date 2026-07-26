@@ -1,4 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { abuseLog } from "@/lib/abuse/log";
+import {
+  classifyIp,
+  clientIpFromHeaders,
+  ipReputationStats,
+} from "@/lib/abuse/ip-reputation";
+import { REWARDS_REDEEM_IP } from "@/lib/abuse/limits";
+import { upstashFixedWindow } from "@/lib/rate-limit";
 
 /**
  * Global security response headers.
@@ -80,22 +88,15 @@ function withSecurityHeaders(res: NextResponse): NextResponse {
   return res;
 }
 
-// ── IP denylist (2026-06-07) ─────────────────────────────────────────
-// Hard-block abusive sources at the edge, before any route runs. Seeded
-// with the datacenter IP that flooded the waitlist sign-up (Tencent Cloud,
-// not a real user). Extend without a code change via the BLOCKED_IPS env
-// var (comma-separated exact IPs). Matched against the same non-spoofable
-// client-IP resolution the rate limiter uses (Vercel-set headers first).
-const BLOCKED_IPS: ReadonlySet<string> = new Set(
-  [
-    "43.134.125.171",
-    "43.134.189.52",
-    ...(process.env.BLOCKED_IPS ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  ]
-);
+// ── IP denylist (2026-06-07, generalised 2026-07-24) ─────────────────
+// Hard-block abusive sources at the edge, before any route runs. The two
+// Tencent Cloud IPs that flooded the waitlist sign-up used to be inline
+// literals here; they now live in lib/abuse/ip-reputation.ts alongside CIDR
+// support, a curated datacenter/VPS range list, and the env overrides
+// (BLOCKED_IPS — still exact IPs, now also CIDRs — plus BLOCKED_CIDRS).
+// Same behaviour as before at the edge: a hard-denied IP gets 403 on every
+// path. Matching uses the same non-spoofable client-IP resolution the rate
+// limiter uses (Vercel-set headers first).
 
 // ── Country geo-block (2026-06-07) ───────────────────────────────────
 // Block whole countries at the edge using Vercel's geo tag
@@ -114,34 +115,95 @@ const BLOCKED_COUNTRIES: ReadonlySet<string> = new Set(
   ]
 );
 
-/**
- * Resolve the true client IP for denylist matching. Mirrors
- * lib/rate-limit.ts getClientIp: prefer the platform-set, non-spoofable
- * headers (Vercel overwrites these on ingress) before the
- * client-influenced x-forwarded-for, so an attacker can't dodge the block
- * by sending their own X-Forwarded-For.
- */
-function clientIp(req: NextRequest): string {
-  const vercel = req.headers.get("x-vercel-forwarded-for");
-  if (vercel) {
-    const first = vercel.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  const xri = req.headers.get("x-real-ip");
-  if (xri) return xri.trim();
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    const first = xff.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return "unknown";
+// Log the denylist size once per instance so a prod boot log proves the
+// list actually loaded (a typo'd BLOCKED_IPS silently blocking nothing is
+// exactly the failure we can't see otherwise).
+let repStatsLogged = false;
+function logIpReputationOnce(): void {
+  if (repStatsLogged) return;
+  repStatsLogged = true;
+  const s = ipReputationStats();
+  console.info(
+    `[abuse] event=boot hard_deny=${s.hardDeny} datacenter_ranges=${s.datacenter}`
+  );
 }
 
-export function middleware(req: NextRequest) {
+/**
+ * Edge rate limit for POST /api/rewards/redeem.
+ *
+ * The route handler itself is not ours to edit, and points redemption was
+ * completely unmetered, so the limit is applied here at the edge instead.
+ * Two consequences, both deliberate:
+ *   • Per-IP only. The session cookie is signed and verifying it needs the
+ *     node runtime (crypto + DB), which the edge doesn't have.
+ *   • Upstash-or-nothing. There is no Postgres at the edge, so when Upstash
+ *     is unconfigured this check FAILS OPEN (it cannot count). That's the
+ *     one place on the growth surface that still fails open; moving the
+ *     guard into the route file (durable + fail-closed + per-user) is the
+ *     follow-up once that file's owner lands their changes.
+ */
+async function limitRewardsRedeem(
+  req: NextRequest,
+  ip: string
+): Promise<NextResponse | null> {
+  try {
+    const rl = await upstashFixedWindow({
+      key: `abuse:rewards-redeem:ip:${ip}:w${REWARDS_REDEEM_IP.windowSec}`,
+      limit: REWARDS_REDEEM_IP.limit,
+      windowSec: REWARDS_REDEEM_IP.windowSec,
+    });
+    if (!rl) return null; // Upstash unset → cannot count, see note above.
+    if (rl.ok) return null;
+    const retryAfterSec = rl.retryAfterSec ?? REWARDS_REDEEM_IP.windowSec;
+    abuseLog("rate_limited", {
+      route: "rewards-redeem",
+      scope: "ip",
+      ip,
+      limit: REWARDS_REDEEM_IP.limit,
+      window: REWARDS_REDEEM_IP.windowSec,
+      backend: "upstash",
+      edge: true,
+      retry_after: retryAfterSec,
+    });
+    return NextResponse.json(
+      { error: "Too many attempts. Try again shortly.", code: "RATE_LIMITED" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSec),
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  } catch (err) {
+    // Redis error at the edge: allow (a redemption must not 500 on a Redis
+    // hiccup) but make the degradation visible.
+    abuseLog("fail_closed", {
+      route: "rewards-redeem",
+      backend: "upstash",
+      stage: "degraded",
+      edge: true,
+      err: (err as Error).message,
+    });
+    return null;
+  }
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  logIpReputationOnce();
   // Edge-level ban: denylisted IPs get 403 on EVERY path before any route
   // or DB touch. Cheapest possible place to shed abusive traffic.
-  if (BLOCKED_IPS.size > 0 && BLOCKED_IPS.has(clientIp(req))) {
+  const ip = clientIpFromHeaders(req.headers);
+  const rep = classifyIp(ip);
+  if (rep.hardDenied) {
+    abuseLog("ip_denied", {
+      route: pathname,
+      ip,
+      rule: rep.deniedBy?.cidr,
+      org: rep.deniedBy?.org,
+      edge: true,
+    });
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -179,6 +241,15 @@ export function middleware(req: NextRequest) {
     if (Number.isFinite(len) && len > MAX_API_BODY_BYTES) {
       return NextResponse.json({ error: "payload too large" }, { status: 413 });
     }
+  }
+
+  // Points redemption: the only growth route whose handler is out of reach
+  // (another owner), so its limit lives here. Checked after the free
+  // static gates (denylist, geo, body size) so we only pay the Redis
+  // round-trip on requests that are otherwise going to be served.
+  if (req.method === "POST" && pathname.startsWith("/api/rewards/redeem")) {
+    const denied = await limitRewardsRedeem(req, ip);
+    if (denied) return denied;
   }
 
   const host = (req.headers.get("host") ?? "").toLowerCase().split(":")[0];
@@ -227,10 +298,18 @@ export function middleware(req: NextRequest) {
       url.pathname = "/app/shield-prove";
       return withSecurityHeaders(NextResponse.rewrite(url));
     }
-    // `perps` is kept alive so the "trade perps" banner (href="/perps") serves
-    // the dedicated terminal on app.talise.io instead of being rewritten to the
-    // non-existent /app/perps. (Same route the perps.talise.io host serves.)
-    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|req|admin|perps|_next|_vercel)(\/|$)/;
+    // Perps lives on its own canonical host. Any /perps link on the wallet host
+    // (the "trade perps" banner, a shared/bookmarked link, direct navigation)
+    // bounces to perps.talise.io so the terminal always runs under its own
+    // subdomain — never app.talise.io/perps. Subpaths map to the clean root
+    // (/perps → /, /perps/x → /x), matching the URLs the perps host serves.
+    if (pathname === "/perps" || pathname.startsWith("/perps/")) {
+      const rest = pathname.slice("/perps".length) || "/";
+      return withSecurityHeaders(
+        NextResponse.redirect(`https://${PERPS_HOST}${rest}${req.nextUrl.search}`, 307),
+      );
+    }
+    const keepAlive = /^\/(api|auth|shield|c|i|u|pay|req|admin|_next|_vercel)(\/|$)/;
     if (keepAlive.test(pathname)) {
       return withSecurityHeaders(NextResponse.next());
     }

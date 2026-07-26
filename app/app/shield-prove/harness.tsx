@@ -8,7 +8,7 @@ import {
   spendExistingNote,
   spendOrTransferToShield,
   sweepShieldedBalance,
-  shieldedBalanceMicros,
+  shieldedBalanceDetail,
   type ShieldFlowConfig,
   type FlowInputNote,
 } from "@/lib/shield/sdk/flow";
@@ -428,8 +428,11 @@ export function ShieldProveHarness({
           if (!/^[0-9a-f]{32,128}$/i.test(seedHex)) throw new Error("Couldn’t read your shielded balance.");
           const keypair = await deriveShieldKeypairFromSeed(seedFromHex(seedHex));
           void ensureIdentityPublished(keypair);
-          const micros = await shieldedBalanceMicros({ cfg, keypair });
-          post({ type: "result", digest: micros.toString() });
+          const { micros, count } = await shieldedBalanceDetail({ cfg, keypair });
+          // JSON so the native host gets both the claimable sum AND the note
+          // count (drives the receive badge). The iOS parser also accepts a bare
+          // number for backward-compat with an older harness.
+          post({ type: "result", digest: JSON.stringify({ micros: micros.toString(), notes: count }) });
         } catch (e) {
           post({ type: "error", message: (e as Error).message || "Couldn’t read your shielded balance." });
         }

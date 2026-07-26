@@ -6,9 +6,10 @@ import crypto from "node:crypto";
  * Bridge.xyz API client, the shared HTTP core for Talise's on-ramp
  * (fiat → USDsui on Sui) and off-ramp (USDsui on Sui → fiat) rails.
  *
- * Bridge (a Stripe company) issues USDsui, the "Sui Dollar," so it delivers
- * USDsui DIRECTLY on Sui, no swap. See lib/bridge/onramp.ts (virtual
- * accounts) and lib/bridge/offramp.ts (liquidation addresses).
+ * Bridge delivers USDC on Sui (see BRIDGE_SUI_CURRENCY below), NOT USDsui, so
+ * money-in needs a USDC -> USDsui conversion and cash-out needs the reverse.
+ * See lib/bridge/onramp.ts (virtual accounts) and lib/bridge/offramp.ts
+ * (liquidation addresses).
  *
  * ENV-GATED, like every Talise ramp partner: with `BRIDGE_API_KEY` unset,
  * `bridgeConfigured()` is false and callers fall back to their stub/dormant
@@ -28,9 +29,9 @@ const DEFAULT_BASE = "https://api.bridge.xyz/v0";
 /**
  * Sui rail + currency identifiers, CENTRALIZED here. Per Bridge's USDC-on-Sui
  * integration, ALL Sui transactions use `payment_rail: "sui"` +
- * `currency: "usdc"` (Bridge delivers USDC on Sui, NOT "usdsui"). Talise's
- * existing USDC→USDsui swap (AutoConvertBanner) finishes money-in; cash-out
- * swaps USDsui→USDC before sending to Bridge.
+ * `currency: "usdc"` (Bridge delivers USDC on Sui, NOT "usdsui"). The token
+ * bucket's one-tap "Swap to USDsui" (POST /api/swap/prepare) finishes money-in;
+ * cash-out swaps USDsui→USDC before sending to Bridge.
  */
 export const BRIDGE_SUI_RAIL = "sui";
 export const BRIDGE_SUI_CURRENCY = "usdc";

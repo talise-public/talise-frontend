@@ -33,29 +33,49 @@ import { verifyBridgeWebhook, parseBridgeWebhook } from "@/lib/bridge/webhook";
 /**
  * Bridge on-ramp adapter, DEFAULT provider.
  *
- * Bridge (a Stripe company) is the issuer of USDsui ("Sui Dollar"), so this
- * adapter delivers USDSUI DIRECTLY on Sui, no swap step. It supports bank
- * + card funding.
+ * LIVE funding model: a persistent VIRTUAL ACCOUNT (bank account number / IBAN)
+ * issued to the customer. Fiat deposited there is minted on Sui straight to the
+ * user's OWN address — non-custodial, so Talise performs NO server-side credit
+ * and the on-ramp has no double-credit surface at all.
+ *
+ * Bridge delivers **USDC on Sui** (`BRIDGE_SUI_CURRENCY = "usdc"`), NOT USDsui,
+ * so `requiresSwapToUsdsui` is true: the user finishes with the one-tap
+ * "Swap to USDsui" in the token bucket (web `TokenBucketSheet`, iOS
+ * `TokenBucketView`), which posts `/api/swap/prepare`.
  *
  * STUB: with no `BRIDGE_API_KEY` set, every method returns deterministic,
- * typed mock data so the routes + modal work end-to-end in dev. Each place a
- * real network call belongs is marked `// TODO(live):`.
+ * typed mock data so the routes + UI work end-to-end in dev. The stub is
+ * HARD-BLOCKED in production (`assertNotProduction`) — fabricated "wire your
+ * money here" details must never reach a real user. `lib/onramp/flags.ts`
+ * already reports the feature closed when the key is missing; this is the
+ * second line of defence.
  *
- * Docs (for the live wiring): https://apidocs.bridge.xyz
+ * Docs: https://apidocs.bridge.xyz
  */
 
 const NAME: OnrampProviderName = "bridge";
-// Bridge delivers USDC on Sui (currency "usdc" / rail "sui"), NOT USDsui, so
-// the existing USDC→USDsui sweep (AutoConvertBanner) finishes money-in.
 const DELIVER: DeliverAsset = "USDC";
 
 function apiKey(): string | undefined {
   return process.env.BRIDGE_API_KEY || undefined;
 }
 
+/**
+ * Refuse to serve stub data in production. Only reachable if something bypasses
+ * the feature flag; better a 502 than fabricated bank details on a funding
+ * screen.
+ */
+function assertNotProduction(method: string): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      `bridge on-ramp: BRIDGE_API_KEY unset, refusing to return stub ${method} in production`
+    );
+  }
+}
+
 export const bridgeAdapter: OnrampProvider = {
   name: NAME,
-  displayName: "Bridge (USDC on Sui)",
+  displayName: "Bridge (bank transfer → USDC on Sui)",
   deliverAsset: DELIVER,
 
   async getRequirements(
@@ -70,6 +90,7 @@ export const bridgeAdapter: OnrampProvider = {
   async createOrUpdateCustomer(profile: KycProfile): Promise<CustomerResult> {
     const key = apiKey();
     if (!key) {
+      assertNotProduction("createOrUpdateCustomer");
       // STUB: deterministic customer id derived from the profile so repeat
       // calls in dev are stable. Status mirrors a fresh applicant in review.
       const providerCustomerId = stubCustomerId(profile);
@@ -112,6 +133,7 @@ export const bridgeAdapter: OnrampProvider = {
   async createOnrampSession(input: SessionInput): Promise<SessionResult> {
     const key = apiKey();
     if (!key) {
+      assertNotProduction("createOnrampSession");
       // STUB: a fake hosted widget URL that encodes the request so a dev can
       // eyeball that the right address/amount flowed through. No real money.
       const params = new URLSearchParams({
@@ -126,12 +148,13 @@ export const bridgeAdapter: OnrampProvider = {
         provider: NAME,
         widgetUrl: `https://onramp.stub.local/bridge?${params.toString()}`,
         deliverAsset: input.deliverAsset,
-        requiresSwapToUsdsui: false, // Bridge delivers USDsui directly
+        // Bridge delivers USDC on Sui, so the swap step always applies.
+        requiresSwapToUsdsui: true,
       };
     }
 
-    // LIVE: create (idempotently) a USD virtual account that mints USDsui
-    // straight to the user's Sui address on deposit. Bridge funds via bank
+    // LIVE: create (idempotently) a virtual account that mints USDC on Sui
+    // straight to the user's OWN address on deposit. Bridge funds via bank
     // deposit, not a redirect widget, so we return `depositInstructions`
     // rather than a `widgetUrl`. (Funding currency defaults to USD; the
     // virtual account is persistent, so amountCents is informational here.)
@@ -172,7 +195,8 @@ export const bridgeAdapter: OnrampProvider = {
     return {
       provider: NAME,
       deliverAsset: input.deliverAsset, // USDC on Sui
-      // Bridge delivers USDC; the AutoConvertBanner sweeps it to USDsui.
+      // Bridge delivers USDC; the token bucket's one-tap "Swap to USDsui"
+      // (POST /api/swap/prepare) finishes money-in.
       requiresSwapToUsdsui: true,
       depositInstructions: {
         currency: di.currency,

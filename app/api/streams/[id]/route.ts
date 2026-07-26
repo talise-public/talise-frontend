@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { userById } from "@/lib/db";
-import { streamById, projectStream } from "@/lib/streams";
+import { streamById, projectStream, resolveStreamNames } from "@/lib/streams";
 
 export const runtime = "nodejs";
 
@@ -37,7 +37,13 @@ export async function GET(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
+  const names = await resolveStreamNames([row]);
   return NextResponse.json({
-    stream: { ...projectStream(row), role: isSender ? "sender" : "recipient", isSender, isRecipient },
+    stream: {
+      ...projectStream(row, Date.now(), { names, viewerAddress: user.sui_address }),
+      role: isSender ? "sender" : "recipient",
+      isSender,
+      isRecipient,
+    },
   });
 }

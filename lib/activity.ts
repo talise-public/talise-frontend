@@ -28,8 +28,7 @@ function normCoinType(t: string | undefined | null): string {
     return t;
   }
 }
-import { findTaliseSubnameForOwner } from "./suins-lookup";
-import { formatHandle } from "./handle";
+import { resolveDisplayNames } from "./display-name";
 import {
   escrowAddress as chequeEscrowAddress,
   chequesEnabled,
@@ -41,7 +40,6 @@ import {
   streamPackageId,
 } from "./streams";
 import { goalVaultPackageId } from "./goal-vault-ptb";
-import { db } from "./db";
 import { globalRegistryId, namespaceObjectId } from "./payment-kit";
 import { parsePaymentKitNonce, type ParsedTaliseMemo } from "./intents/wrap-payment-kit";
 import { batchCoinMetadata, suiGraphQL } from "./sui-graphql";
@@ -2031,62 +2029,21 @@ export async function getRecentActivityWithMeta(
   }
   const limited = merged.slice(0, limit);
 
-  // Reverse-resolve unique counterparties to talise handles. One RPC per
-  // unique address; cache within this render so we don't hit the same
-  // address twice.
-  const uniqueCounterparties = Array.from(
-    new Set(limited.map((e) => e.counterparty).filter((x): x is string => !!x))
+  // Reverse-resolve counterparties to human names, via the SHARED resolver in
+  // `lib/display-name.ts` (DB handles in one indexed query, then a bounded
+  // on-chain SuiNS leg, each address memoized). This used to be hand-rolled
+  // right here; the same job is now done identically for streams, contracts,
+  // rules and invoices, so one address reads the same everywhere in the app.
+  //
+  // `short` form (`sele@talise`) because that is what the feed and chat have
+  // always printed. Names that don't resolve stay null and every client falls
+  // back to the truncated address it already renders.
+  const names = await resolveDisplayNames(
+    limited.map((e) => e.counterparty),
+    { form: "short", chainBudget: 12, timeoutMs: 3_000 }
   );
-  const nameCache = new Map<string, string | null>();
-
-  // DB-first: the common case is paying ANOTHER Talise user, and we already
-  // know every Talise user's address→handle in our own `users` table. Resolve
-  // those in ONE indexed query instead of an up-to-4-page listOwnedObjects +
-  // getNameRecord chain walk PER address. Only addresses NOT in our user base
-  // fall through to the (slow) on-chain reverse-SuiNS resolution below.
-  if (uniqueCounterparties.length > 0) {
-    try {
-      const byLower = new Map<string, string>(); // lower(addr) -> original counterparty string
-      for (const a of uniqueCounterparties) byLower.set(a.toLowerCase(), a);
-      const lowers = Array.from(byLower.keys());
-      const placeholders = lowers.map(() => "?").join(",");
-      const r = await db().execute({
-        sql: `SELECT sui_address, talise_username FROM users
-                WHERE LOWER(sui_address) IN (${placeholders})
-                  AND talise_username IS NOT NULL`,
-        args: lowers,
-      });
-      for (const row of r.rows) {
-        const original = byLower.get(String(row.sui_address ?? "").toLowerCase());
-        const uname = row.talise_username ? String(row.talise_username) : null;
-        if (original && uname) nameCache.set(original, formatHandle(uname));
-      }
-    } catch {
-      // Fall through, chain resolution below still covers everything.
-    }
-  }
-
-  // Leg 3: counterparty-name fan-out for the addresses NOT resolved from the
-  // DB above. 3s cap across the whole batch; on timeout every unresolved
-  // address falls back to the truncated-address display iOS already renders
-  // when `counterpartyName` is null. We don't time out individual addresses
-  // because the SuiNS resolver has its own per-address memo cache.
-  const unresolved = uniqueCounterparties.filter((addr) => !nameCache.has(addr));
-  if (unresolved.length > 0) {
-    await withTimeout(
-      Promise.all(
-        unresolved.map(async (addr) => {
-          const sub = await findTaliseSubnameForOwner(addr);
-          nameCache.set(addr, sub ? formatHandle(sub.username) : null);
-        })
-      ),
-      3_000,
-      "counterparty-names",
-      [] as unknown[]
-    );
-  }
   for (const e of limited) {
-    if (e.counterparty) e.counterpartyName = nameCache.get(e.counterparty) ?? null;
+    if (e.counterparty) e.counterpartyName = names.get(e.counterparty);
   }
 
   return { entries: limited, complete };

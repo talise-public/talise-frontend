@@ -3,6 +3,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { ensureWorkSchema } from "@/lib/invoices";
 import { streamById, projectStream } from "@/lib/streams";
+import { resolveDisplayNames, type DisplayNames } from "@/lib/display-name";
 
 /**
  * Work contracts, the Work hub's "pay your team" backend.
@@ -67,7 +68,10 @@ export interface WorkContractRow {
 export interface ProjectedContract {
   id: string;
   payeeAddress: string;
+  /** Live-resolved payee name, else the creation-time snapshot. */
   payeeHandle: string | null;
+  /** The snapshot exactly as stored at creation. */
+  payeeHandleAtCreation: string | null;
   title: string;
   rateUsd: number;
   cadence: Cadence;
@@ -178,14 +182,31 @@ export async function setContractStatus(
 }
 
 /**
+ * Batch-resolve the payee names for a set of contract rows: ONE query for the
+ * whole list rather than a lookup per card. Never throws.
+ */
+export function resolveContractNames(
+  rows: WorkContractRow[]
+): Promise<DisplayNames> {
+  return resolveDisplayNames(
+    rows.map((r) => r.payee_address),
+    { form: "full" }
+  );
+}
+
+/**
  * Merge a contract row with the live state of its underlying stream so the UI
  * gets one object with both the arrangement metadata AND the paid/remaining
  * progress. The stream is the source of truth for money moved; when its row is
  * missing (rare, e.g. a contract recorded before the stream insert landed) we
  * fall back to the contract's own static totals.
+ *
+ * `names` is optional batch-resolved payee names (see `resolveContractNames`);
+ * without it the payee falls back to the stored snapshot, as before.
  */
 export async function projectContract(
-  row: WorkContractRow
+  row: WorkContractRow,
+  names?: DisplayNames
 ): Promise<ProjectedContract> {
   const totalUsd = Math.round(row.rate_usd * row.periods * 100) / 100;
   let paidUsd = 0;
@@ -211,7 +232,11 @@ export async function projectContract(
   return {
     id: row.id,
     payeeAddress: row.payee_address,
-    payeeHandle: row.payee_handle,
+    // Live name first (`payee_handle` is a creation-time snapshot that is NULL
+    // whenever the contract was set up by pasting an address), then the
+    // snapshot, then null for the client to truncate.
+    payeeHandle: names?.get(row.payee_address) ?? row.payee_handle,
+    payeeHandleAtCreation: row.payee_handle,
     title: row.title,
     rateUsd: Number(row.rate_usd),
     cadence: row.cadence,

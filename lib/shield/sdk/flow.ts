@@ -559,6 +559,19 @@ export async function shieldedBalanceMicros(args: {
   cfg: ShieldFlowConfig;
   keypair: ShieldKeypair;
 }): Promise<bigint> {
+  return (await shieldedBalanceDetail(args)).micros;
+}
+
+/**
+ * Like {@link shieldedBalanceMicros} but also returns the COUNT of unspent notes
+ * — each is a claimable receipt (a private payment received, or your own change
+ * from a prior private send). The count drives the receive-side badge; the sum
+ * drives the amount shown on the claim screen. One scan, both figures.
+ */
+export async function shieldedBalanceDetail(args: {
+  cfg: ShieldFlowConfig;
+  keypair: ShieldKeypair;
+}): Promise<{ micros: bigint; count: number }> {
   const { cfg, keypair } = args;
   const viewingKey = await deriveShieldEncScalar(keypair.spendingKey);
   let notes: Awaited<ReturnType<typeof scanNotes>>;
@@ -568,16 +581,18 @@ export async function shieldedBalanceMicros(args: {
       fetch: ((u: string) => fetch(u, { ...cfg.fetchInit })) as typeof fetch,
     });
   } catch {
-    return 0n;
+    return { micros: 0n, count: 0 };
   }
   let total = 0n;
+  let count = 0;
   for (const n of notes) {
     if (n.amount <= 0n || n.leafIndex == null) continue;
     const nf = nullifierFor(keypair.spendingKey, n.commitment, BigInt(n.leafIndex));
     if (await isSpent(cfg, nf).catch(() => false)) continue;
     total += n.amount;
+    count += 1;
   }
-  return total;
+  return { micros: total, count };
 }
 
 /**

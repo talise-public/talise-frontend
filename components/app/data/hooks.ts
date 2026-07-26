@@ -156,6 +156,12 @@ export type Me = {
   suiAddress: string;
   taliseHandle: string | null;
   accountType: string;
+  /** Server-driven feature gates (see /api/me). Optional: older payloads omit it. */
+  features?: {
+    cashout: boolean;
+    scanToPay: boolean;
+    usdWithdrawal: boolean;
+  };
 };
 
 export type Balances = {

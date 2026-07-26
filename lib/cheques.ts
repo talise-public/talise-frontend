@@ -644,13 +644,50 @@ export async function markFunded(input: {
   return { ok: true };
 }
 
-/** Confirm on-chain that `digest` credited the escrow with ≥amount of USDsui. */
+/**
+ * Confirm on-chain that `digest` credited the escrow with ≥amount of USDsui
+ * AND that the deposit was made by `fromAddress`.
+ *
+ * SECURITY (2026-07-24): `fromAddress` was previously accepted and then never
+ * read, so this function only asserted "some USDsui landed at the escrow". The
+ * escrow address is handed to every caller by /api/cheques/create and the chain
+ * is public, so an attacker could create a draft cheque and confirm-fund it with
+ * SOMEONE ELSE'S escrow-deposit digest, then claim it — paid out of the pooled
+ * escrow, i.e. the victim's money. The `uniq_cheques_fund_digest` index only
+ * prevents reuse of a digest, not first use of a foreign one, so live deposits
+ * were front-runnable and orphaned deposits were permanently claimable by
+ * anyone. The tx success flag was likewise destructured but never tested.
+ *
+ * The sender gate below is checked FIRST and fails closed. It uses the shared
+ * `getNormalizedTransaction` verifier (the same one the goal-vault confirm path
+ * uses to bind a digest to its sender), which reports `sender` separately from
+ * `gasOwner` — so this remains correct for Onara-sponsored funding sends, where
+ * the gas payer is not the user.
+ */
 async function verifyEscrowDeposit(input: {
   digest: string;
   fromAddress: string;
   amountMicros: bigint;
 }): Promise<boolean> {
   try {
+    const expectedSender = input.fromAddress.trim().toLowerCase();
+    if (!expectedSender) return false;
+    const norm = await getNormalizedTransaction(input.digest);
+    if (norm.status !== "success") {
+      console.warn(
+        `[cheques] escrow deposit rejected: tx not successful digest=${input.digest} reason=${norm.errorMessage ?? "unknown"}`
+      );
+      return false;
+    }
+    // `norm.sender` is already lowercased by the verifier. Fail closed if it is
+    // absent — an unidentifiable sender must not be able to fund a cheque.
+    if (norm.sender !== expectedSender) {
+      console.warn(
+        `[cheques] escrow deposit rejected: sender mismatch digest=${input.digest} sender=${norm.sender || "(none)"} expected=${expectedSender}`
+      );
+      return false;
+    }
+
     const escrow = escrowAddress().toLowerCase();
     const tx = (await sui().getTransaction({
       digest: input.digest,

@@ -9,8 +9,42 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Time } from "lightweight-charts";
 
 type Candle = { time: number; open: number; high: number; low: number; close: number };
+
+// Readable price: thousands separators + up to 4 decimals (min 2). Renders
+// BTC as "66,172.90" and a sub-dollar token as "0.1234" instead of the raw
+// "6617290" blob lightweight-charts falls back to. Used for the price axis and
+// the crosshair label.
+const priceFmt = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
+const fmtPrice = (p: number) => priceFmt.format(p);
+
+// `time` is a UTC timestamp in seconds (from /api/markets/candles).
+const fmtClock = (t: number) =>
+  new Date(t * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+const fmtDay = (t: number) =>
+  new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+// Crosshair tooltip: full, readable "Jul 21, 14:30".
+const fmtStamp = (t: number) =>
+  new Date(t * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+// Chart axis font. Must be LITERAL family names only — lightweight-charts sets
+// this directly on the <canvas> `ctx.font`, which cannot resolve CSS variables
+// (`var(--font-sans-v2)` would make the whole font string invalid and silently
+// fall back to the default sans-serif). "Google Sans Variable" is loaded app-
+// wide via @fontsource in the root layout.
+const CHART_FONT =
+  '"Google Sans Variable", "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
 
 /** Animated candle skeleton shown while the first candles load. */
 function ChartSkeleton() {
@@ -41,6 +75,9 @@ export function TradeChart({ symbol, interval }: { symbol: string; interval: str
   const symRef = useRef(symbol);
   const intRef = useRef(interval);
   const inflight = useRef(false); // skip a poll while one is still loading
+  // Fit the view to the data only on the first load and on symbol/interval
+  // changes — NOT on every live poll, so the user's scroll/zoom is preserved.
+  const fitNext = useRef(true);
   symRef.current = symbol;
   intRef.current = interval;
 
@@ -53,7 +90,12 @@ export function TradeChart({ symbol, interval }: { symbol: string; interval: str
       if (!seriesRef.current) return;
       seriesRef.current.setData(j.candles ?? []);
       if (j.candles?.length) {
-        chartRef.current?.timeScale().fitContent();
+        // Only reset the viewport on the first paint / after a symbol or
+        // interval switch. Live polls keep whatever the user scrolled to.
+        if (fitNext.current) {
+          chartRef.current?.timeScale().fitContent();
+          fitNext.current = false;
+        }
         setLoading(false);
       }
     } catch {
@@ -82,15 +124,34 @@ export function TradeChart({ symbol, interval }: { symbol: string; interval: str
         layout: {
           background: { type: ColorType.Solid, color: "transparent" },
           textColor: "#3a5230",
-          fontFamily: "var(--font-sans-v2), system-ui, sans-serif",
+          fontFamily: CHART_FONT,
         },
         grid: {
           vertLines: { color: "rgba(21,48,12,0.06)" },
           horzLines: { color: "rgba(21,48,12,0.06)" },
         },
         crosshair: { mode: CrosshairMode.Normal },
+        // Readable axes: commas + decimals on price, real dates/times on the
+        // axis and crosshair label.
+        localization: {
+          priceFormatter: fmtPrice,
+          timeFormatter: (time: Time) => fmtStamp(time as unknown as number),
+        },
         rightPriceScale: { borderColor: "rgba(21,48,12,0.12)" },
-        timeScale: { borderColor: "rgba(21,48,12,0.12)", timeVisible: true, secondsVisible: false },
+        timeScale: {
+          borderColor: "rgba(21,48,12,0.12)",
+          timeVisible: true,
+          secondsVisible: false,
+          // "14:30" for intraday ticks, "Jul 21" for day/month/year ticks.
+          tickMarkFormatter: (time: Time, tickMarkType: number) =>
+            tickMarkType >= 3
+              ? fmtClock(time as unknown as number)
+              : fmtDay(time as unknown as number),
+        },
+        // Let the user pan and zoom freely (defaults, set explicitly so the
+        // terminal never feels locked).
+        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+        handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
       });
       const series = chart.addSeries(CandlestickSeries, {
         upColor: "#2f9e44",
@@ -98,6 +159,9 @@ export function TradeChart({ symbol, interval }: { symbol: string; interval: str
         borderVisible: false,
         wickUpColor: "#2f9e44",
         wickDownColor: "#e0574f",
+        // Custom formatter so axis ticks match the localization (commas + up to
+        // 4 dp); minMove lets ticks resolve down to 4 decimals for cheap assets.
+        priceFormat: { type: "custom", formatter: fmtPrice, minMove: 0.0001 },
       });
       chartRef.current = chart;
       seriesRef.current = series;
@@ -109,6 +173,14 @@ export function TradeChart({ symbol, interval }: { symbol: string; interval: str
         }
       });
       ro.observe(el);
+      // Canvas text uses whatever font is loaded at draw time and does NOT
+      // repaint when a web font arrives later. Once Google Sans is ready,
+      // re-apply the layout to force a redraw so the axis picks it up.
+      if (typeof document !== "undefined" && document.fonts?.ready) {
+        document.fonts.ready.then(() => {
+          if (!disposed) chartRef.current?.applyOptions({ layout: { fontFamily: CHART_FONT } });
+        });
+      }
       await load();
       // Skip the refresh while the tab is backgrounded — no point redrawing a
       // chart no one is watching (saves RPC + battery).
@@ -130,12 +202,16 @@ export function TradeChart({ symbol, interval }: { symbol: string; interval: str
   useEffect(() => {
     setLoading(true);
     inflight.current = false;
+    fitNext.current = true; // re-fit the view for the new symbol/interval
     void load();
   }, [symbol, interval, load]);
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={elRef} className="h-full w-full" />
+    // letter-spacing:normal — the app-wide −0.05em tracking otherwise bleeds into
+    // the chart's canvas axis text (Chrome honors the canvas element's CSS
+    // letter-spacing), cramping the price/date labels.
+    <div className="relative h-full w-full" style={{ letterSpacing: "normal" }}>
+      <div ref={elRef} className="h-full w-full" style={{ letterSpacing: "normal" }} />
       {loading && <ChartSkeleton />}
     </div>
   );

@@ -9,11 +9,12 @@
  *   1. ensures the schema + reads the live total + current cursor,
  *   2. pages `batchSize` users starting at the cursor,
  *   3. indexes them through a concurrency-limited pool (indexUser per address),
- *   4. upserts each user's aggregate + their txs into the recent-tx feed,
+ *   4. upserts each user's aggregate, appends their txs to the DURABLE lifetime
+ *      ledger, and refreshes the recent-tx display feed,
  *   5. advances the cursor by however many users were paged; when the cursor
  *      reaches/passes the total it WRAPS to 0 and stamps `full_pass_at`
  *      (done:true, a full pass over every user just completed),
- *   6. trims the recent-tx feed to its bound.
+ *   6. trims the recent-tx feed to its bound and recomputes the lifetime rollup.
  *
  * Resilient per user: one user's indexing/persistence failure is swallowed so the
  * batch (and the cursor advance) always completes. One Date.now() stamp is used
@@ -23,6 +24,7 @@
 import { countUsers, listUsersPage } from "@/lib/analytics/users";
 import type { PagedUser } from "@/lib/analytics/users";
 import { indexUser } from "@/lib/analytics/index-user";
+import { recordLedgerTxs, refreshTotals } from "@/lib/analytics/ledger";
 import {
   ensureAnalyticsSchema,
   getCursor,
@@ -47,8 +49,18 @@ export type BatchResult = {
 const DEFAULT_BATCH_SIZE = 40;
 const DEFAULT_CONCURRENCY = 5;
 
-/** Bound on the persisted recent-tx feed (newest N kept). */
-const RECENT_TX_KEEP = 2000;
+/**
+ * Bound on the persisted recent-tx DISPLAY feed (newest N kept).
+ *
+ * This is NOT a bound on anything we count. Lifetime transactions / active
+ * accounts / volume come from `analytics_tx_ledger`, which is never trimmed —
+ * see lib/analytics/ledger.ts for why (deriving lifetime totals from this
+ * trimmed feed is what made published volume stop growing and then fall).
+ * The feed's only job is to carry the display fields (handle, counterparty,
+ * resolved counterparty name) for the rows most likely to be rendered, so its
+ * size is a UI-richness knob, not a correctness one.
+ */
+const RECENT_TX_KEEP = 20_000;
 
 /**
  * Run a concurrency-limited pool over `items`, invoking `worker` for each. Caps
@@ -114,6 +126,9 @@ async function indexAndPersist(
     }));
 
     if (rows.length > 0) {
+      // Durable first: the ledger is what every lifetime number is computed
+      // from, so it must be written even if the richer feed write fails.
+      await recordLedgerTxs(rows, indexedAt);
       await recordRecentTxs(rows, indexedAt);
     }
   } catch {
@@ -166,6 +181,7 @@ export async function runIndexBatch(opts?: {
       fullPassAt: indexedAt,
     });
     await trimRecentTxs(RECENT_TX_KEEP);
+    await refreshTotals(indexedAt);
     await recordSnapshotIfChanged(indexedAt);
     return { processed: 0, cursor: 0, total, done: true, indexedAt };
   }
@@ -193,6 +209,12 @@ export async function runIndexBatch(opts?: {
   });
 
   await trimRecentTxs(RECENT_TX_KEEP);
+
+  // Recompute the published lifetime rollup from the ledger. Every batch, not
+  // just a completed pass: it is ONE aggregate query, and it keeps the public
+  // page's O(1) read at most one batch behind the ledger. Must precede the
+  // checkpoint below, which captures whatever the rollup currently says.
+  await refreshTotals(indexedAt);
 
   // A completed full pass is a checkpoint boundary: snapshot the public metrics
   // if they moved since the last one, so /analytics gets a fresh timeline step.

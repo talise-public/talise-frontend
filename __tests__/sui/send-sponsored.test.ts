@@ -8,7 +8,7 @@
  * Sui/Onara/DB dependencies stubbed at module-load time. The assertions
  * exercise the route's mode-selection branching:
  *
- *   1. roundup enabled + USDsui → `mode: "sponsored"`, `roundupUsd`
+ *   1. roundup enabled + USDsui → `mode: "sponsored-save"`, `save.applied`
  *      reflects `amount × percentage / 100`, `receiptNonce` is a
  *      well-formed Payment Kit nonce (base36 alphanumeric).
  *   2. roundup disabled + USDsui → `mode: "gasless"` (the gasless
@@ -74,11 +74,27 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/rewards/roundup", () => ({
+  LOG: "[spend-save]",
   getRoundupConfig: vi.fn(async () => ({
     enabled: false,
-    percentage: 5,
+    percentage: 0,
     savedUsd: 0,
   })),
+  // Real arithmetic, so a test that sets `percentage: 5` gets the gross/net
+  // the route would actually build. Mirrors lib/rewards/roundup.ts.
+  planRoundup: (opts: {
+    config: { enabled: boolean; percentage: number };
+    sendAmountUsd: number;
+  }) => {
+    if (!opts.config.enabled) return null;
+    const pct = Math.max(1, Math.min(10, Math.round(opts.config.percentage)));
+    const gross =
+      Math.floor(Math.min((opts.sendAmountUsd * pct) / 100, opts.sendAmountUsd) * 1e6) / 1e6;
+    const net = Math.floor(gross * 0.99 * 1e6) / 1e6;
+    if (!(net >= 0.01)) return null;
+    return { grossUsd: gross, netUsd: net, percentage: pct, feeBps: 100 };
+  },
+  issueSaveProof: vi.fn(() => "test-save-proof"),
 }));
 
 // Onara status drives the sponsor address that the route stamps onto
@@ -106,6 +122,7 @@ vi.mock("@/lib/pk-bootstrap", () => ({
 // the tx (matching the real signature).
 vi.mock("@/lib/navi-supply", () => ({
   appendNaviSupply: vi.fn(async () => undefined),
+  SAVE_TREASURY_FEE_BPS: 100,
 }));
 
 // PaymentKit receipt append. The route reads `nonce` off the return
@@ -154,6 +171,12 @@ vi.mock("@/lib/sui", async () => {
       simulateTransaction: async () => ({ $kind: "Transaction" }),
     }),
     network: () => "mainnet" as const,
+    // The Spend + Save cover check reads the wallet balance before adding the
+    // supply leg. Plenty of USDsui so the save is never dropped for funds.
+    getUsdsuiBalanceStrict: vi.fn(async () => ({
+      raw: "1000000000",
+      usdsui: 1000,
+    })),
   };
 });
 
@@ -250,12 +273,12 @@ describe("/api/send/sponsor-prepare (sponsored branch, PREPARE only)", () => {
     vi.clearAllMocks();
   });
 
-  it("USDsui + roundup enabled → mode:'sponsored' with atomic NAVI round-up supply (option A, 2026-06-01)", async () => {
-    // Option A: a Save-ON USDsui send routes through the SPONSORED branch so
-    // the round-up NAVI supply rides the SAME user-signed tx as the transfer
-    // (`appendNaviSupply`) — real, atomic, user-owned. The gasless rail can't
-    // co-bundle the supply, so Save-on sends are sponsored (Talise pays gas);
-    // plain sends (Save off) stay gasless.
+  it("USDsui + roundup enabled → mode:'sponsored-save' with the NAVI supply in the SAME PTB", async () => {
+    // A Save-ON USDsui send routes through the SPONSORED branch so the
+    // round-up NAVI supply rides the SAME user-signed tx as the transfer
+    // (`appendNaviSupply`) — real, atomic, user-owned, one signature. The
+    // gasless rail can't carry the supply at all, so Save-ON sends are
+    // sponsored (Talise pays gas); plain sends (Save off) stay gasless.
     vi.mocked(getRoundupConfig).mockResolvedValue({
       enabled: true,
       percentage: 5,
@@ -280,7 +303,9 @@ describe("/api/send/sponsor-prepare (sponsored branch, PREPARE only)", () => {
     expect(json.amount).toBe(1.0);
     expect(json.to).toBe(RECIPIENT_ADDR);
     // 5% of $1.00 → $0.05, supplied to NAVI atomically in the same tx.
-    expect(json.roundupUsd).toBeCloseTo(0.05, 6);
+    // `roundupUsd` is deprecated and always 0; the real figures live under
+    // `save`, and `save.applied` is the truth about these exact bytes.
+    expect(json.roundupUsd).toBe(0);
     expect(typeof json.bytes).toBe("string");
     expect(json.bytes.length).toBeGreaterThan(0);
   });

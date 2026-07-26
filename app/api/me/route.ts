@@ -4,6 +4,7 @@ import { db, userById } from "@/lib/db";
 import { findTaliseSubnameForOwner } from "@/lib/suins-lookup";
 import { refreshInBackground } from "@/lib/snapshots";
 import { refreshSessionCookie } from "@/lib/session";
+import { usdWithdrawalAllowed } from "@/lib/offramp-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,12 @@ export async function GET(req: Request) {
     // Close with FEATURE_CASHOUT=false. Scan-to-pay stays closed until opened.
     cashout: process.env.FEATURE_CASHOUT?.trim().toLowerCase() !== "false",
     scanToPay: process.env.FEATURE_SCAN_TO_PAY?.trim().toLowerCase() === "true",
+    // US cash-out (Bridge). Per-user allowlist gate (USD_WITHDRAWAL_OPEN or the
+    // allowlist envs), and always closed for Apple private-relay emails.
+    usdWithdrawal: usdWithdrawalAllowed({
+      email: user.email,
+      talise_username: (user as { talise_username?: string | null }).talise_username ?? null,
+    }),
   };
 
   const base = {

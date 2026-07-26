@@ -53,10 +53,24 @@ type PrepareResp = {
 type ProjectedStream = {
   id: string;
   recipientAddress: string;
+  /** Live-resolved name for the recipient, else the creation-time snapshot. */
   recipientHandle: string | null;
+  senderName?: string | null;
+  /** The OTHER party from our side: the sender when money streams in. */
+  counterpartyAddress?: string | null;
+  counterpartyName?: string | null;
   totalUsd: number;
+  /** Confirmed on chain: money the recipient actually holds. */
   releasedUsd: number;
   remainingUsd: number;
+  /** Earned by the Clock, claimed or not. */
+  accruedUsd: number;
+  accruedTranches: number;
+  /** Earned but not pushed yet — what the next claim moves. */
+  claimableUsd: number;
+  claimableTranches: number;
+  /** Something is due that the chain hasn't paid yet. */
+  dueNow: boolean;
   trancheUsd: number;
   numTranches: number;
   tranchesDone: number;
@@ -455,23 +469,85 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
   const [claimError, setClaimError] = useState<string | null>(null);
   const [pausing, setPausing] = useState<string | null>(null);
   const [pauseError, setPauseError] = useState<string | null>(null);
+  /** Streams already auto-advanced on this mount, so a due claim fires at most
+   *  once per page-open per stream no matter how often the list refreshes. */
+  const firedRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const r = await api<{ streams: ProjectedStream[] }>("/api/streams");
-      setStreams(r.streams ?? []);
+      const list = r.streams ?? [];
+      setStreams(list);
+      return list;
     } catch (e) {
       setError(friendlyError(e, "Couldn't load your streams right now.", "Streaming"));
+      return [];
     } finally {
       setLoading(false);
     }
   }, []);
 
+  /** Tell the server a signed stream tx landed so the mirror re-reads the
+   *  contract's release cursor. Best-effort: the next auto-fire re-syncs. */
+  const confirm = useCallback(async (id: string, digest: string) => {
+    try {
+      await api(`/api/streams/${id}/confirm`, { method: "POST", body: { digest } });
+    } catch {
+      /* the mirror catches up on the next claim */
+    }
+  }, []);
+
+  /**
+   * Advance every stream with money due — the "no cron" trigger, same shape as
+   * the money-rules one. `claim_accrued` is permissionless on chain and can only
+   * pay the hardwired recipient, so BOTH sides fire it: the sender opening this
+   * page pushes their own outgoing stream forward, which is what makes it feel
+   * like streaming rather than a button the recipient has to find.
+   *
+   * Once per stream per page-open, silent on failure. A stream with nothing due
+   * is skipped entirely (`dueNow`) so we never spend sponsor gas on a no-op, and
+   * paused/cancelled streams are skipped because the contract would abort them.
+   */
+  const fireDueClaims = useCallback(
+    async (list: ProjectedStream[]) => {
+      const due = list.filter((s) => s.dueNow && !firedRef.current.has(s.id));
+      if (due.length === 0) return;
+      let fired = 0;
+      for (const s of due) {
+        firedRef.current.add(s.id);
+        try {
+          const r = await api<{ mode?: string; bytes?: string }>(
+            `/api/streams/${s.id}/claim`,
+            { method: "POST", body: {} }
+          );
+          if (r.mode !== "onchain" || !r.bytes) continue;
+          const { digest } = await signSponsorReadyBytes(r.bytes, { intent: "claim-stream" });
+          await confirm(s.id, digest);
+          fired += 1;
+        } catch {
+          // Nothing due after all, a session lapse, or a transient build hiccup.
+          // The contract is the real gate; the manual Claim button remains.
+        }
+      }
+      if (fired > 0) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("talise:tx", { detail: { kind: "stream-claim" } }));
+        }
+        await load();
+      }
+    },
+    [confirm, load]
+  );
+
   useEffect(() => {
-    void load();
-  }, [load, reloadSignal]);
+    void (async () => {
+      const list = await load();
+      await fireDueClaims(list);
+    })();
+    // fireDueClaims is stable and self-limiting via firedRef.
+  }, [load, fireDueClaims, reloadSignal]);
 
   const cancel = useCallback(
     async (s: ProjectedStream) => {
@@ -484,8 +560,10 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
           refundUsd?: number;
         }>(`/api/streams/${s.id}/cancel`, { method: "POST", body: {} });
         if (r.mode === "onchain" && r.bytes) {
-          await signSponsorReadyBytes(r.bytes, { intent: "cancel-stream" });
-        } else if (typeof window !== "undefined") {
+          const { digest } = await signSponsorReadyBytes(r.bytes, { intent: "cancel-stream" });
+          await confirm(s.id, digest);
+        }
+        if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("talise:tx", { detail: { kind: "stream-cancel" } }));
         }
         await load();
@@ -495,11 +573,11 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
         setCancelling(null);
       }
     },
-    [load]
+    [confirm, load]
   );
 
-  // Recipient pulls every tranche the on-chain Clock says is due, via the
-  // sponsored, permissionless stream::claim_accrued, no scheduler, gas-free.
+  // Manual claim: pull every tranche the on-chain Clock says is due, via the
+  // sponsored, permissionless stream::claim_accrued. No scheduler, gas-free.
   const claim = useCallback(
     async (s: ProjectedStream) => {
       setClaiming(s.id);
@@ -512,7 +590,8 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
           nothingToClaim?: boolean;
         }>(`/api/streams/${s.id}/claim`, { method: "POST", body: {} });
         if (r.mode === "onchain" && r.bytes) {
-          await signSponsorReadyBytes(r.bytes, { intent: "claim-stream" });
+          const { digest } = await signSponsorReadyBytes(r.bytes, { intent: "claim-stream" });
+          await confirm(s.id, digest);
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("talise:tx", { detail: { kind: "stream-claim" } }));
           }
@@ -526,25 +605,34 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
         setClaiming(null);
       }
     },
-    [load]
+    [confirm, load]
   );
 
-  // Sender-only pause/resume. Unlike create/claim/cancel these are pure state
-  // flips on the DB row (the escrow keeps the funds), the routes return a
-  // plain `{ ok, state }` with no sponsor-ready bytes, so there's nothing to
-  // sign: just POST, toast, and refresh the projected list.
+  // Sender-only pause/resume, and both are ON CHAIN. Only the contract's
+  // `paused` flag actually stops money moving (claim_accrued is permissionless),
+  // so each returns sponsor-ready bytes the sender signs, then we confirm the
+  // digest so the mirror follows the chain.
   const pauseResume = useCallback(
     async (s: ProjectedStream) => {
       const resuming = s.state === "paused";
       setPausing(s.id);
       setPauseError(null);
       try {
-        await api<{ ok?: boolean; state?: string }>(
+        const r = await api<{ ok?: boolean; state?: string; mode?: string; bytes?: string }>(
           `/api/streams/${s.id}/${resuming ? "resume" : "pause"}`,
           { method: "POST", body: {} }
         );
+        if (r.mode === "onchain" && r.bytes) {
+          const { digest } = await signSponsorReadyBytes(r.bytes, {
+            intent: resuming ? "resume-stream" : "pause-stream",
+          });
+          await confirm(s.id, digest);
+        }
+        // Re-firing a resumed stream's backlog is wanted, not spam.
+        if (resuming) firedRef.current.delete(s.id);
         toast(resuming ? "Stream resumed" : "Stream paused", "success");
-        await load();
+        const list = await load();
+        if (resuming) await fireDueClaims(list);
       } catch (e) {
         setPauseError(
           friendlyError(
@@ -553,11 +641,12 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
             "Streaming"
           )
         );
+        await load();
       } finally {
         setPausing(null);
       }
     },
-    [load, toast]
+    [confirm, load, fireDueClaims, toast]
   );
 
   if (loading) {
@@ -596,14 +685,22 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
       {claimError && <InlineError>{claimError}</InlineError>}
       {pauseError && <InlineError>{pauseError}</InlineError>}
       {streams.map((s) => {
+        // The bar tracks CONFIRMED release, so it freezes by itself the moment a
+        // stream stops: `releasedUsd` is the contract's cursor, not a schedule
+        // projection, and a cancelled or completed stream's cursor never moves
+        // again.
         const progress = s.totalUsd > 0 ? Math.min(1, s.releasedUsd / s.totalUsd) : 0;
-        const canCancel = s.role !== "recipient" && (s.state === "active" || s.state === "paused");
-        const canClaim = s.role === "recipient" && s.state === "active" && s.releasedUsd < s.totalUsd;
-        // Sender can pause an active stream or resume a paused one, same
-        // ownership + non-terminal gate the backend enforces.
-        const canPauseResume =
-          s.role !== "recipient" && (s.state === "active" || s.state === "paused");
         const isPaused = s.state === "paused";
+        const isCancelled = s.state === "cancelled";
+        const isCompleted = s.state === "completed";
+        // Terminal streams have nothing left to stop or pull: no pause, no
+        // cancel, no claim. `completed` is derived server-side, so a finished
+        // stream reaches this branch without any scheduler having written it.
+        const live = s.state === "active" || isPaused;
+        const canCancel = s.role !== "recipient" && live;
+        const canPauseResume = s.role !== "recipient" && live;
+        const canClaim =
+          s.role === "recipient" && s.state === "active" && s.claimableUsd > 0;
         return (
           <div
             key={s.id}
@@ -617,13 +714,17 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
                   {s.role === "recipient" ? "Streaming in" : "Streaming out"}
                 </span>
                 <span className="mt-0.5 block truncate text-[15px] font-medium text-[#15300c]">
-                  {s.recipientHandle || shortAddr(s.recipientAddress)}
+                  {s.counterpartyName ||
+                    s.recipientHandle ||
+                    shortAddr(s.counterpartyAddress || s.recipientAddress)}
                 </span>
               </div>
               <StatusPill label={s.state} tone={streamTone(s.state)} />
             </div>
 
-            {/* Big number + sublabel */}
+            {/* Big number + sublabel. The headline is money the chain has
+                actually moved; anything the Clock has earned but not yet pushed
+                is called out separately rather than counted as paid. */}
             <div>
               <span
                 className="block font-[800] tabular-nums text-[#15300c]"
@@ -632,8 +733,22 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
                 ${s.releasedUsd.toFixed(2)}
               </span>
               <span className="mt-0.5 block font-mono text-[11px] tabular-nums text-[#3d7a29]">
-                of ${s.totalUsd.toFixed(2)} · {s.tranchesDone}/{s.numTranches} payments
+                {isCancelled
+                  ? `streamed of $${s.totalUsd.toFixed(2)} before cancelling · ${s.tranchesDone}/${s.numTranches} payments`
+                  : isCompleted
+                    ? `of $${s.totalUsd.toFixed(2)} · all ${s.numTranches} payments sent`
+                    : `of $${s.totalUsd.toFixed(2)} · ${s.tranchesDone}/${s.numTranches} payments`}
               </span>
+              {s.claimableUsd > 0 && s.state === "active" && (
+                <span className="mt-1 block font-mono text-[11px] tabular-nums text-[#3d7a29]">
+                  ${s.claimableUsd.toFixed(2)} ready to claim
+                </span>
+              )}
+              {isPaused && (
+                <span className="mt-1 block font-mono text-[11px] text-[#3a5230]">
+                  Paused, nothing is being released.
+                </span>
+              )}
             </div>
 
             {/* Progress bar */}
@@ -647,6 +762,25 @@ function ListTab({ reloadSignal, onNew }: { reloadSignal: number; onNew: () => v
                 }}
               />
             </div>
+
+            {/* Terminal streams get a plain statement instead of controls. */}
+            {isCompleted && (
+              <div className="flex items-center gap-2 text-[13px] text-[#3a5230]">
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={15} className="text-[#3d7a29]" />
+                <span>Fully streamed. Every payment has landed.</span>
+              </div>
+            )}
+            {isCancelled && (
+              <div className="flex items-center gap-2 text-[13px] text-[#3a5230]">
+                <HugeiconsIcon icon={StopIcon} size={15} />
+                <span>
+                  Cancelled.{" "}
+                  {s.remainingUsd > 0
+                    ? `$${s.remainingUsd.toFixed(2)} went back to the sender.`
+                    : "Nothing was left to refund."}
+                </span>
+              </div>
+            )}
 
             {canClaim && (
               <PrimaryButton

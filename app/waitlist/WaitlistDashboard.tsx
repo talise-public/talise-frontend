@@ -68,14 +68,15 @@ export function WaitlistDashboard({
 
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://talise.io";
-  // Invite link → the public /waitlist?ref=CODE surface. ReferralCapture in the
-  // root layout reads ?ref and credits this user when their friend signs up.
-  // (The richer /u/<handle> profile page + OG card is local-only for now, so
-  // we don't route public invites through it, that link would 404.)
+  // Invite link → /r/<CODE>, the ONE canonical referral entry point. It sets the
+  // signed referral cookie server-side, forwards `?ref=` so the client capture
+  // fires too, and is the path the apps claim as a deep link.
+  //
+  // This used to point at `/waitlist?ref=CODE`, a second competing loop feeding
+  // the same counter, and since the waitlist locked that page 404s, so every
+  // invite shared from here was dead on arrival.
   const referralCode = status?.referralCode ?? "";
-  const inviteLink = referralCode
-    ? `${origin}/waitlist?ref=${referralCode}`
-    : `${origin}/waitlist`;
+  const inviteLink = referralCode ? `${origin}/r/${referralCode}` : origin;
   const position = status?.position ?? null;
   const referralCount = status?.referralCount ?? 0;
 

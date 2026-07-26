@@ -4,6 +4,7 @@ import { refreshBridgeKyc } from "@/lib/onramp/bridge";
 import { getOnrampKyc, upsertOnrampKyc } from "@/lib/onramp/kyc-store";
 import { bridgeConfigured } from "@/lib/bridge/client";
 import { ensureSchema } from "@/lib/db";
+import { trackKycCompleted } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,14 @@ export async function GET(req: Request) {
       status: r.status,
       providerCustomerId: r.customerId ?? undefined,
     });
+    // GROWTH: the poll that observes the clearing. Bridge is the live KYC
+    // provider (the signed eKYC webhook covers the other rail), so without this
+    // `kyc_completed_at` would stay NULL for every Bridge-verified user. This is
+    // a polling GET, so it re-emits while the user keeps polling an approved
+    // status; `kyc_completed_at` is set-once so only the first one moves it.
+    if (r.status === "approved") {
+      trackKycCompleted(userId, { surface: "kyc.bridge" });
+    }
     return NextResponse.json({
       started: true,
       status: r.status,

@@ -53,9 +53,14 @@ export async function POST(req: Request) {
     //   - Onara sponsor status (60s memo, ~200–500ms cold)
     //   - Sui reference gas price (1.5s memo, ~150–300ms cold)
     //   - Sui current epoch (memo'd inside getCurrentEpoch, ~150–300ms cold)
-    //   - NAVI adapter init (~400–900ms cold; only matters when round-up is
-    //     on, but pays for itself anyway since the adapter is shared with
-    //     the Earn screen)
+    //   - NAVI supply path. This is the BIG one and it was previously a
+    //     no-op: `NaviAdapter.init()` is lazy (0ms, measured) and all the
+    //     expensive metadata is fetched on the first `addSaveToTx`, i.e.
+    //     inside the user's send. Measured on mainnet: 3344ms for the first
+    //     `appendNaviSupply` in a fresh lambda, 268ms once this warm has run.
+    //     `initNaviAdapter` now builds a throwaway supply to force it.
+    //     Matters most when Spend + Save is on (the send PTB carries the
+    //     supply leg) and pays for itself on the Earn screen regardless.
     //
     // Each leg is independently `catch`ed so one slow upstream doesn't
     // stall the whole warmup. The Send path will retry any miss anyway.

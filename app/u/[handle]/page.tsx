@@ -48,10 +48,15 @@ export default async function ProfilePage({
   const user = await userByHandle(h);
   if (!user || !user.talise_username) notFound();
 
-  const code = await ensureReferralCode(user.id, user.name ?? user.email);
+  // No seed: referral codes are no longer derived from the user's name, which
+  // is public on THIS page and made the code partially enumerable.
+  const code = await ensureReferralCode(user.id);
   const { position } = await getWaitlistRank(user.id);
   const referralCount = Number(user.referral_count ?? 0) || 0;
-  const joinHref = `/waitlist?ref=${encodeURIComponent(code)}`;
+  // ONE canonical referral entry point. This used to point at
+  // `/waitlist?ref=CODE`, a second, competing loop whose landing page 404s, so
+  // every invite shared from a public profile dead-ended.
+  const joinHref = `/r/${encodeURIComponent(code)}`;
 
   return (
     <main className="bp-page relative min-h-screen overflow-hidden text-[var(--color-fg)]">

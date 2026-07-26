@@ -12,6 +12,7 @@ import {
   workContractById,
   setContractStatus,
   projectContract,
+  resolveContractNames,
 } from "@/lib/work-contracts";
 
 export const runtime = "nodejs";
@@ -47,7 +48,7 @@ export async function GET(
   if (row.user_id !== userId) {
     return NextResponse.json({ error: "not your contract" }, { status: 403 });
   }
-  const contract = await projectContract(row);
+  const contract = await projectContract(row, await resolveContractNames([row]));
   return NextResponse.json({ contract });
 }
 

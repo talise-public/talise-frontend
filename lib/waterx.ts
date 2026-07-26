@@ -240,6 +240,38 @@ export async function getStoredAccount(userId: number): Promise<string | null> {
     return null;
   }
 }
+/**
+ * MONEY-SAFETY (audit H13): perps money routes take `accountId` from the client.
+ * Bind it to the authenticated user before any order/close is built.
+ *
+ * Enforce-if-known, bind-on-first-use: once a user has a stored account, only
+ * THAT account may be operated on. If none is stored yet (the account route
+ * normally stores it on first read), the supplied id is claimed for this user,
+ * which stops any later actor from operating on it. Fails CLOSED on a claim
+ * conflict.
+ */
+export async function assertOwnsPerpAccount(userId: number, accountId: string): Promise<boolean> {
+  const supplied = accountId.trim().toLowerCase();
+  if (!supplied) return false;
+  const stored = await getStoredAccount(userId);
+  if (stored) return stored.trim().toLowerCase() === supplied;
+  // No mapping yet: make sure nobody else has already claimed this account.
+  try {
+    const r = await db().execute({
+      sql: "SELECT k FROM global_kv WHERE k LIKE 'waterx_acct:%' AND lower(v_text) = ? LIMIT 1",
+      args: [supplied],
+    });
+    if (r.rows.length > 0) {
+      console.warn(`[waterx] perp account ${supplied} already claimed by another user; denying user=${userId}`);
+      return false;
+    }
+  } catch {
+    return false; // fail closed
+  }
+  await storeAccount(userId, accountId);
+  return true;
+}
+
 export async function storeAccount(userId: number, accountId: string): Promise<void> {
   try {
     await db().execute({

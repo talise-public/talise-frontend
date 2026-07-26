@@ -40,6 +40,7 @@ import {
 } from "@/components/app";
 import { HandleClaimCard } from "./HandleClaimCard";
 import { CurrencyPicker } from "./CurrencyPicker";
+import { IdentityCard } from "./IdentityCard";
 
 // Talise's live + near-term corridor countries. `country` is stored as an
 // ISO code (the settings route caps it at 8 chars); we show full names.
@@ -344,6 +345,9 @@ export function SettingsScreen() {
 
         </GlassCard>
       </section>
+
+      {/* ── Identity (KYC) ───────────────────────────────────────────────── */}
+      <IdentityCard />
 
       {/* ── Wallet ───────────────────────────────────────────────────────── */}
       <section className="space-y-3">

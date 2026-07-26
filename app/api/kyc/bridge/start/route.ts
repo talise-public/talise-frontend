@@ -6,6 +6,7 @@ import { bridgeAdapter } from "@/lib/onramp/bridge";
 import { upsertOnrampKyc } from "@/lib/onramp/kyc-store";
 import { bridgeConfigured } from "@/lib/bridge/client";
 import { rateLimitAsync } from "@/lib/rate-limit";
+import { trackKycCompleted, trackKycStarted } from "@/lib/analytics/emit";
 import type { KycProfile } from "@/lib/onramp/types";
 
 export const runtime = "nodejs";
@@ -115,6 +116,15 @@ export async function POST(req: Request) {
       status: customer.status,
       country: profile.country,
     });
+    // GROWTH: hosted verification has actually been provisioned (Bridge handed
+    // back a customer + link), so this is a real funnel start rather than a tap.
+    // Bridge returns an already-`approved` customer when the user resumes after
+    // clearing, which is a completion, not a start.
+    if (customer.status === "approved") {
+      trackKycCompleted(userId, { surface: "kyc.bridge" });
+    } else {
+      trackKycStarted(userId, { surface: "kyc.bridge" });
+    }
     return NextResponse.json({
       provider: "bridge",
       status: customer.status,

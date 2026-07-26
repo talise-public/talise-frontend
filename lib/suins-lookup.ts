@@ -130,6 +130,112 @@ export async function findTaliseSubnameForOwner(
   );
 }
 
+// ── Reverse lookup for DISPLAY (any SuiNS name, not just ours) ──────────────
+//
+// `findTaliseSubnameForOwner` above answers "does this user have a Talise
+// handle we should show them on Home". This one answers a different question:
+// "what name should we print instead of 0xac1d…9df0 for a counterparty".
+//
+// Two differences that matter:
+//
+//   1. It accepts ROOT `.sui` names too (`suins_registration::SuinsRegistration`),
+//      not only our `*.talise.sui` subnames — a counterparty who is not a Talise
+//      user can still have a perfectly good SuiNS name.
+//   2. It requires the name's `targetAddress` to be THIS address. For "my own
+//      handle" a non-null target is enough, but for a counterparty label a name
+//      NFT sitting in a wallet while pointing somewhere else is the wrong label:
+//      printing it would tell the user they paid someone they did not.
+//
+// Talise subnames still win when an address holds both, so an app user reads as
+// `sele@talise.sui` rather than whatever root name they happen to also own.
+
+/** A name that resolves TO the address we looked up. */
+export type ReverseName = {
+  /** Bare Talise username, or null when this is a root `.sui` name. */
+  username: string | null;
+  /** SuiNS canonical full name: `sele.talise.sui` or `alice.sui`. */
+  fullName: string;
+};
+
+const REVERSE_NAME_CACHE_TTL_MS = 5 * 60_000;
+
+/**
+ * Reverse-resolve one address to the best SuiNS name that points at it, or
+ * null. Cached for 5 minutes per address (name ownership barely ever changes),
+ * and never throws — a resolver fault is a missing label, never an error.
+ */
+export async function findReverseNameForOwner(
+  owner: string
+): Promise<ReverseName | null> {
+  if (!owner) return null;
+  return memoTtl(
+    `reverse-suins:${owner.toLowerCase()}`,
+    REVERSE_NAME_CACHE_TTL_MS,
+    () => _findReverseNameForOwnerUncached(owner)
+  ).catch(() => null);
+}
+
+async function _findReverseNameForOwnerUncached(
+  owner: string
+): Promise<ReverseName | null> {
+  const wanted = owner.toLowerCase();
+  const candidates: string[] = []; // full SuiNS names, Talise subnames first
+  const client = sui();
+  try {
+    let cursor: string | null = null;
+    for (let page = 0; page < 4; page++) {
+      const r: Awaited<
+        ReturnType<typeof client.listOwnedObjects<{ display: true }>>
+      > = await client.listOwnedObjects({
+        owner,
+        limit: 50,
+        cursor,
+        include: { display: true },
+      });
+      for (const o of r.objects ?? []) {
+        const t = o.type ?? "";
+        const isSub = /subdomain_registration::SubDomainRegistration/.test(t);
+        const isRoot = /suins_registration::SuinsRegistration/.test(t);
+        if (!isSub && !isRoot) continue;
+        const name = readDisplayName(o.display);
+        if (!name.endsWith(".sui")) continue;
+        // Talise subnames to the front, everything else appended.
+        if (name.endsWith(PARENT_SUFFIX)) candidates.unshift(name);
+        else candidates.push(name);
+      }
+      if (!r.cursor) break;
+      cursor = r.cursor;
+    }
+  } catch {
+    return null;
+  }
+
+  if (candidates.length === 0) return null;
+
+  try {
+    const { SuinsClient } = await import("@mysten/suins");
+    const suins = new SuinsClient({ client: client as never, network: "mainnet" });
+    for (const full of candidates.slice(0, 8)) {
+      try {
+        const rec = await suins.getNameRecord(full);
+        const target = rec?.targetAddress?.toLowerCase();
+        if (!target || target !== wanted) continue;
+        return {
+          username: full.endsWith(PARENT_SUFFIX)
+            ? full.slice(0, -PARENT_SUFFIX.length)
+            : null,
+          fullName: full,
+        };
+      } catch {
+        // "Object does not exist" / RPC hiccup, try the next candidate.
+      }
+    }
+  } catch {
+    // SuinsClient init failed, no label rather than a wrong one.
+  }
+  return null;
+}
+
 async function _findTaliseSubnameForOwnerUncached(
   owner: string
 ): Promise<OwnedSubname | null> {

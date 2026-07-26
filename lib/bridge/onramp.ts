@@ -11,9 +11,9 @@ import {
  *
  * A virtual account is a persistent bank account number issued to a customer.
  * Any fiat they deposit (USD via ACH/FedNow/wire, EUR/GBP via SEPA/Faster
- * Payments) is auto-converted and delivered as **USDsui directly to their Sui
- * address**, no swap, no widget redirect. The user just sees "send money to
- * this account number / IBAN."
+ * Payments) is auto-converted and delivered as **USDC on Sui, directly to their
+ * own address** — no widget redirect. The user just sees "send money to this
+ * account number / IBAN." A USDC -> USDsui conversion finishes money-in.
  *
  * This is the clean recurring-funding UX. (For a one-off, `createOnrampTransfer`
  * returns ad-hoc deposit instructions instead.)

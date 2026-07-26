@@ -8,8 +8,7 @@ import { resolveRecipient } from "@/lib/suins";
 import { screenTransfer } from "@/lib/screening";
 import {
   teamStreamsEnabled,
-  teamStreamEscrowAddress,
-  createDraftTeamStream,
+  prepareCreateTeamStream,
   type TeamStreamMember,
 } from "@/lib/team-streams";
 
@@ -23,9 +22,13 @@ const MAX_USD = 10_000;
  *
  * Draft a team stream: fund `totalUsd` once, then equal shares stream to every
  * member of team `teamId` over `numTranches` payouts, one every `intervalMinutes`.
- * Resolves + screens every member, drafts the stream, and returns the escrow
- * address to fund (the client sends `totalUsd` USDsui there over the normal
- * gasless rail, then calls /record with the funding digest).
+ * Resolves + screens every member, drafts the stream, and returns the sponsor-ready
+ * `team_stream::create` bytes.
+ *
+ * The client signs those bytes (→ /api/zk/sponsor-execute) and posts the digest to
+ * /api/payouts/streams/record. That ONE transaction moves the whole pot into a
+ * stream object the creator owns — Talise never custodies it, and the tranches
+ * release permissionlessly on chain from then on (no escrow key, no cron).
  *
  * Body: { teamId, totalUsd, numTranches, intervalMinutes }
  */
@@ -102,7 +105,7 @@ export async function POST(req: Request) {
 
   try {
     const totalMicros = BigInt(Math.round(totalUsd * 1e6));
-    const stream = await createDraftTeamStream({
+    const { stream, bytes, firstDueMs } = await prepareCreateTeamStream({
       senderUserId: userId,
       senderAddress: user.sui_address,
       teamId: team.id,
@@ -113,11 +116,14 @@ export async function POST(req: Request) {
       intervalMs: intervalMinutes * 60_000,
     });
     return NextResponse.json({
+      mode: "onchain",
       streamId: stream.id,
-      escrowAddress: teamStreamEscrowAddress(),
+      bytes,
+      firstDueMs,
       totalUsd: stream.totalUsd,
       perMemberUsd: stream.perMemberUsd,
       trancheUsd: stream.trancheUsd,
+      dustUsd: stream.dustUsd,
       numTranches: stream.numTranches,
       memberCount: stream.memberCount,
       intervalMs: stream.intervalMs,

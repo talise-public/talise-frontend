@@ -178,6 +178,24 @@ export function validateTransactCommands(
   let transactIdx = -1;
   let transferCount = 0;
   let transferCmd: Command | null = null;
+  /**
+   * Per-constructor counts. `extractExtData` resolves the ExtData by taking the
+   * FIRST `ext_data::new` in the PTB, but nothing forced `transact` to consume
+   * THAT one. A PTB carrying TWO `ext_data::new` calls (a compliant decoy first,
+   * the real one second) would be validated against the decoy while `transact`
+   * consumed the attacker's, defeating the relayer + fee assertions entirely.
+   *
+   * Pinning each constructor to EXACTLY ONE occurrence closes the substitution:
+   * `Proof` / `ExtData` are non-`key` structs, so they cannot be supplied as a
+   * Pure or object input, they can ONLY reach `transact` as the Result of an
+   * in-PTB constructor. With exactly one of each in the PTB, the value we
+   * validate is necessarily the value `transact` consumes.
+   *
+   * The SDK's `buildTransact` (lib/shield/sdk/tx.ts) emits exactly one
+   * `proof::new` and one `ext_data::new`, so this rejects nothing legitimate.
+   */
+  let extDataNewCount = 0;
+  let proofNewCount = 0;
 
   commands.forEach((cmd, idx) => {
     const kind = cmd.$kind;
@@ -200,7 +218,10 @@ export function validateTransactCommands(
         return;
       }
       if (CONSTRUCTOR_TARGETS.has(modFn)) {
-        // proof::new / ext_data::new, allowed assembly calls.
+        // proof::new / ext_data::new, allowed assembly calls. Counted so the
+        // duplicate-constructor substitution attack is rejected below.
+        if (modFn === "ext_data::new") extDataNewCount += 1;
+        else proofNewCount += 1;
         return;
       }
       throw new ShieldValidationError(
@@ -229,6 +250,21 @@ export function validateTransactCommands(
   if (transactCount !== 1 || !finalTransact || finalTransact.$kind !== "MoveCall") {
     throw new ShieldValidationError(
       `expected exactly one shielded_pool::transact[_with_account], found ${transactCount}`
+    );
+  }
+
+  // ── Constructor uniqueness (anti-substitution) ────────────────────────────
+  // See the note on `extDataNewCount` above: more than one constructor call
+  // would let the PTB validate against a decoy while `transact` consumes a
+  // different Proof / ExtData.
+  if (extDataNewCount !== 1) {
+    throw new ShieldValidationError(
+      `expected exactly one ext_data::new, found ${extDataNewCount}`
+    );
+  }
+  if (proofNewCount !== 1) {
+    throw new ShieldValidationError(
+      `expected exactly one proof::new, found ${proofNewCount}`
     );
   }
 

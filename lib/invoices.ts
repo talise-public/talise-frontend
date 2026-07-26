@@ -4,6 +4,7 @@ import { db, ensureSchema, userById } from "@/lib/db";
 import { getNormalizedTransaction } from "@/lib/sui-shapes";
 import { isUsdsui } from "@/lib/usdsui";
 import { readActivitySnapshot } from "@/lib/snapshots";
+import { resolveDisplayNames, type DisplayNames } from "@/lib/display-name";
 
 /**
  * Invoices v2, the Work hub's "get paid for work" backend.
@@ -159,6 +160,8 @@ export interface WorkInvoice {
   paidAt: number | null;
   payDigest: string | null;
   paidByAddress: string | null;
+  /** Live-resolved name for the payer, or null when they have none. */
+  paidByName: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -223,8 +226,17 @@ export function sanitizeLineItems(
   return { items, total: Math.round(total * 100) / 100 };
 }
 
-/** Parse a stored row into the UI-facing shape. */
-export function projectInvoice(row: WorkInvoiceRow): WorkInvoice {
+/**
+ * Parse a stored row into the UI-facing shape.
+ *
+ * `names` is optional batch-resolved display names for the PAYER address. When
+ * absent, `paidByName` is null and callers fall back to the address, which is
+ * what every surface did before names existed.
+ */
+export function projectInvoice(
+  row: WorkInvoiceRow,
+  names?: DisplayNames
+): WorkInvoice {
   let lineItems: WorkInvoiceLineItem[] = [];
   try {
     const parsed = JSON.parse(row.line_items || "[]");
@@ -247,6 +259,10 @@ export function projectInvoice(row: WorkInvoiceRow): WorkInvoice {
     paidAt: row.paid_at != null ? Number(row.paid_at) : null,
     payDigest: row.pay_digest,
     paidByAddress: row.paid_by_address,
+    // Settlement only ever recorded the payer's ADDRESS, so "paid by" was a
+    // permanent `0x…`. Nothing is stored for us to fall back to here, so this
+    // is either a live name or null.
+    paidByName: names?.get(row.paid_by_address) ?? null,
   };
 }
 
@@ -297,7 +313,13 @@ export async function workInvoicesFor(userId: number): Promise<WorkInvoice[]> {
     sql: "SELECT * FROM work_invoices WHERE user_id = ? ORDER BY created_at DESC LIMIT 200",
     args: [userId],
   });
-  return (r.rows as unknown as WorkInvoiceRow[]).map(projectInvoice);
+  const rows = r.rows as unknown as WorkInvoiceRow[];
+  // ONE batched payer-name resolve for the whole list, not one per invoice.
+  const names = await resolveDisplayNames(
+    rows.map((row) => row.paid_by_address),
+    { form: "full" }
+  );
+  return rows.map((row) => projectInvoice(row, names));
 }
 
 export async function workInvoiceById(id: string): Promise<WorkInvoice | null> {
@@ -307,7 +329,9 @@ export async function workInvoiceById(id: string): Promise<WorkInvoice | null> {
     args: [id],
   });
   const row = r.rows[0] as unknown as WorkInvoiceRow | undefined;
-  return row ? projectInvoice(row) : null;
+  if (!row) return null;
+  const names = await resolveDisplayNames([row.paid_by_address], { form: "full" });
+  return projectInvoice(row, names);
 }
 
 /** Void an open invoice (owner-only; enforced by the route). No-op if not open. */

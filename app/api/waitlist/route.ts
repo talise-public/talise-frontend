@@ -11,6 +11,8 @@
 // write, no email send, zero attack surface. To restore the old email-signup
 // behavior, `git revert` the commit that introduced this change.
 import { NextResponse } from "next/server";
+import { abuseLog } from "@/lib/abuse/log";
+import { clientIpFromHeaders } from "@/lib/abuse/ip-reputation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +22,33 @@ const GONE = {
     "This sign-up endpoint has been retired. Join the waitlist at /waitlist (sign in with Google).",
 } as const;
 
-function gone() {
+// Deliberately NOT rate-limited: a 410 with no body parse, no DB touch and
+// no email send is already cheaper than any limiter check would be (a
+// Postgres/Redis round-trip per request would make a flood MORE expensive
+// for us, not less). What was missing is visibility — a resumed flood on the
+// original spam vector should be obvious in the logs. So we log with the
+// standard `[abuse]` prefix, SAMPLED (first hit per instance, then every
+// 100th) so the flood itself can't turn into a log-volume bill.
+let goneHits = 0;
+const LOG_EVERY = 100;
+
+// The first argument must be a required `Request` — Next.js validates route
+// handler signatures at build time and rejects an optional first param
+// ("Type 'Request | undefined' is not a valid type for the function's first
+// argument"). The unit test that locks in this 410 contract
+// (__tests__/sui/waitlist-turnstile) passes a Request, so nothing needs it to
+// be optional; the internals stay defensive in case it is ever called bare.
+function gone(req: Request) {
+  goneHits += 1;
+  if (goneHits === 1 || goneHits % LOG_EVERY === 0) {
+    abuseLog("rate_limited", {
+      route: "waitlist-retired",
+      action: "gone_410",
+      ip: req ? clientIpFromHeaders(req.headers) : "unknown",
+      method: req?.method,
+      hits_this_instance: goneHits,
+    });
+  }
   return NextResponse.json(GONE, {
     status: 410,
     headers: {

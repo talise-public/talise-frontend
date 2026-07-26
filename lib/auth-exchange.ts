@@ -12,6 +12,7 @@ import {
   REFERRAL_CODE_RE,
 } from "@/lib/db";
 import { POINTS } from "@/lib/rewards";
+import { emitGrowthEvent } from "@/lib/referral-events";
 import { shinamiEnabled, shinamiGetWallet } from "@/lib/shinami";
 import {
   setSessionCookie,
@@ -42,10 +43,69 @@ export type SignInResult =
     }
   | { ok: false; err: string };
 
+/** Uppercase + validate a candidate referral code, or null. */
+export function normalizeReferralCode(
+  raw: string | null | undefined
+): string | null {
+  const code = (raw ?? "").trim().toUpperCase();
+  return REFERRAL_CODE_RE.test(code) ? code : null;
+}
+
+/**
+ * Run attribution AND record the outcome. The single place referral credit is
+ * granted, shared by the browser sign-in path and the native claim route so
+ * the anti-abuse rules can't drift between them.
+ *
+ * `attributeReferral` itself keeps every guard it already had: self-referral
+ * rejection, and an atomic compare-and-swap on `referred_by_user_id IS NULL`
+ * so exactly one inviter can ever be credited for a referee. We add nothing to
+ * that; we only stop DISCARDING its verdict.
+ */
+export async function attributeReferralInstrumented(
+  userId: number,
+  code: string,
+  surface: "web" | "native"
+): Promise<{ ok: boolean; reason?: string; inviterId?: number }> {
+  const result = await attributeReferral(userId, code, {
+    referrer: POINTS.REFERRAL_SIGNUP_REFERRER,
+    referee: POINTS.REFERRAL_SIGNUP_REFEREE,
+  });
+  if (result.ok) {
+    await emitGrowthEvent("invite_signup", {
+      userId,
+      code,
+      surface,
+      inviterId: result.inviterId,
+    });
+  } else {
+    // The reason matters: "invalid code" is a broken link, "already referred"
+    // is a double-submit or a race, "self referral" is abuse. Silently
+    // dropping these is exactly why nobody could tell mobile was 100% unattributed.
+    await emitGrowthEvent("invite_attribution_failed", {
+      userId,
+      code,
+      surface,
+      reason: result.reason ?? "unknown",
+    });
+    console.warn(
+      `[referral/attribute] user=${userId} code=${code} surface=${surface} refused: ${result.reason}`
+    );
+  }
+  return result;
+}
+
 export async function completeSignIn(opts: {
   code: string;
   redirectUri: string;
   country: string | null;
+  /**
+   * Referral code supplied EXPLICITLY by the caller, for clients that have no
+   * cookie jar. Native sign-in never carries `talise_ref`, so without this the
+   * mobile half of the loop was structurally impossible to attribute. Takes
+   * precedence over the cookie when both are present (an explicit code is the
+   * more recent, more deliberate signal).
+   */
+  ref?: string | null;
 }): Promise<SignInResult> {
   const { id_token } = await exchangeCodeForTokens(opts.code, opts.redirectUri);
   const claims = decodeJwt(id_token);
@@ -92,16 +152,20 @@ export async function completeSignIn(opts: {
     user.salt = salt;
   }
 
-  // Attribute a waitlist referral on the user's FIRST sign-in. Idempotent and
+  // Attribute a referral on the user's FIRST sign-in. Idempotent and
   // best-effort, never wedge sign-in.
+  //
+  // Two sources, in priority order:
+  //   1. `opts.ref`, passed by the caller (web exchange body, native client).
+  //   2. the signed httpOnly `talise_ref` cookie set by /r/<CODE>.
+  // Browsers get both; native gets only (1), which is the whole point.
   if (isNew) {
     try {
-      const refCode = ((await readReferralCookie()) ?? "").trim().toUpperCase();
-      if (REFERRAL_CODE_RE.test(refCode)) {
-        await attributeReferral(user.id, refCode, {
-          referrer: POINTS.REFERRAL_SIGNUP_REFERRER,
-          referee: POINTS.REFERRAL_SIGNUP_REFEREE,
-        });
+      const refCode =
+        normalizeReferralCode(opts.ref) ??
+        normalizeReferralCode(await readReferralCookie());
+      if (refCode) {
+        await attributeReferralInstrumented(user.id, refCode, "web");
       }
     } catch (e) {
       console.warn(`[sign-in/referral] ${user.email}: ${(e as Error).message}`);

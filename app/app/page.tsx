@@ -27,9 +27,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Perps launch banner, links into the trading surface. */}
+      {/* Perps launch banner → the dedicated perps.talise.io terminal. */}
       <a
-        href="/perps"
+        href="https://perps.talise.io"
         className="group flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-accent-light)] px-4 py-2.5 text-center text-[#1c3d12] transition-colors hover:bg-[#bcf2a2]"
       >
         <span className="bg-[#1c3d12] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--color-accent-light)] sm:text-[9.5px]">New</span>

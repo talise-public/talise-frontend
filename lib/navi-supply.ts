@@ -75,25 +75,52 @@ async function adapter(): Promise<NaviAdapter> {
 }
 
 /**
- * Pre-warm the NAVI adapter so the first round-up send doesn't pay the
- * cold-start RPC cost inside `appendNaviSupply`. The adapter's
- * `init()` fetches pool registry + reserve metadata from chain (one
- * fat gRPC round-trip, ~400–900ms cold). After warm, subsequent
- * `adapter()` calls return the cached instance synchronously.
+ * Pre-warm the NAVI supply path so the first Spend + Save send doesn't pay the
+ * cold RPC cost inside `appendNaviSupply`.
  *
- * Intentionally NOT called at module load (it does RPC and would
- * stall every cold start, including handlers that never touch NAVI).
- * The right place to call it is `/api/zk/warmup`, which iOS hits on
- * dashboard load, so the cost hides behind the user reading their
- * balances, not behind the Send button.
+ * MEASURED (2026-07-25, mainnet, scripts/probes/probe-spend-save-latency.mjs):
  *
- * Returns true on successful warm, false on any failure (we never let
- * a warmup failure surface to the user; the real send path will
- * re-attempt and surface a clear error if NAVI is genuinely down).
+ *   NaviAdapter.init()                             0 ms
+ *   appendNaviSupply, 1st call in a fresh process   3344 ms   ← the real cost
+ *   appendNaviSupply, subsequent calls              p50 464 / p95 857 ms
+ *   appendNaviSupply, 1st call after this warm      ~276 ms
+ *
+ * So the previous version of this function — which only awaited `adapter()` —
+ * warmed NOTHING. `init()` is lazy: it registers the client and returns without
+ * a single network round-trip (0 ms, measured). Everything expensive (pool
+ * registry, reserve metadata, the Pyth oracle tables) is fetched lazily the
+ * first time `addSaveToTx` runs, i.e. inside the user's send. That is the 3.3s
+ * this warm exists to absorb, and it was being missed entirely.
+ *
+ * The fix is to warm through the same call the send path uses: build a
+ * THROWAWAY supply onto a Transaction we never build, sign or broadcast. It is
+ * pure reads, it populates exactly the caches `appendNaviSupply` needs, and the
+ * Transaction is garbage collected.
+ *
+ * Intentionally NOT called at module load (it does RPC and would stall every
+ * cold start, including handlers that never touch NAVI). The right place is
+ * `/api/zk/warmup`, which the clients hit on dashboard load, so the cost hides
+ * behind the user reading their balances rather than behind the Send button.
+ *
+ * Returns true on successful warm, false on any failure. A warmup failure is
+ * never surfaced to the user: the send path re-attempts, and if NAVI is
+ * genuinely down the send still lands without the save leg.
  */
-export async function initNaviAdapter(): Promise<boolean> {
+export async function initNaviAdapter(warmAddress?: string): Promise<boolean> {
   try {
     await adapter();
+    // Any address works: the expensive caches (pool registry, reserve
+    // metadata, Pyth price tables) are GLOBAL, and only the `listCoins` read
+    // inside `sourceUsdsuiCoin` is per-address. VERIFIED by probe
+    // (MODE=prewarm-other): warming through the treasury address took the
+    // first call for an unrelated user from 3344 ms to 268 ms. That is what
+    // lets `/api/zk/warmup` stay unauthenticated.
+    const addr = warmAddress ?? TREASURY_WALLET;
+    // 0.01 USDsui is the smallest round-up we ever build, so this warms the
+    // exact code path at the exact scale the hot path uses.
+    const throwaway = new Transaction();
+    throwaway.setSender(addr);
+    await appendNaviSupply(throwaway, addr, 0.01);
     return true;
   } catch {
     return false;

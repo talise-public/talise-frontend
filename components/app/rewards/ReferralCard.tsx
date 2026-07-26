@@ -10,10 +10,28 @@ import {
   UserMultiple02Icon,
 } from "@hugeicons/core-free-icons";
 import { GlassCard, MicroLabel, PrimaryButton, useToast } from "@/components/app";
+import {
+  INVITE_SHARE_TEXT,
+  INVITE_SHARE_TITLE,
+  inviteUrl as buildInviteUrl,
+} from "./share-copy";
 
 /** Build the shareable invite URL for a code, using the live origin. */
 function inviteUrl(code: string): string {
-  return `${publicOrigin()}/r/${code}`;
+  return buildInviteUrl(code, publicOrigin());
+}
+
+/**
+ * Report that an invite actually left the app. Fire-and-forget, `keepalive` so
+ * it survives the share sheet stealing focus / an immediate navigation.
+ */
+function reportInviteSent(code: string, channel: "share" | "copy"): void {
+  void fetch("/api/referral/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "invite_sent", code, surface: "web", channel }),
+    keepalive: true,
+  }).catch(() => {});
 }
 
 /**
@@ -37,10 +55,11 @@ export function ReferralCard({
   if (!code) return null;
   const url = inviteUrl(code);
 
-  async function copy() {
+  async function copy(channel: "share" | "copy" = "copy") {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      reportInviteSent(code, channel);
       toast("Invite link copied", "success");
       clearTimeout(copiedTimer.current);
       copiedTimer.current = setTimeout(() => setCopied(false), 1600);
@@ -50,21 +69,20 @@ export function ReferralCard({
   }
 
   async function share() {
-    const data = {
-      title: "Talise",
-      text: "Join me on Talise, send and save money across borders.",
-      url,
-    };
+    // Copy comes from ./share-copy.ts, the same strings iOS and Android render
+    // (they read them off /api/referral/summary).
+    const data = { title: INVITE_SHARE_TITLE, text: INVITE_SHARE_TEXT, url };
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share(data);
+        reportInviteSent(code, "share");
         return;
       } catch {
         // User dismissed the share sheet, or it's unsupported, fall through
         // to copy so the action always does *something*.
       }
     }
-    await copy();
+    await copy("share");
   }
 
   return (
@@ -74,7 +92,7 @@ export function ReferralCard({
       {/* Code pill, glass chip with copy action */}
       <button
         type="button"
-        onClick={copy}
+        onClick={() => copy("copy")}
         className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#15300c]/15 bg-white/60 px-4 py-3 text-left backdrop-blur-sm transition-[border-color] hover:border-[#15300c]/30"
       >
         <span className="truncate font-mono text-[15px] tracking-wide text-[#15300c]">{code}</span>

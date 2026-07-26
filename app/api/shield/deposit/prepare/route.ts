@@ -8,7 +8,7 @@ import { fromBase64, toBase64 } from "@mysten/sui/utils";
 import { sui } from "@/lib/sui";
 import { onara } from "@/lib/onara";
 import { memoTtl } from "@/lib/perf-cache";
-import { shieldConfigured, SHIELD } from "@/lib/shield/onchain";
+import { shieldConfigured, shieldMaintenance, SHIELD } from "@/lib/shield/onchain";
 import { refreshMerkleCache } from "@/lib/shield/merkle";
 import { appendShieldDeposit, type ShieldDepositProof } from "@/lib/shield/deposit-ptb";
 import { jsonRpcResolutionPlugin } from "@/lib/shield/resolve";
@@ -61,6 +61,12 @@ const SPONSOR_GAS_BUDGET_MIST = 60_000_000n;
  * Returns { bytes, mode: "sponsored" } or a 503/4xx that fails closed.
  */
 export async function POST(req: Request) {
+  if (shieldMaintenance()) {
+    return NextResponse.json(
+      { error: "Private sends are currently in maintenance.", code: "SHIELD_MAINTENANCE" },
+      { status: 503 }
+    );
+  }
   if (!shieldConfigured() || !SHIELD.packageId || !SHIELD.poolUsdsui) {
     return NextResponse.json(
       { error: "privacy not yet live", code: "SHIELD_OFF" },

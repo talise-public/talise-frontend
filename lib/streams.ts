@@ -8,34 +8,40 @@ import { sui } from "@/lib/sui";
 import { USDSUI_TYPE } from "@/lib/usdsui";
 import { onara } from "@/lib/onara";
 import { getNormalizedTransaction } from "@/lib/sui-shapes";
+import { resolveDisplayNames, type DisplayNames } from "@/lib/display-name";
 
 /**
- * Streaming USDsui payments, backend data layer + escrow release engine.
+ * Streaming USDsui payments, backend data layer.
  *
- * This is the ESCROW + SCHEDULER variant of the design
- * (docs/features/streaming-payments.md §2 option (c), made runnable today
- * WITHOUT a published `talise::stream` Move module):
+ * THERE IS NO SCHEDULER. A stream is a real shared `Stream<USDSUI>` Move
+ * object (`move/talise/sources/stream.move`) holding the full amount as a
+ * `Balance<USDSUI>`, and the on-chain `Clock` decides what is due. Money moves
+ * when someone calls the PERMISSIONLESS `stream::claim_accrued`, which walks
+ * the schedule and hard-transfers every due tranche to the stream's hardwired
+ * `recipient`. Because the destination is fixed at create time, ANY party can
+ * push a stream forward and the funds can only ever land on the recipient, so
+ * both the recipient's app AND the sender's app fire due claims on open
+ * (mirroring the money-rules trigger). That is what makes it actually stream.
  *
- *   • The sender funds the FULL stream amount ONCE into a Talise-controlled
- *     ESCROW address via the existing transfer pipeline (a plain USDsui
- *     `0x2::balance::send_funds` send, the same builder /api/send/
- *     sponsor-prepare uses). That escrow address is derived from the server
- *     ESCROW keypair (`STREAM_ESCROW_SK`), mirroring the operator-keypair
- *     pattern in web/lib/suins-operator.ts.
- *   • A Vercel cron (`/api/cron/process-streams`) releases each due tranche
- *     by having THIS backend sign an escrow→recipient USDsui transfer with
- *     the server ESCROW keypair. The release is a gasless
- *     `0x2::balance::send_funds<USDSUI>` from the escrow's Address Balance
- *     accumulator when the accumulator is funded (it is, because the sender
- *     just funded it via the same accumulator rail).
+ * TRUTH MODEL. Two different questions, kept strictly apart:
  *
- * Degrade-clean: if `STREAM_ESCROW_SK` is unset, `streamEscrowEnabled()` is
- * false, escrow funding is rejected at create time, and the cron no-ops.
+ *   • ACCRUED — what the Clock has earned. Pure schedule arithmetic
+ *     (`accruedTranches`), identical to the contract's own `due_at` walk.
+ *   • RELEASED — what has actually reached the recipient's wallet. ONLY ever
+ *     mirrored from the contract's own `tranches_done` / `released_amount`
+ *     cursors (`readOnchainStream` → `syncStreamFromChain`). Never inferred
+ *     from the schedule, because an accrued-but-unclaimed tranche is still
+ *     sitting in the Stream object's escrow.
  *
- * Future-hardened path: a published `talise::stream` Move module (gated
- * behind `STREAM_PACKAGE_ID`). `streamPackageId()` returns it when set;
- * nothing here depends on it being set, so an unset id never breaks
- * build/runtime. See `move/talise/sources/stream.move` for the source.
+ * The UI shows RELEASED as progress and ACCRUED only as "ready to claim", so
+ * no figure is shown that the chain does not back.
+ *
+ * `completed` is DERIVED (`derivedStreamState`), never stored: with no
+ * scheduler there is nothing to write it, so deriving it from the contract
+ * cursor is what keeps the card correct.
+ *
+ * Legacy: `STREAM_ESCROW_SK` / `streamEscrowEnabled()` are the retired
+ * escrow + cron rail, kept only so old `str_…` rows still read cleanly.
  *
  * µUSDsui = BIGINT, 6 decimals.
  */
@@ -335,35 +341,252 @@ export async function setStreamState(id: string, state: StreamState): Promise<vo
   });
 }
 
+// ── The chain is the source of truth for RELEASED ────────────────────────
+
+/** The subset of the live `Stream<T>` object the mirror tracks. */
+export interface OnchainStreamState {
+  /** The contract's release cursor. Incremented in the SAME tx that transfers
+   *  the tranche, so it can never overstate what the recipient received. */
+  tranchesDone: number;
+  /** Cumulative µUSDsui actually transferred to the recipient. */
+  releasedMicros: number;
+  /** µUSDsui still locked in the Stream object (refundable on cancel). */
+  escrowMicros: number;
+  paused: boolean;
+  cancelled: boolean;
+}
+
+/** Move `u64` json comes back as a decimal string over gRPC. */
+function u64(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) return Math.max(0, Math.trunc(v));
+  if (typeof v === "string" && /^\d+$/.test(v)) return Number(v);
+  return 0;
+}
+
+/**
+ * Read the live `Stream<USDSUI>` object's cursors. This is the ONLY authority
+ * on how much money has actually landed: `released_amount` is bumped by the
+ * contract inside the very tx that transfers the tranche.
+ *
+ * Never throws — returns null when the object can't be read, so every caller
+ * degrades to the stored mirror rather than failing a page load.
+ */
+export async function readOnchainStream(
+  streamObjectId: string
+): Promise<OnchainStreamState | null> {
+  if (!isOnchainStreamId(streamObjectId)) return null;
+  try {
+    const res = await (
+      sui() as unknown as {
+        getObject: (a: {
+          objectId: string;
+          include: { json: boolean };
+        }) => Promise<{ object?: { json?: Record<string, unknown> | null } | null }>;
+      }
+    ).getObject({ objectId: streamObjectId, include: { json: true } });
+    const json = res.object?.json;
+    if (!json || typeof json !== "object") return null;
+    // Refuse to interpret a shape we don't recognise. Without this a renamed or
+    // missing field would read as `tranches_done: 0` and be indistinguishable
+    // from an untouched stream, so the mirror would never advance and every
+    // screen-open would fire another (harmless but pointless) sponsored claim.
+    // `total_amount` and `num_tranches` are set at create and never zero, so
+    // their absence means the read is not a Stream we can trust.
+    if (u64(json.total_amount) === 0 || u64(json.num_tranches) === 0) return null;
+    // `escrow` is a Balance<T>, whose json is `{ value: "…" }`.
+    const escrow = json.escrow as { value?: unknown } | string | undefined;
+    return {
+      tranchesDone: u64(json.tranches_done),
+      releasedMicros: u64(json.released_amount),
+      escrowMicros: u64(
+        typeof escrow === "object" && escrow !== null ? escrow.value : escrow
+      ),
+      paused: json.paused === true,
+      cancelled: json.cancelled === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fold a chain read into the stored row and persist it. Monotonic on the
+ * release cursors (the contract's are too), so a stale read can never walk a
+ * mirror backwards.
+ *
+ * State rules, each in the SAFE direction:
+ *   • chain cancelled/paused → mirror follows (stops the auto-fire trigger).
+ *   • chain says neither, but the mirror says `cancelled` → STAY cancelled.
+ *     The cancel route flips the row before the sender signs the withdraw, and
+ *     suppressing further claims while that signature is pending is the
+ *     conservative choice: the money simply stays locked and refundable.
+ *   • otherwise → active. This is how a confirmed on-chain resume un-pauses.
+ */
+async function applyOnchainStreamState(
+  row: StreamRow,
+  chain: OnchainStreamState
+): Promise<StreamRow> {
+  const num = Number(row.num_tranches);
+  const total = Number(row.total_micros);
+  const tranchesDone = Math.min(num, Math.max(Number(row.tranches_done) || 0, chain.tranchesDone));
+  const releasedMicros = Math.min(
+    total,
+    Math.max(Number(row.released_micros) || 0, chain.releasedMicros)
+  );
+  const state: StreamState = chain.cancelled
+    ? "cancelled"
+    : chain.paused
+      ? "paused"
+      : row.state === "cancelled"
+        ? "cancelled"
+        : "active";
+  const nextTrancheAt = Number(row.start_ms) + tranchesDone * Number(row.interval_ms);
+  const now = Date.now();
+
+  const unchanged =
+    tranchesDone === Number(row.tranches_done) &&
+    releasedMicros === Number(row.released_micros) &&
+    state === row.state;
+  if (unchanged) return row;
+
+  await db().execute({
+    sql: `UPDATE streams
+             SET tranches_done = ?, released_micros = ?, state = ?,
+                 next_tranche_at = ?, last_tranche_at = ?, updated_at = ?
+           WHERE id = ?`,
+    args: [
+      tranchesDone,
+      releasedMicros.toString(),
+      state,
+      nextTrancheAt,
+      tranchesDone > Number(row.tranches_done) ? now : row.last_tranche_at,
+      now,
+      row.id,
+    ],
+  });
+
+  // Append-only per-tranche ledger. The unique (stream_id, tranche_index)
+  // index makes a replayed sync a no-op, so this can never double-count.
+  for (let idx = Number(row.tranches_done) + 1; idx <= tranchesDone; idx++) {
+    const amount = trancheMicrosFor(row, idx) - trancheMicrosFor(row, idx - 1);
+    await db().execute({
+      sql: `INSERT INTO stream_tranches (stream_id, tranche_index, amount_micros, paid_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT DO NOTHING`,
+      args: [row.id, idx, Math.max(0, amount).toString(), now],
+    });
+  }
+
+  return { ...row, tranches_done: tranchesDone, released_micros: releasedMicros, state, next_tranche_at: nextTrancheAt };
+}
+
+/**
+ * Pull the contract's cursors into the mirror. `retries` re-reads with short
+ * backoff, for the moment right after a claim/pause/cancel tx when the
+ * fullnode may not have surfaced the new object version yet; it stops as soon
+ * as the read differs from what's stored.
+ *
+ * Best-effort: on an unreadable object the stored row comes back untouched.
+ */
+export async function syncStreamFromChain(
+  id: string,
+  opts: { retries?: number } = {}
+): Promise<StreamRow | null> {
+  const row = await streamById(id);
+  if (!row) return null;
+  if (!isOnchainStreamId(id)) return row;
+
+  const delays = [0, 700, 1500].slice(0, Math.max(1, (opts.retries ?? 0) + 1));
+  let last: OnchainStreamState | null = null;
+  for (const delay of delays) {
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+    const chain = await readOnchainStream(id);
+    if (!chain) continue;
+    last = chain;
+    const moved =
+      chain.tranchesDone > (Number(row.tranches_done) || 0) ||
+      chain.cancelled !== (row.state === "cancelled") ||
+      chain.paused !== (row.state === "paused");
+    if (moved) break;
+  }
+  if (!last) return row;
+  return applyOnchainStreamState(row, last);
+}
+
+/**
+ * Record a CONFIRMED stream tx (a claim, a pause, a resume or a cancel) by
+ * re-reading the contract. There is deliberately no digest-trust here: we
+ * write only what the on-chain object reports, so a bogus digest can't move
+ * the mirror by a single micro. The digest is used purely to know a tx just
+ * landed and therefore to retry the read.
+ *
+ * If every read still comes back stale the mirror simply stays behind, which is
+ * self-healing rather than wrong: `dueNow` stays true, the next screen-open
+ * fires one more claim (a no-op on chain if there is nothing left), and that
+ * confirm picks up the settled cursor.
+ */
+export async function recordStreamTx(id: string, digest: string): Promise<StreamRow | null> {
+  return syncStreamFromChain(id, { retries: digest ? 2 : 0 });
+}
+
 // ════════════════════════════════════════════════════════════════════════
-// ON-CHAIN `talise::stream` PATH (gated behind STREAM_PACKAGE_ID).
+// ON-CHAIN `talise::stream` PTB BUILDERS.
 //
-// When the package + registry ids + worker key are all set
-// (streamOnchainEnabled()), Talise creates a REAL shared `Stream<USDSUI>`
-// object instead of routing funds through the server escrow address. The
-// builders below mirror the contract ABI:
+// Every one is Onara-SPONSORED and user-signed: a custom Move call is NOT
+// gasless-eligible (only 0x2::balance::send_funds is), so Onara owns the gas
+// and the user signs the sender slot. Shape mirrors the SPONSORED branch of
+// /api/send/sponsor-prepare: onara().status() for the sponsor address +
+// reference gas price, setSender(user), setGasOwner(sponsor), setGasPrice,
+// setGasBudget, build → sponsor-ready bytes the client signs and POSTs to
+// /api/zk/sponsor-execute. NO server key is involved anywhere.
 //
+// The contract ABI the builders target:
 //   create<T>(registry, funds: Balance<T>, recipient, tranche_amount,
 //             num_tranches, start_ms, interval_ms, clock, ctx): ID
-//   release<T>(registry, stream, clock, ctx)                 // worker-signed
-//   cancel_and_withdraw<T>(stream, ctx): Coin<T>             // sender-signed
+//   claim_accrued<T>(stream, clock, ctx)          // PERMISSIONLESS
+//   pause<T>(stream, ctx) / resume<T>(stream, ctx) // sender-only
+//   cancel_and_withdraw<T>(stream, ctx): Coin<T>   // sender-only
 //
-// FUNDING PATTERN (the crux):
-//   • create is a SPONSORED tx, a custom Move call is NOT gasless-eligible
-//     (only 0x2::balance::send_funds is). So Onara sponsors gas, the user
-//     signs. Mirrors the SPONSORED branch of /api/send/sponsor-prepare:
-//     onara().status() for the sponsor address + reference gas price,
-//     setSender(user), setGasOwner(sponsor), setGasPrice, build → sponsor-
-//     ready bytes the iOS client signs and POSTs to /api/zk/sponsor-execute.
-//   • The Balance<USDSUI> `funds` argument comes from the user's Address
-//     Balance accumulator via tx.balance({ type, balance }), the SAME
-//     accumulator-withdrawal primitive the gasless branch passes to
-//     0x2::balance::send_funds, handed straight as the create() arg.
-//   • release is a WORKER-signed Move call that pays its OWN SUI gas (the
-//     worker = the STREAM_ESCROW_SK key, funded for gas). Build → worker
-//     signTransaction → executeTransaction, mirroring suins-operator.ts.
-//   • cancel_and_withdraw is SPONSORED (sender-signed), same shape as create.
+// SETTLE-BEFORE-STOP. `pause` and `cancel_and_withdraw` each COMPOSE
+// `claim_accrued` ahead of themselves in the same PTB. Without that, stopping
+// a stream would claw back tranches the Clock had already earned the recipient
+// (they sit unclaimed in the object's escrow and `cancel_and_withdraw` refunds
+// the lot to the sender). Composing makes stopping atomic and honest: the
+// recipient keeps everything due, the sender is refunded exactly the rest, and
+// the frozen figure on the card is the same number the chain holds.
+//
+// The one exception is an ALREADY-paused stream: `claim_accrued` aborts on
+// `EPaused`, so the cancel of a paused stream must not compose it (nothing new
+// could have become claimable while paused anyway).
 // ════════════════════════════════════════════════════════════════════════
+
+/**
+ * Sponsor scaffolding shared by every sender-signed control PTB. The explicit
+ * gas budget matters: without it the built bytes carry none and execution
+ * fails with InsufficientGas (the same trap `create` documents). Only the gas
+ * actually consumed is charged to the sponsor.
+ */
+async function buildSponsored(
+  senderAddress: string,
+  fill: (tx: Transaction) => void,
+  gasBudget = 60_000_000n
+): Promise<{ bytes: string; sponsor: string }> {
+  const client = sui();
+  const [{ address: sponsor }, gasPrice] = await Promise.all([
+    onara().status(),
+    client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
+  ]);
+
+  const tx = new Transaction();
+  tx.setSender(senderAddress);
+  fill(tx);
+  tx.setGasOwner(sponsor);
+  tx.setGasPrice(BigInt(gasPrice));
+  tx.setGasBudget(gasBudget);
+
+  const bytes = await tx.build({ client: client as never });
+  return { bytes: toBase64(bytes), sponsor };
+}
 
 /**
  * Build the Onara-SPONSORED `talise::stream::create<USDSUI>` PTB. The user
@@ -473,52 +696,121 @@ export async function buildStreamCreateSponsored(input: {
 }
 
 /**
+ * Gas budget for a `claim_accrued` call. The contract releases EVERY due
+ * tranche in one loop, so a stream nobody has touched for a long time needs
+ * room for many transfers in a single tx — a flat budget would abort with
+ * InsufficientGas exactly when a stream most needs pushing. Scales with the
+ * backlog, capped so a runaway schedule can't hand the sponsor a huge bill.
+ */
+function claimGasBudget(claimableTranches: number): bigint {
+  const n = BigInt(Math.max(1, Math.min(400, claimableTranches)));
+  const budget = 30_000_000n + 5_000_000n * n;
+  return budget > 1_000_000_000n ? 1_000_000_000n : budget;
+}
+
+/**
  * Build the Onara-SPONSORED `talise::stream::claim_accrued<USDSUI>` PTB.
  *
- * THIS is the cron-less release path. `claim_accrued` is permissionless on
- * chain: it walks the schedule, releases EVERY tranche whose Clock due-time has
- * passed, and transfers it to the stream's hardwired `recipient`, so there is
- * no extraction surface (a caller can only push DUE funds to the recipient,
- * never to themselves, never more than the schedule allows). The recipient
- * signs (zkLogin) and Onara sponsors the gas, so claiming is free and needs no
- * worker key and no scheduler. Returns sponsor-ready bytes the client signs and
- * POSTs to /api/zk/sponsor-execute.
+ * THIS is the cron-less release path, and it is what actually makes a stream
+ * stream. `claim_accrued` is permissionless on chain: it walks the schedule,
+ * releases EVERY tranche whose Clock due-time has passed, and transfers it to
+ * the stream's hardwired `recipient`, so there is no extraction surface (a
+ * caller can only push DUE funds to the recipient, never to themselves, never
+ * more than the schedule allows). Because of that, EITHER party's app opening
+ * can advance the stream — the recipient's and the sender's alike — and Onara
+ * sponsors the gas so it is free for whoever fires it.
+ *
+ * The contract is the real gate (it aborts on `ECancelled` / `EPaused`, and a
+ * nothing-due call is simply a no-op), so callers treat this as best-effort.
  *
  * Requires streamOnchainEnabled() upstream (caller gates).
  */
 export async function buildClaimAccruedSponsored(input: {
   /** The on-chain `Stream<USDSUI>` object id (== the stream's DB id). */
   streamObjectId: string;
-  /** The signer (the recipient, in practice). Funds always go to the
-   *  contract-hardwired recipient regardless of who signs. */
+  /** The signer, either party. Funds always go to the contract-hardwired
+   *  recipient regardless of who signs. */
   signerAddress: string;
+  /** How many tranches are due, for gas sizing. */
+  claimableTranches?: number;
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = streamPackageId();
   if (!pkg) {
     throw new Error("STREAM_PACKAGE_ID unset, on-chain stream claim disabled");
   }
 
-  const onaraClient = onara();
-  const client = sui();
+  return buildSponsored(
+    input.signerAddress,
+    (tx) => {
+      tx.moveCall({
+        target: `${pkg}::stream::claim_accrued`,
+        typeArguments: [USDSUI_TYPE],
+        arguments: [tx.object(input.streamObjectId), tx.object(SUI_CLOCK_ID)],
+      });
+    },
+    claimGasBudget(input.claimableTranches ?? 1)
+  );
+}
 
-  const [{ address: sponsor }, gasPrice] = await Promise.all([
-    onaraClient.status(),
-    client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
-  ]);
+/**
+ * Build the Onara-SPONSORED PAUSE PTB: settle everything the Clock has already
+ * earned the recipient, THEN pause. Sender-signed (the contract asserts
+ * `ctx.sender() == stream.sender`).
+ *
+ * Pausing is not a clawback: tranches whose due-time has passed belong to the
+ * recipient, so `claim_accrued` runs first in the same PTB. After this lands,
+ * the contract's `released_amount` equals what the Clock had accrued, which is
+ * exactly the figure the paused card freezes on.
+ */
+export async function buildStreamPauseSponsored(input: {
+  senderAddress: string;
+  streamObjectId: string;
+  claimableTranches?: number;
+}): Promise<{ bytes: string; sponsor: string }> {
+  const pkg = streamPackageId();
+  if (!pkg) {
+    throw new Error("STREAM_PACKAGE_ID unset, on-chain stream pause disabled");
+  }
 
-  const tx = new Transaction();
-  tx.setSender(input.signerAddress);
-  tx.moveCall({
-    target: `${pkg}::stream::claim_accrued`,
-    typeArguments: [USDSUI_TYPE],
-    arguments: [tx.object(input.streamObjectId), tx.object(SUI_CLOCK_ID)],
+  return buildSponsored(
+    input.senderAddress,
+    (tx) => {
+      tx.moveCall({
+        target: `${pkg}::stream::claim_accrued`,
+        typeArguments: [USDSUI_TYPE],
+        arguments: [tx.object(input.streamObjectId), tx.object(SUI_CLOCK_ID)],
+      });
+      tx.moveCall({
+        target: `${pkg}::stream::pause`,
+        typeArguments: [USDSUI_TYPE],
+        arguments: [tx.object(input.streamObjectId)],
+      });
+    },
+    claimGasBudget(input.claimableTranches ?? 1)
+  );
+}
+
+/**
+ * Build the Onara-SPONSORED RESUME PTB. Sender-signed. The schedule keeps its
+ * ORIGINAL timing, so a long pause leaves several tranches immediately due; the
+ * next auto-fire claim drains them in one call.
+ */
+export async function buildStreamResumeSponsored(input: {
+  senderAddress: string;
+  streamObjectId: string;
+}): Promise<{ bytes: string; sponsor: string }> {
+  const pkg = streamPackageId();
+  if (!pkg) {
+    throw new Error("STREAM_PACKAGE_ID unset, on-chain stream resume disabled");
+  }
+
+  return buildSponsored(input.senderAddress, (tx) => {
+    tx.moveCall({
+      target: `${pkg}::stream::resume`,
+      typeArguments: [USDSUI_TYPE],
+      arguments: [tx.object(input.streamObjectId)],
+    });
   });
-  // SPONSORED: Onara owns the gas; the recipient signs the sender slot.
-  tx.setGasOwner(sponsor);
-  tx.setGasPrice(BigInt(gasPrice));
-
-  const bytes = await tx.build({ client: client as never });
-  return { bytes: toBase64(bytes), sponsor };
 }
 
 /**
@@ -578,48 +870,53 @@ export async function parseCreatedStreamObjectId(
 }
 
 /**
- * Build the Onara-SPONSORED `talise::stream::cancel_and_withdraw<USDSUI>` PTB.
- * Sender-signed (the contract asserts ctx.sender() == stream.sender), Onara-
- * sponsored for gas (a custom Move call is not gasless-eligible). The returned
- * `Coin<USDSUI>` remainder is transferred back to the sender in the same PTB.
+ * Build the Onara-SPONSORED CANCEL PTB: settle everything the Clock has already
+ * earned the recipient, THEN cancel and withdraw the true remainder to the
+ * sender. Sender-signed (the contract asserts ctx.sender() == stream.sender).
  *
- * Returns sponsor-ready base64 bytes that iOS signs and POSTs to
- * /api/zk/sponsor-execute. Throws on build failure (the caller categorizes).
+ * The composed `claim_accrued` is what keeps the accounting honest. Without it,
+ * `cancel_and_withdraw` refunds the WHOLE unclaimed escrow to the sender —
+ * including tranches whose due-time had already passed — so a recipient could
+ * watch a progress bar fill and then receive none of it. With it, cancelling is
+ * atomic: recipient keeps every due tranche, sender gets exactly the rest.
+ *
+ * `settleAccrued` must be false for an already-PAUSED stream, because
+ * `claim_accrued` aborts on `EPaused` and would take the whole cancel down with
+ * it. Nothing new can have become claimable while paused, so nothing is lost.
  */
 export async function buildStreamCancelSponsored(input: {
   senderAddress: string;
   streamObjectId: string;
+  /** Compose `claim_accrued` first. False only when the stream is paused. */
+  settleAccrued?: boolean;
+  claimableTranches?: number;
 }): Promise<{ bytes: string; sponsor: string }> {
   const pkg = streamPackageId();
   if (!pkg) {
     throw new Error("STREAM_PACKAGE_ID unset, on-chain stream cancel disabled");
   }
 
-  const onaraClient = onara();
-  const client = sui();
-
-  const [{ address: sponsor }, gasPrice] = await Promise.all([
-    onaraClient.status(),
-    client.getReferenceGasPrice().then((r) => r.referenceGasPrice),
-  ]);
-
-  const tx = new Transaction();
-  tx.setSender(input.senderAddress);
-
-  // cancel_and_withdraw returns the undistributed remainder as Coin<USDSUI>;
-  // route it back to the sender in the same PTB.
-  const refund = tx.moveCall({
-    target: `${pkg}::stream::cancel_and_withdraw`,
-    typeArguments: [USDSUI_TYPE],
-    arguments: [tx.object(input.streamObjectId)],
-  });
-  tx.transferObjects([refund], input.senderAddress);
-
-  tx.setGasOwner(sponsor);
-  tx.setGasPrice(BigInt(gasPrice));
-
-  const bytes = await tx.build({ client: client as never });
-  return { bytes: toBase64(bytes), sponsor };
+  return buildSponsored(
+    input.senderAddress,
+    (tx) => {
+      if (input.settleAccrued !== false) {
+        tx.moveCall({
+          target: `${pkg}::stream::claim_accrued`,
+          typeArguments: [USDSUI_TYPE],
+          arguments: [tx.object(input.streamObjectId), tx.object(SUI_CLOCK_ID)],
+        });
+      }
+      // cancel_and_withdraw returns the undistributed remainder as
+      // Coin<USDSUI>; route it back to the sender in the same PTB.
+      const refund = tx.moveCall({
+        target: `${pkg}::stream::cancel_and_withdraw`,
+        typeArguments: [USDSUI_TYPE],
+        arguments: [tx.object(input.streamObjectId)],
+      });
+      tx.transferObjects([refund], input.senderAddress);
+    },
+    claimGasBudget(input.claimableTranches ?? 1)
+  );
 }
 
 // ── Read-side projection helpers (for the list / status routes) ─────────
@@ -627,60 +924,211 @@ export async function buildStreamCancelSponsored(input: {
 const MICROS = 1_000_000;
 
 /**
- * How many tranches the on-chain Clock has released by `now`, derived the same
- * way the `stream::claim_accrued` contract does: the first tranche is due at
- * `start_ms` and one more every `interval_ms`, capped at `num_tranches`. We
- * compute this instead of trusting `released_micros` because the stream is
- * CRON-LESS, nothing writes `released_micros` back, so it would sit at 0
- * forever and the bar would never move. The full amount is locked on-chain at
- * create, so accrued tranches are guaranteed to the recipient (a claim just
- * realizes them). Frozen for terminal states (cancelled/completed) so a stopped
- * stream doesn't keep "accruing".
+ * How many tranches the on-chain Clock has made DUE by `now`, computed exactly
+ * as `stream::claim_accrued` does it: the first tranche is due at `start_ms`,
+ * one more every `interval_ms`, capped at `num_tranches`.
+ *
+ * This is ACCRUED, not released. The difference is real money: an accrued
+ * tranche nobody has claimed is still sitting in the Stream object's escrow.
+ * Pure schedule arithmetic, no state gating — callers decide what accrual
+ * means for a stopped stream.
  */
-function accruedTranches(row: StreamRow, now: number): number {
+export function accruedTranches(row: StreamRow, now: number = Date.now()): number {
   const num = Number(row.num_tranches);
   const interval = Number(row.interval_ms);
-  if (num <= 0 || interval <= 0) return Number(row.tranches_done) || 0;
+  if (num <= 0 || interval <= 0) return 0;
   const elapsed = now - Number(row.start_ms);
   if (elapsed < 0) return 0;
   const due = Math.floor(elapsed / interval) + 1; // first tranche fires at start
   return Math.max(0, Math.min(num, due));
 }
 
-/** Project a stored row into the UI-facing status shape with USD figures. */
-export function projectStream(row: StreamRow) {
-  const total = Number(row.total_micros) / MICROS;
-  const trancheMicros = Number(row.tranche_micros);
-  const numTranches = Number(row.num_tranches);
+/**
+ * Cumulative µUSDsui that releasing `tranches` tranches pays out. The contract
+ * pays `tranche_amount` for the first (num - 1) and the WHOLE remainder on the
+ * last, so a full count is always exactly `total_micros` — that is what makes
+ * $X/N rounding land on the cent.
+ */
+function trancheMicrosFor(row: StreamRow, tranches: number): number {
+  const num = Number(row.num_tranches);
+  const total = Number(row.total_micros);
+  const n = Math.max(0, Math.min(num, tranches));
+  if (num > 0 && n >= num) return total;
+  return Math.min(total, n * Number(row.tranche_micros));
+}
 
-  // Active streams: progress comes from the Clock (accrued). Terminal/paused
-  // states keep their stored value (a cancelled stream stops accruing; a
-  // completed one is already full).
-  let tranchesDone: number;
-  let releasedMicros: number;
-  if (row.state === "active") {
-    tranchesDone = accruedTranches(row, Date.now());
-    releasedMicros = Math.min(Number(row.total_micros), tranchesDone * trancheMicros);
-  } else {
-    tranchesDone = Number(row.tranches_done) || 0;
-    releasedMicros = Number(row.released_micros) || 0;
+/**
+ * `completed` is DERIVED, never stored. Nothing writes a `completed` state —
+ * there is no scheduler to write it — which is why a finished stream used to
+ * sit on `active` forever. A stream is done when the contract's own release
+ * cursor says every tranche is out, i.e. nothing is left accruable and nothing
+ * is left to claim.
+ *
+ * `cancelled` outranks it: a cancelled stream stays cancelled even in the edge
+ * case where it was fully paid out first.
+ */
+export function derivedStreamState(row: StreamRow): StreamState {
+  if (row.state === "cancelled") return "cancelled";
+  const num = Number(row.num_tranches);
+  const total = Number(row.total_micros);
+  const done = Number(row.tranches_done) || 0;
+  const released = Number(row.released_micros) || 0;
+  if (num > 0 && done >= num) return "completed";
+  if (total > 0 && released >= total) return "completed";
+  return row.state;
+}
+
+/**
+ * Project a stored row into the UI-facing status shape.
+ *
+ * `releasedUsd` / `tranchesDone` are CONFIRMED figures, mirrored from the
+ * contract's own cursors — money that has actually landed in the recipient's
+ * wallet. `accruedUsd` / `claimableUsd` are what the Clock has earned but not
+ * yet pushed. Keeping them separate is the whole point: the progress bar only
+ * ever shows what the chain backs, and the surplus shows up as "ready to
+ * claim" instead of being quietly counted as paid.
+ *
+ * Terminal + paused streams freeze: nothing is claimable on a cancelled,
+ * completed or paused stream (the contract aborts a claim while paused), so
+ * the frozen figure is the confirmed release cursor and the bar stops where it
+ * stopped.
+ */
+export type ProjectStreamExtras = {
+  /**
+   * Batch-resolved display names (see `lib/display-name.ts`). Optional: without
+   * it the projection degrades to the stored `recipient_handle` snapshot and
+   * then to the raw address, exactly as it behaved before names existed.
+   */
+  names?: DisplayNames;
+  /**
+   * The viewer's own address, used only to decide WHICH party is the
+   * counterparty. On an inbound stream the interesting name is the sender's,
+   * not the recipient's (the recipient is the viewer). Omit and the
+   * counterparty defaults to the recipient, which is the historical behavior.
+   */
+  viewerAddress?: string | null;
+};
+
+/**
+ * Batch-resolve every party name a set of stream rows will need, in one go.
+ *
+ * Both legs of every row (sender + recipient) go in, so a 20-row list costs ONE
+ * database round trip rather than 40. Uses the `full` handle form
+ * (`sele@talise.sui`) because that is what the send + stream flows already
+ * store and print.
+ *
+ * The on-chain leg is kept deliberately tight — a list has to feel instant, and
+ * a name is worth less than the wait. Whatever the chain does not return inside
+ * the budget falls back to the stored snapshot and then the address, and is
+ * memoized for the next render either way. Never throws.
+ */
+export function resolveStreamNames(rows: StreamRow[]): Promise<DisplayNames> {
+  const addrs: Array<string | null> = [];
+  for (const r of rows) {
+    addrs.push(r.recipient_address);
+    addrs.push(r.sender_address);
   }
-  const released = releasedMicros / MICROS;
+  return resolveDisplayNames(addrs, { form: "full", chainBudget: 4, timeoutMs: 1_200 });
+}
+
+export function projectStream(
+  row: StreamRow,
+  now: number = Date.now(),
+  extras: ProjectStreamExtras = {}
+) {
+  const totalMicros = Number(row.total_micros);
+  const numTranches = Number(row.num_tranches);
+  const state = derivedStreamState(row);
+
+  const tranchesDone = Math.max(0, Math.min(numTranches, Number(row.tranches_done) || 0));
+  const releasedMicros = Math.min(
+    totalMicros,
+    Math.max(Number(row.released_micros) || 0, trancheMicrosFor(row, tranchesDone))
+  );
+
+  // Only a live stream accrues claimably. A paused one keeps ticking on the
+  // original schedule but the contract refuses to release, so there is nothing
+  // to advertise; a cancelled or completed one is finished.
+  const live = state === "active";
+  const accrued = live ? Math.max(tranchesDone, accruedTranches(row, now)) : tranchesDone;
+  const accruedMicros = live ? trancheMicrosFor(row, accrued) : releasedMicros;
+  const claimableTranches = Math.max(0, accrued - tranchesDone);
+  const claimableMicros = Math.max(0, accruedMicros - releasedMicros);
+
+  // The Clock time the next UNRELEASED tranche becomes due — the contract's own
+  // `due_at = start_ms + tranches_done * interval_ms`. Derived rather than read
+  // from the `next_tranche_at` column so the countdown is right even if a
+  // mirror write was missed. Null when there is nothing left to wait for.
+  const nextTrancheAt =
+    live && tranchesDone < numTranches
+      ? Number(row.start_ms) + tranchesDone * Number(row.interval_ms)
+      : null;
+
+  // ── Party names ─────────────────────────────────────────────────────────
+  //
+  // `recipient_handle` is a SNAPSHOT taken when the stream was created: a
+  // stream started by typing a handle has one, a stream started by pasting an
+  // address has NULL, and the row never learns better. That is why one list
+  // used to show `sele@talise.sui` on one line and `0xac1d…9df0` on the next
+  // for the same person.
+  //
+  // So: resolve LIVE first (`extras.names`, batched for the whole list), fall
+  // back to the stored snapshot, and only then leave it null for the client to
+  // truncate. The snapshot is kept as its own field — it is the one record of
+  // what the name was at creation time, which a renamed counterparty makes
+  // interesting — but it is never what we show when a live name exists.
+  const names = extras.names;
+  const recipientName = names?.get(row.recipient_address) ?? row.recipient_handle ?? null;
+  const senderName = names?.get(row.sender_address) ?? null;
+
+  const viewer = extras.viewerAddress?.trim().toLowerCase() || null;
+  const viewerIsRecipient =
+    !!viewer && row.recipient_address.toLowerCase() === viewer;
+  const counterpartyAddress = viewerIsRecipient
+    ? row.sender_address
+    : row.recipient_address;
+  const counterpartyName = viewerIsRecipient ? senderName : recipientName;
+
   return {
     id: row.id,
     senderAddress: row.sender_address,
+    senderName,
     recipientAddress: row.recipient_address,
-    recipientHandle: row.recipient_handle,
-    totalUsd: total,
-    releasedUsd: released,
-    remainingUsd: Math.max(0, total - released),
-    trancheUsd: trancheMicros / MICROS,
-    numTranches: numTranches,
+    /**
+     * Live name when we have one, else the creation-time snapshot. Kept under
+     * the original field name so every shipped client build gets the fix
+     * without an update.
+     */
+    recipientHandle: recipientName,
+    /** The snapshot exactly as stored, for anyone who wants creation-time truth. */
+    recipientHandleAtCreation: row.recipient_handle,
+    /**
+     * THE OTHER PARTY, from the viewer's side: the sender on an inbound
+     * stream, the recipient on an outbound one. An inbound row labelled with
+     * the recipient's name was labelling the viewer with their own name.
+     */
+    counterpartyAddress,
+    counterpartyName,
+    totalUsd: totalMicros / MICROS,
+    /** Confirmed on-chain: in the recipient's wallet. */
+    releasedUsd: releasedMicros / MICROS,
+    remainingUsd: Math.max(0, (totalMicros - releasedMicros) / MICROS),
+    /** Earned by the Clock, claimed or not. */
+    accruedUsd: accruedMicros / MICROS,
+    accruedTranches: accrued,
+    /** Earned but not yet pushed — what the next claim moves. */
+    claimableUsd: claimableMicros / MICROS,
+    claimableTranches,
+    /** The auto-fire gate: something is due that the chain hasn't paid yet. */
+    dueNow: live && claimableTranches > 0,
+    trancheUsd: Number(row.tranche_micros) / MICROS,
+    numTranches,
     tranchesDone,
     startMs: Number(row.start_ms),
     intervalMs: Number(row.interval_ms),
-    nextTrancheAt: Number(row.next_tranche_at),
-    state: row.state,
+    nextTrancheAt,
+    /** Derived — `completed` is never stored. */
+    state,
     fundingDigest: row.funding_digest,
     lastTrancheDigest: row.last_tranche_digest,
     lastTrancheAt: row.last_tranche_at,

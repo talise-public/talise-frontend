@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, userById } from "@/lib/db";
-import { getClientIp, rateLimitAsync } from "@/lib/rate-limit";
+import { guardGrowthRoute } from "@/lib/abuse/guard";
+import { WAITLIST_EXISTING_IP } from "@/lib/abuse/limits";
 import { readSessionEntryId } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -29,21 +30,14 @@ export const dynamic = "force-dynamic";
  * a new handle (which would later 409 against the one they already own).
  */
 export async function GET(req: Request) {
-  const ip = getClientIp(req);
-  const rl = await rateLimitAsync({
-    key: `waitlist-handle-existing:${ip}`,
-    limit: 30,
-    windowSec: 60,
+  // Per-IP limit (lib/abuse/limits.ts), now durable (global across lambdas)
+  // and fail-closed via the growth guard.
+  const guard = await guardGrowthRoute({
+    req,
+    route: "waitlist-existing",
+    ip: WAITLIST_EXISTING_IP,
   });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many requests." },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rl.retryAfterSec ?? 60) },
-      }
-    );
-  }
+  if (!guard.ok) return guard.response;
 
   const userId = await readSessionEntryId();
   if (!userId) {

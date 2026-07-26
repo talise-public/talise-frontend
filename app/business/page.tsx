@@ -123,7 +123,7 @@ function Hero() {
         <div className="bp-card overflow-hidden p-3 sm:p-4">
           <div className="relative aspect-[5/4] w-full overflow-hidden rounded-[8px]">
             <Image
-              src="/talise-app-collage.png"
+              src="/hero/talise-app-collage.png"
               alt="The Talise business app, balance, payouts, and invoices"
               fill
               priority

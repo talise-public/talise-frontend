@@ -1,44 +1,44 @@
 import "server-only";
 
-import {
-  db,
-  ensureSchema,
-  recordRewardsEvent,
-  userById,
-} from "@/lib/db";
+import { db, ensureSchema, userById } from "@/lib/db";
 import { findSku, type RedeemSKU } from "./catalogue";
+import { tierForPoints } from "./earn";
+import { isFarmingBlocked } from "./integrity";
 
 /**
  * Talise Rewards, redemption (Phase 4).
  *
- * Spend `points_total` against a catalogue SKU. The math is:
+ * Spend `points_total` against a catalogue SKU:
  *
- *   1. Validate user exists, has enough points, SKU is in the catalogue
- *      + enabled, and not within the 5-minute debounce window for the
+ *   1. Validate user exists, SKU is in the catalogue + enabled, the
+ *      account isn't flagged for farming, the user clears the SKU's tier
+ *      gate, and they're not inside the 5-minute debounce window for the
  *      same SKU (defeats double-tap on the iOS card).
  *   2. Validate non-stackable SKUs aren't already active (the user
  *      can't double-redeem `fx_boost_3bp_30d` while a previous one is
  *      still valid).
- *   3. Insert a `redemptions` row with the right status (`pending`
- *      for the `pending` kind; `fulfilled` for `instant`/`flagged` -
- *      the effect of `flagged` is deferred but the row is closed out
- *      since redeem-time is the only time we touch it).
- *   4. Mint a `rewards_events` row with `kind: "redeemed"` and a
- *      NEGATIVE points value. `recordRewardsEvent` already does the
- *      `UPDATE users SET points_total = COALESCE(points_total, 0) + ?`
- *      math, so passing `-pointsCost` deducts cleanly.
+ *   3. DEBIT THE POINTS ATOMICALLY (see below), then insert the
+ *      `redemptions` row + the negative `rewards_events` row.
  *
- * NOTE: SQLite/libSQL doesn't give us cheap multi-statement
- * transactions over the HTTP-style client; we use a `batch("write")`
- * to insert the redemption row atomically with the rewards_events row
- * + points update. The 5-minute debounce read happens BEFORE the
- * batch; if two requests race past it, the points balance would go
- * negative once but the second request would have already been
- * accepted. We tolerate this, the 5-minute window is debounce, not
- * a strict transactional invariant, and the affordability check on
- * the second request would have failed only if the first hadn't yet
- * deducted. In practice the iOS confirm sheet single-flights this
- * and the network round-trip is well under 5 minutes.
+ * ── 2026-07-25: the debit is now atomic ─────────────────────────────
+ *
+ * It used to be: read `points_total`, compare to cost, and later call
+ * `recordRewardsEvent(userId, "redeemed", -cost)` which does an
+ * unconditional `points_total = points_total + (-cost)`. Two concurrent
+ * redeems both passed the read and both deducted, so the balance could go
+ * NEGATIVE and the user got two perks for one balance. The old note here
+ * argued the 5-minute debounce made that acceptable; it doesn't — the
+ * debounce is per-SKU and the race window is one network round-trip, not
+ * five minutes.
+ *
+ * Now the deduction itself is the affordability check:
+ *
+ *   UPDATE users SET points_total = points_total - cost
+ *   WHERE id = ? AND COALESCE(points_total, 0) >= cost RETURNING points_total
+ *
+ * Zero rows back = insufficient funds, and only one of two racing
+ * requests can win. `catalogue.ts` names an atomic debit as a
+ * precondition for ever re-adding a points→value SKU; this is it.
  */
 
 export type RedemptionRow = {
@@ -60,7 +60,9 @@ export class RedeemError extends Error {
     | "insufficient_points"
     | "debounced"
     | "already_active"
-    | "tier_locked";
+    | "tier_locked"
+    /** Account is flagged for reward farming; redemptions are frozen. */
+    | "account_flagged";
   status: number;
   constructor(
     code: RedeemError["code"],
@@ -165,6 +167,33 @@ export async function redeemSku(opts: {
     );
   }
 
+  // An account under farming review cannot convert points to value while
+  // the review is open. Without this, a clawback is a race against the
+  // farmer's redeem button.
+  if (await isFarmingBlocked(opts.userId)) {
+    throw new RedeemError(
+      "account_flagged",
+      "redemptions are temporarily unavailable on this account",
+      403
+    );
+  }
+
+  // Tier gate. `RedeemSKU.minTier` and the `tier_locked` error code both
+  // existed but nothing ever enforced them, so any tier-gated SKU added
+  // to the catalogue would have been redeemable by everyone.
+  if (entry.minTier) {
+    const order: Array<RedeemSKU["minTier"]> = ["bronze", "silver", "gold", "plat"];
+    const have = order.indexOf(tierForPoints(points).id);
+    const need = order.indexOf(entry.minTier);
+    if (have < need) {
+      throw new RedeemError(
+        "tier_locked",
+        `requires ${entry.minTier} tier`,
+        403
+      );
+    }
+  }
+
   // 5-minute debounce, double-tap on the confirm sheet, fat-fingered
   // duplicates, retries on a network flake. We don't want any of those
   // to charge twice.
@@ -208,37 +237,76 @@ export async function redeemSku(opts: {
   const fulfilledAt = status === "fulfilled" ? now : null;
 
   const c = db();
-  // We can't easily return the inserted id from a batch on libsql,
-  // so we insert + read in two steps. The read is bounded by the
-  // (user_id, created_at DESC) index.
-  await c.batch(
-    [
-      {
-        sql: `INSERT INTO redemptions
+
+  // ── ATOMIC DEBIT ───────────────────────────────────────────────────
+  // The deduction IS the affordability check. Two concurrent redeems can
+  // no longer both pass: the second one sees zero rows back and 402s
+  // instead of driving `points_total` negative.
+  const debit = await c.execute({
+    sql: `UPDATE users
+          SET points_total = COALESCE(points_total, 0) - ?
+          WHERE id = ? AND COALESCE(points_total, 0) >= ?
+          RETURNING points_total`,
+    args: [entry.pointsCost, opts.userId, entry.pointsCost],
+  });
+  if (debit.rows.length === 0) {
+    throw new RedeemError(
+      "insufficient_points",
+      `need ${entry.pointsCost} pts`,
+      402
+    );
+  }
+  // Now record it: the redemption row + the negative feed row, in one
+  // transaction. `points_total` is NOT touched here (already debited
+  // above), so this cannot deduct twice.
+  try {
+    await c.batch(
+      [
+        {
+          sql: `INSERT INTO redemptions
               (user_id, sku, points_spent, status, metadata, created_at, fulfilled_at)
               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        args: [
-          opts.userId,
-          entry.sku,
-          entry.pointsCost,
-          status,
-          JSON.stringify(metadata),
-          now,
-          fulfilledAt,
-        ],
-      },
-    ],
-    "write"
-  );
-
-  // Mint the negative-points rewards_events row + bump points_total.
-  // recordRewardsEvent does both in a `batch("write")` already.
-  await recordRewardsEvent(
-    opts.userId,
-    "redeemed",
-    -entry.pointsCost,
-    metadata
-  );
+          args: [
+            opts.userId,
+            entry.sku,
+            entry.pointsCost,
+            status,
+            JSON.stringify(metadata),
+            now,
+            fulfilledAt,
+          ],
+        },
+        {
+          sql: `INSERT INTO rewards_events
+              (user_id, kind, points, metadata, created_at)
+              VALUES (?, 'redeemed', ?, ?, ?)`,
+          args: [
+            opts.userId,
+            -entry.pointsCost,
+            JSON.stringify(metadata),
+            now,
+          ],
+        },
+      ],
+      "write"
+    );
+  } catch (e) {
+    // Compensating re-credit: we took the points but failed to record
+    // what they bought, so give them back rather than leaving the user
+    // short with no receipt.
+    await c
+      .execute({
+        sql: `UPDATE users SET points_total = COALESCE(points_total, 0) + ? WHERE id = ?`,
+        args: [entry.pointsCost, opts.userId],
+      })
+      .catch((re) =>
+        console.error(
+          `[rewards/redeem] REFUND FAILED user=${opts.userId} sku=${entry.sku} pts=${entry.pointsCost}:`,
+          (re as Error).message
+        )
+      );
+    throw e;
+  }
 
   // Re-read the inserted redemption (we filed it `now`, and that's the
   // sort key). Tolerant of the rare case where another writer

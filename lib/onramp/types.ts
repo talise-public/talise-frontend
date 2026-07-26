@@ -1,10 +1,12 @@
 /**
  * Provider-agnostic ON-RAMP interface (additive scaffold).
  *
- * Talise's base asset USDsui is the "Sui Dollar," issued by Bridge (a Stripe
- * company). So the PRIMARY on-ramp adapter delivers USDsui directly on Sui via
- * Bridge; a card-supporting aggregator (Transak) is the FALLBACK that delivers
- * USDC on Sui, which the existing AutoConvertBanner then sweeps to USDsui.
+ * The PRIMARY adapter is Bridge (persistent virtual account: the user wires
+ * fiat to a real account number/IBAN and Bridge mints on Sui to the user's own
+ * address). The FALLBACK is Transak (hosted card widget). BOTH deliver USDC on
+ * Sui today, so `requiresSwapToUsdsui` is true either way and the one-tap
+ * "Swap to USDsui" in the token bucket (POST /api/swap/prepare) finishes
+ * money-in.
  *
  * This mirrors the shape of the off-ramp layer (web/lib/offramp/*): ONE
  * internal interface, swappable adapters, a registry/selector. Adapters own

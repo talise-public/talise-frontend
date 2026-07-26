@@ -45,7 +45,7 @@ export function SigninPreloader({
             className="pointer-events-none absolute inset-0 opacity-70"
           >
             <Image
-              src="/landing-hero.png"
+              src="/hero/landing-hero.png"
               alt=""
               fill
               priority

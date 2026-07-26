@@ -9,7 +9,6 @@ import { toBase64 } from "@mysten/sui/utils";
 import { AggregatorClient } from "@cetusprotocol/aggregator-sdk";
 import { sui, network, COIN_TYPES, USDSUI_DECIMALS } from "@/lib/sui";
 import { USDSUI_TYPE } from "@/lib/usdsui";
-import { TREASURY_WALLET } from "@/lib/navi-supply";
 import { onara } from "@/lib/onara";
 import { memoTtl } from "@/lib/perf-cache";
 
@@ -19,18 +18,18 @@ export const runtime = "nodejs";
  * POST /api/offramp/bridge/swap-to-usdc-prepare
  *
  * Step 1 of the decoupled cash-out: swap `amountUsdsui` USDsui → USDC and
- * deliver the USDC to the USER'S OWN wallet (their "USDC pocket"), taking the
- * 1% Talise fee to the treasury during the swap (Cetus overlay). This is a
- * plain swap, NOT a swap-and-send, so the off-ramp send is a separate, simple
- * USDC transfer (see send-usdc-prepare). iOS signs the returned bytes with
- * signAndExecuteRaw.
+ * deliver the USDC to the USER'S OWN wallet (their "USDC pocket"). USDsui→USDC
+ * is a stablecoin↔stablecoin swap, so it is FEE-FREE (no Talise overlay fee) —
+ * still fully sponsored (gas covered by Onara). This is a plain swap, NOT a
+ * swap-and-send, so the off-ramp send is a separate, simple USDC transfer (see
+ * send-usdc-prepare). iOS signs the returned bytes with signAndExecuteRaw.
  *
  * Body: { amountUsdsui: number }
  * Response: { bytes, mode: "sponsored-swap-to-usdc", amountUsdsui, estimatedUsdcMicros }
  */
 
 const SLIPPAGE_BPS = 100; // 1.00%
-const SWAP_FEE_BPS = 100; // 1.00% Talise fee → treasury (Cetus overlay)
+// No Talise fee on stablecoin↔stablecoin swaps (USDsui → USDC). Still sponsored.
 
 export async function POST(req: Request) {
   const onaraUrl = process.env.ONARA_URL;
@@ -88,11 +87,10 @@ export async function POST(req: Request) {
     const tx = new Transaction();
     tx.setSender(user.sui_address);
 
+    // No overlay fee: USDsui → USDC is stablecoin↔stablecoin (fee-free).
     const aggregator = new AggregatorClient({
       client,
       signer: user.sui_address,
-      overlayFeeRate: SWAP_FEE_BPS / 10_000, // 1.00% → treasury
-      overlayFeeReceiver: TREASURY_WALLET,
     });
     const cetusRouter = await aggregator.findRouters({
       from: USDSUI_TYPE,

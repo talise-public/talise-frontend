@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { denyUnlessAppApproved } from "@/lib/app-access";
-import { randomUUID } from "node:crypto";
 
-import { db, ensureSchema, userById } from "@/lib/db";
+import { userById } from "@/lib/db";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { rateLimitAsync } from "@/lib/rate-limit";
-import { createOrder, getRate, linqConfigured, checkDailyOfframpCap, cashoutFeatureOpen, CASHOUT_CLOSED_MESSAGE, isUsdsuiCoinType } from "@/lib/linq";
+import { linqConfigured, cashoutFeatureOpen, CASHOUT_CLOSED_MESSAGE } from "@/lib/linq";
 import { resolveLinqBank } from "@/lib/linq-banks";
+import { beginLinqOrder, readIdempotencyKey } from "@/lib/offramp/linq-orders";
+import { trackCashoutStarted } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 
@@ -17,15 +18,20 @@ export const runtime = "nodejs";
  * watches; the client then sends exactly `amountUsdsui` USDSUI to that address
  * using the normal sponsored send rail, and Linq pays the bank itself.
  *
- * We persist a `linq_offramps` row keyed to the user and return the deposit
- * address + locked NGN. No treasury, no on-chain verification, no refund path
- * (Linq owns deposit detection + the 10-minute timeout).
+ * The order-creation sequence (cap → idempotency claim → provider call → coin
+ * guard → fail-closed persist → ledger) lives in `lib/offramp/linq-orders.ts` so
+ * this route and `/to-user` cannot drift apart again; they previously had
+ * different failure behaviour for the same failure.
  *
- * Body: { amountUsdsui, bankCode, accountNumber, accountName, bankName? }
+ * IDEMPOTENCY: send an `Idempotency-Key` header (or `idempotencyKey` in the
+ * body) and a retry after a timeout replays the ORIGINAL order rather than
+ * creating a second one with a second deposit address.
+ *
+ * Body: { amountNgn | amountUsdsui, bankCode, accountNumber, accountName, bankName?, idempotencyKey? }
  */
 export async function POST(req: Request) {
-  // Product gate (FEATURE_CASHOUT), closed for launch. Refuse BEFORE creating
-  // any order so no deposit address is issued and no user is debited.
+  // Product gate (FEATURE_CASHOUT), FAILS CLOSED. Refuse BEFORE creating any
+  // order so no deposit address is issued and no user is debited.
   if (!cashoutFeatureOpen()) {
     return NextResponse.json({ error: CASHOUT_CLOSED_MESSAGE, code: "CASHOUT_CLOSED" }, { status: 503 });
   }
@@ -64,6 +70,7 @@ export async function POST(req: Request) {
     accountNumber?: string;
     accountName?: string;
     bankName?: string;
+    idempotencyKey?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -71,22 +78,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
 
-  const reqNgn = Number(body.amountNgn);
-  const reqUsdsui = Number(body.amountUsdsui);
-  const wantsNgn = Number.isFinite(reqNgn) && reqNgn > 0;
-  const wantsUsdsui = Number.isFinite(reqUsdsui) && reqUsdsui > 0;
   const bankCode = String(body.bankCode ?? "").trim();
   const accountNumber = String(body.accountNumber ?? "").trim();
   const accountName = String(body.accountName ?? "").trim();
   const bank = resolveLinqBank(bankCode);
   const bankName = String(body.bankName ?? bank?.name ?? "").trim();
 
-  if (!wantsNgn && !wantsUsdsui) {
-    return NextResponse.json(
-      { error: "amountNgn or amountUsdsui must be positive" },
-      { status: 400 }
-    );
-  }
   if (!bank || !/^\d{10}$/.test(accountNumber) || !accountName) {
     return NextResponse.json(
       { error: "bankCode, 10-digit accountNumber and accountName are required" },
@@ -94,128 +91,49 @@ export async function POST(req: Request) {
     );
   }
 
-  const r6 = (n: number) => Math.round(n * 1e6) / 1e6; // USDsui = 6 dp
-  const r2 = (n: number) => Math.round(n * 100) / 100; // NGN = 2 dp
-
-  // Initial amountStableCoin for the order (informational, Linq pays on what
-  // actually ARRIVES at the locked rate). For an NGN-denominated cash-out we
-  // estimate it from the display rate; we recompute the EXACT amount to send
-  // from the order's LOCKED rate below.
-  let initialUsdsui = wantsUsdsui ? reqUsdsui : 0;
-  if (wantsNgn && !wantsUsdsui) {
-    try {
-      const rateNow = (await getRate()).rate;
-      if (!Number.isFinite(rateNow) || rateNow <= 0) throw new Error("bad rate");
-      initialUsdsui = r6(reqNgn / rateNow);
-    } catch {
-      return NextResponse.json({ error: "rate_unavailable" }, { status: 503 });
-    }
+  const result = await beginLinqOrder({
+    userId,
+    // The user sends the deposit from their own wallet, so refund there if the
+    // bank payout fails, no stuck funds, no manual support needed.
+    senderAddress: user.sui_address,
+    amountNgn: Number(body.amountNgn),
+    amountUsdsui: Number(body.amountUsdsui),
+    bankCode,
+    bankName,
+    accountNumber,
+    accountName,
+    clientIdempotencyKey: readIdempotencyKey(req, body),
+    source: "linq/create",
+  });
+  if (!result.ok) {
+    return NextResponse.json(result.body, { status: result.status });
   }
 
-
-  // Per-account DAILY cap: $200/day across all cash-outs (KYC unlocks more).
-  const cap = await checkDailyOfframpCap(userId, initialUsdsui);
-  if (!cap.ok) {
-    return NextResponse.json(
-      { error: cap.error, code: cap.code, maxUsd: cap.max, usedToday: cap.used, remainingToday: cap.remaining },
-      { status: 400 }
-    );
-  }
-
-  const id = randomUUID(); // our row id; doubles as the idempotency key
-  const now = Date.now();
-
-  let order;
-  try {
-    order = await createOrder({
-      amountStableCoin: initialUsdsui,
-      bankAccount: accountNumber,
-      bankCode,
-      bankName,
-      accountName,
-      // The user sends the deposit from their own wallet, so refund there if
-      // the bank payout fails, no stuck funds, no manual support needed.
-      refundAddress: user.sui_address,
-      customerRef: String(userId),
-      idempotencyKey: id,
+  // GROWTH: a real Linq order now exists with a deposit address, so the cash-out
+  // funnel started. Skipped on a REPLAYED idempotent retry — that is the same
+  // order answered twice, not a second cash-out. The terminal outcome is emitted
+  // from the provider webhook; bank coordinates never reach analytics.
+  if (!result.replayed) {
+    trackCashoutStarted(userId, {
+      usd: result.amountUsdsui,
+      corridor: "NGN",
+      provider: "linq",
     });
-  } catch (e) {
-    const reason = (e as Error).message ?? "Linq rejected the order";
-    console.warn("[offramp/linq/create] createOrder failed:", reason);
-    return NextResponse.json({ error: "Could not start the cash-out.", reason }, { status: 502 });
-  }
-
-  // Coin guard: never let the client deposit USDSUI into an order Linq is
-  // watching for a different coin. We pin coin=usdsui on createOrder, but we
-  // also refuse if the echoed coinType isn't our USDSUI.
-  if (!isUsdsuiCoinType(order.coinType)) {
-    console.warn("[offramp/linq/create] unexpected coinType:", order.coinType);
-    return NextResponse.json(
-      { error: "Could not start the cash-out.", reason: "off-ramp coin mismatch" },
-      { status: 502 }
-    );
-  }
-
-  // CRITICAL: send EXACTLY what Linq recorded on the order (order.amountStableCoin)
-  //, that's the amount its deposit watcher matches. Recomputing our own send
-  // figure from the locked rate produced a value that drifted from what Linq
-  // expected whenever the rate ticked between quote and create, so the deposit
-  // was never recognized → "timeout: no deposit received" → failed payout.
-  // We credit order.amountNGN (Linq's own locked computation) to stay consistent.
-  const lockedRate = order.rate > 0 ? order.rate : (order.amountNGN / Math.max(initialUsdsui, 1e-6));
-  const sendUsdsui = r6(order.amountStableCoin > 0 ? order.amountStableCoin : initialUsdsui);
-  const creditNgn = r2(order.amountNGN > 0 ? order.amountNGN : sendUsdsui * lockedRate);
-
-  await ensureSchema();
-  try {
-    await db().execute({
-      sql: `INSERT INTO linq_offramps
-        (id, linq_order_id, user_id, amount_usdsui, amount_ngn, rate,
-         bank_code, bank_account_number, bank_account_name,
-         wallet_address, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'initiated', ?, ?)`,
-      args: [
-        id,
-        order.id,
-        String(userId),
-        sendUsdsui,
-        creditNgn,
-        lockedRate,
-        bankCode,
-        accountNumber,
-        accountName,
-        order.walletAddress,
-        now,
-        now,
-      ],
-    });
-  } catch (e) {
-    // FAIL CLOSED: the Linq order was created but we could not record it. If we
-    // still handed the deposit wallet back, the user would send funds to an
-    // order we cannot reconcile, refund, or count against the daily cap. Refuse
-    // instead, no funds have moved yet, and the orphaned Linq order (logged
-    // here with its id) holds no user funds and can be cancelled ops-side.
-    console.error(
-      `[offramp/linq/create] persist failed, refusing to return deposit wallet. Orphaned Linq order=${order.id} user=${userId}:`,
-      (e as Error).message
-    );
-    return NextResponse.json(
-      { error: "Could not record your cash-out. No funds were moved, please try again." },
-      { status: 500 }
-    );
   }
 
   return NextResponse.json({
-    orderId: id,
-    linqOrderId: order.id,
-    walletAddress: order.walletAddress,
-    coinType: order.coinType,
+    orderId: result.orderId,
+    linqOrderId: result.linqOrderId,
+    walletAddress: result.walletAddress,
+    coinType: result.coinType,
     // EXACT amount to debit: send this and the user is credited `amountNgn`.
-    amountUsdsui: sendUsdsui,
-    amountNgn: creditNgn,
-    rate: lockedRate,
+    amountUsdsui: result.amountUsdsui,
+    amountNgn: result.amountNgn,
+    rate: result.rate,
     // The client now sends exactly `amountUsdsui` USDSUI to `walletAddress`
-    // (normal sponsored send), then polls /api/offramp/linq/status/[orderId].
-    depositWindowMinutes: 10,
+    // (normal sponsored send), then POSTs the digest to
+    // /api/offramp/linq/deposit and polls /api/offramp/linq/status/[orderId].
+    depositWindowMinutes: result.depositWindowMinutes,
+    replayed: result.replayed,
   });
 }

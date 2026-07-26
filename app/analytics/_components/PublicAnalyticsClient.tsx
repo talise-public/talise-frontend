@@ -102,7 +102,14 @@ export default function PublicAnalyticsClient() {
         <>
           <IndexFreshnessStrip index={data.index} />
           <KpiCards totals={data.totals} />
-          <RecentTxTable txs={data.recent} />
+          <RecentTxTable
+            txs={data.recent}
+            pagination={{
+              endpoint: "/api/analytics/transactions",
+              total: data.totals.transactions,
+              pageSize: 60,
+            }}
+          />
         </>
       ) : null}
     </div>

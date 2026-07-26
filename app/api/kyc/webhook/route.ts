@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db, ensureSchema } from "@/lib/db";
 import { setUserTier, getUserTier, normalizeTier, isKycTier } from "@/lib/kyc";
+import { trackKycCompleted } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,6 +119,12 @@ export async function POST(req: Request) {
       console.log(
         `[kyc/webhook] promoted user=${userId} ${current} -> tier ${requestedTier} (ref=${ref}${verdict === "missing-secret-dev" ? ", UNSIGNED-dev" : ""})`
       );
+      // GROWTH: after the promotion has landed. This is the ONLY provider-signed
+      // "verification cleared" fact in the system, so it is the only honest
+      // source for `growth_user_firsts.kyc_completed_at`. The provider's `ref`
+      // is not passed through — it is an external identifier and the analytics
+      // store holds no third-party ids.
+      trackKycCompleted(userId, { surface: "kyc.webhook", tier: requestedTier });
       return NextResponse.json({ ok: true, promoted: true, tier: requestedTier });
     }
     return NextResponse.json({ ok: true, promoted: false, reason: "not_a_raise", tier: current });

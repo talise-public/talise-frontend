@@ -348,7 +348,7 @@ export function AppShowcase() {
       <div className="reveal relative mt-12">
         <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[68%] w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#CAFFB8]/45 blur-3xl" />
         <Image
-          src="/talise-app-collage.png"
+          src="/hero/talise-app-collage.png"
           alt="Talise app: a savings screen, reviewing a send to talise.sui, and a successful transfer"
           width={1200}
           height={639}

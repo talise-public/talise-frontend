@@ -10,6 +10,7 @@ import {
   recordClaimAttempt,
   microsToUsd,
 } from "@/lib/cheques";
+import { trackFunded } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 
@@ -100,6 +101,18 @@ export async function POST(
     ip,
     country: elig.country ?? null,
     isVpn: false,
+  });
+
+  // GROWTH: the one funding path the SERVER genuinely observes. Escrow was
+  // released to the claimer's own address, we know who they are, and the amount
+  // is authoritative (`cq.amountMicros`, not a client figure) — unlike the
+  // on-ramp rails, which mint straight to the user's address with no server-side
+  // credit at all. Emitted after the release succeeded and the claim attempt was
+  // recorded; the amount is banded and no digest, IP or country is passed on.
+  trackFunded(userId, {
+    usd: microsToUsd(cq.amountMicros),
+    source: "cheque",
+    currency: "USD",
   });
 
   return NextResponse.json({

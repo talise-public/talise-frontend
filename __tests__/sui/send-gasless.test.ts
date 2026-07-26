@@ -69,11 +69,27 @@ vi.mock("@/lib/db", () => ({
 // route to sponsored mode. Default the mock to disabled; tests can
 // override with `vi.mocked(getRoundupConfig).mockResolvedValue(...)`.
 vi.mock("@/lib/rewards/roundup", () => ({
+  LOG: "[spend-save]",
   getRoundupConfig: vi.fn(async () => ({
     enabled: false,
     percentage: 0,
     savedUsd: 0,
   })),
+  // Real arithmetic, so a test that sets `percentage: 5` gets the gross/net
+  // the route would actually build. Mirrors lib/rewards/roundup.ts.
+  planRoundup: (opts: {
+    config: { enabled: boolean; percentage: number };
+    sendAmountUsd: number;
+  }) => {
+    if (!opts.config.enabled) return null;
+    const pct = Math.max(1, Math.min(10, Math.round(opts.config.percentage)));
+    const gross =
+      Math.floor(Math.min((opts.sendAmountUsd * pct) / 100, opts.sendAmountUsd) * 1e6) / 1e6;
+    const net = Math.floor(gross * 0.99 * 1e6) / 1e6;
+    if (!(net >= 0.01)) return null;
+    return { grossUsd: gross, netUsd: net, percentage: pct, feeBps: 100 };
+  },
+  issueSaveProof: vi.fn(() => "test-save-proof"),
 }));
 
 // The gasless branch never touches Onara, but the route loads the
@@ -98,6 +114,7 @@ vi.mock("@/lib/pk-bootstrap", () => ({
 // during the test doesn't blow up on uninitialised SDKs.
 vi.mock("@/lib/navi-supply", () => ({
   appendNaviSupply: vi.fn(async () => undefined),
+  SAVE_TREASURY_FEE_BPS: 100,
 }));
 
 vi.mock("@/lib/intents/wrap-payment-kit", () => ({
@@ -141,6 +158,12 @@ vi.mock("@/lib/sui", async () => {
       simulateTransaction: simulateTransactionMock,
     }),
     network: () => "mainnet" as const,
+    // The Spend + Save cover check reads the wallet balance before adding the
+    // supply leg. Plenty of USDsui so the save is never dropped for funds.
+    getUsdsuiBalanceStrict: vi.fn(async () => ({
+      raw: "1000000000",
+      usdsui: 1000,
+    })),
   };
 });
 
@@ -202,7 +225,7 @@ vi.mock("@mysten/sui/transactions", async () => {
 // ─── Import AFTER mocks so the route resolves them ─────────────────
 const { POST } = await import("@/app/api/send/sponsor-prepare/route");
 const { getRoundupConfig } = await import("@/lib/rewards/roundup");
-const { setPendingRoundup } = await import("@/lib/perf-cache");
+const { appendNaviSupply } = await import("@/lib/navi-supply");
 
 const RECIPIENT_ADDR =
   "0x3333333333333333333333333333333333333333333333333333333333333333";
@@ -315,20 +338,15 @@ describe("/api/send/sponsor-prepare (gasless branch, PREPARE only)", () => {
     expect((json as { bytes?: string }).bytes).toBeUndefined();
   });
 
-  // ─── Post 2026-05-29 product-directive tests ────────────────────
+  // ─── Spend + Save rail choice ───────────────────────────────────
   //
-  // The brief: every USDsui send takes the gasless rail, regardless
-  // of Spend-and-Save state. When SnS is on, the rounded-up amount
-  // is DEFERRED — sponsor-prepare stashes it via `setPendingRoundup`,
-  // gasless-submit drains it into `roundup_queue` after broadcast,
-  // and the cron worker (stubbed at /api/cron/process-roundup-queue)
-  // executes the NAVI supply as a separate sponsored tx.
+  // Save OFF → gasless, unchanged. Save ON → the SPONSORED rail, because
+  // the gasless rail provably cannot carry the NAVI supply leg (gasPrice 0,
+  // gasBudget 0, empty gas payment, and a validator allowlist of
+  // `0x2::balance::send_funds<T>` only). The save is a leg inside the send's
+  // own PTB — one signature, one digest — never a second transaction.
 
-  it("USDsui with SnS on routes to the sponsored atomic-save path (mode 'sponsored')", async () => {
-    // Option A (2026-06-01): a Save-on send can't ride the gasless rail (the
-    // round-up NAVI supply can't co-bundle with `balance::send_funds`), so it
-    // falls through to the sponsored branch, which bundles the transfer + the
-    // NAVI supply ATOMICALLY in one user-signed tx. Plain sends stay gasless.
+  it("USDsui with Save ON goes straight to the sponsored atomic-save rail", async () => {
     vi.mocked(getRoundupConfig).mockResolvedValue({
       enabled: true,
       percentage: 5,
@@ -338,16 +356,24 @@ describe("/api/send/sponsor-prepare (gasless branch, PREPARE only)", () => {
       buildReq({ to: RECIPIENT_ADDR, amount: 1.0, asset: "USDsui" })
     );
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { mode: string; roundupUsd: number };
-    expect(json.mode).toBe("sponsored");
-    // 5% of 1.0 → 0.05, supplied to NAVI atomically in the same tx.
-    expect(json.roundupUsd).toBeCloseTo(0.05, 6);
+    const json = (await res.json()) as {
+      mode: string;
+      roundupUsd: number;
+      save: { applied: boolean; grossUsd: number; netUsd: number; proof?: string };
+    };
+    expect(json.mode).toBe("sponsored-save");
+    expect(json.save.applied).toBe(true);
+    // 5% of 1.0 → 0.05 gross, 0.0495 reaching NAVI after the 1% save fee.
+    expect(json.save.grossUsd).toBeCloseTo(0.05, 6);
+    expect(json.save.netUsd).toBeCloseTo(0.0495, 6);
+    // The digest-bound proof is what lets the tally move later.
+    expect(json.save.proof).toBeTruthy();
+    // Deprecated field stays 0 so a pre-atomic client doesn't fire a second,
+    // standalone save transaction on top of the one already in the PTB.
+    expect(json.roundupUsd).toBe(0);
   });
 
-  it("SnS on no longer defers the round-up — sponsored atomic path, no stash (option A)", async () => {
-    // The old deferred model (stash via setPendingRoundup → roundup_queue →
-    // cron) is RETIRED. A Save-on send routes sponsored and supplies NAVI
-    // atomically in the same tx, so the deferred stash must NOT fire.
+  it("appends the NAVI supply into the SAME PTB, not a second transaction", async () => {
     vi.mocked(getRoundupConfig).mockResolvedValue({
       enabled: true,
       percentage: 10,
@@ -357,12 +383,20 @@ describe("/api/send/sponsor-prepare (gasless branch, PREPARE only)", () => {
       buildReq({ to: RECIPIENT_ADDR, amount: 2.5, asset: "USDsui" })
     );
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { mode: string; roundupUsd: number };
-    expect(json.mode).toBe("sponsored");
-    // 10% of 2.5 → 0.25, supplied to NAVI atomically (not deferred).
-    expect(json.roundupUsd).toBeCloseTo(0.25, 6);
-    // The dead deferred-stash path must NOT fire for a Save-on send.
-    expect(setPendingRoundup).not.toHaveBeenCalled();
+    const json = (await res.json()) as {
+      mode: string;
+      save: { applied: boolean; grossUsd: number };
+    };
+    expect(json.mode).toBe("sponsored-save");
+    // 10% of 2.5 → 0.25, supplied inside the send's own PTB.
+    expect(json.save.grossUsd).toBeCloseTo(0.25, 6);
+    expect(appendNaviSupply).toHaveBeenCalledTimes(1);
+    expect(appendNaviSupply).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.closeTo(0.25, 6),
+      { treasuryFeeBps: 100 }
+    );
   });
 
   it("SUI transfer still takes sponsored rail (gasless is USDsui-only)", async () => {

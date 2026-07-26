@@ -41,6 +41,7 @@ const MOCK_FX: Record<PayoutCurrency, number> = {
   IDR: 16_300,
   VND: 25_400,
   USD: 1,
+  EUR: 0.92,
 };
 
 /** USDSUI on-chain decimals, mirrors `web/lib/sui.ts`' USDSUI_DECIMALS. */

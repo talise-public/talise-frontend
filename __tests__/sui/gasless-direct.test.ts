@@ -5,13 +5,16 @@
  * hop on the slow leg.
  *
  *   1. `/api/zk/assemble-signature` — pure proof + signature assembly.
- *   2. `/api/send/gasless-confirm`   — post-broadcast bookkeeping
- *      (deferred SnS enqueue + rewards crediting). Idempotent on
- *      `{userId, digest}` via an in-memory 60s dedupe map.
+ *   2. `/api/send/gasless-confirm`   — post-broadcast rewards crediting.
+ *      Idempotent on `{userId, digest}` via an in-memory 60s dedupe map.
  *
- * Scope: wiring only. We mock `assembleZkLoginSignature`,
- * `takePendingRoundup`, `enqueueRoundup`, and `awardForTx` — the
- * underlying behavior of those helpers is covered by their own tests
+ * Spend + Save used to be part of this route's job (pop a stashed amount,
+ * enqueue it for a cron to supply later). It isn't any more: the save is a
+ * leg inside the send's own PTB, and a Save-ON send never takes the gasless
+ * rail at all, so there is no round-up bookkeeping on this path to test.
+ *
+ * Scope: wiring only. We mock `assembleZkLoginSignature` and `awardForTx` —
+ * the underlying behavior of those helpers is covered by their own tests
  * (and in the case of `assembleZkLoginSignature` is impossible to
  * exercise deterministically without a real zkLogin session).
  */
@@ -51,7 +54,6 @@ vi.mock("@/lib/db", () => ({
     roundup_enabled: 0,
     roundup_percentage: 0,
   })),
-  enqueueRoundup: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/zksigner", () => ({
@@ -72,10 +74,6 @@ vi.mock("@/lib/rewards/earn", () => ({
   awardForTx: vi.fn(async () => ({ points: 1 })),
 }));
 
-vi.mock("@/lib/perf-cache", () => ({
-  takePendingRoundup: vi.fn(() => null),
-}));
-
 // ─── Import AFTER mocks ────────────────────────────────────────────
 
 const { POST: assemblePOST } = await import(
@@ -85,9 +83,7 @@ const { POST: confirmPOST } = await import(
   "@/app/api/send/gasless-confirm/route"
 );
 const { assembleZkLoginSignature } = await import("@/lib/zksigner");
-const { enqueueRoundup } = await import("@/lib/db");
 const { awardForTx } = await import("@/lib/rewards/earn");
-const { takePendingRoundup } = await import("@/lib/perf-cache");
 
 function buildReq(path: string, body: Record<string, unknown>): Request {
   return new Request(`http://localhost${path}`, {
@@ -195,13 +191,7 @@ describe("/api/send/gasless-confirm", () => {
     vi.clearAllMocks();
   });
 
-  it("pops pending roundup AND awards rewards exactly once on duplicate confirms", async () => {
-    // First confirm: takePendingRoundup returns 0.25 (SnS was on).
-    vi.mocked(takePendingRoundup).mockReturnValueOnce(0.25);
-    // Subsequent calls: nothing to pop. (Set this BEFORE the second
-    // confirm so the test doesn't accidentally depend on call order.)
-    vi.mocked(takePendingRoundup).mockReturnValue(null);
-
+  it("awards rewards exactly once on duplicate confirms", async () => {
     // Unique digest per test so the in-memory dedupe map (which lives
     // for the lifetime of the module) doesn't false-positive against
     // a prior test's confirm.
@@ -224,21 +214,10 @@ describe("/api/send/gasless-confirm", () => {
     );
     expect(res2.status).toBe(204);
 
-    // takePendingRoundup is called once (1st confirm). 2nd confirm
-    // short-circuits BEFORE the roundup pop, so the stash is preserved
-    // for a later, legitimately-different send.
-    expect(takePendingRoundup).toHaveBeenCalledTimes(1);
-
-    // enqueueRoundup runs in a void IIFE; flush microtasks so the
-    // assertion sees the call.
+    // Flush microtasks so the fire-and-forget award is observable.
     await new Promise((resolve) => setImmediate(resolve));
-    expect(enqueueRoundup).toHaveBeenCalledTimes(1);
-    expect(enqueueRoundup).toHaveBeenCalledWith({
-      userId: 42,
-      amountUsd: 0.25,
-    });
 
-    // awardForTx must also fire exactly once across both confirms.
+    // awardForTx must fire exactly once across both confirms.
     // The earn helper docs explicitly say it doesn't dedupe by digest
     // (web/lib/rewards/earn.ts:62), so the dedupe MUST happen at the
     // route level — that's what this assertion proves.
@@ -259,7 +238,6 @@ describe("/api/send/gasless-confirm", () => {
       })
     );
     expect(res.status).toBe(400);
-    expect(takePendingRoundup).not.toHaveBeenCalled();
     expect(awardForTx).not.toHaveBeenCalled();
   });
 });

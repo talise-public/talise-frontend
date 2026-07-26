@@ -2,17 +2,38 @@ import { NextResponse } from "next/server";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { requireAppAttestStructural } from "@/lib/app-attest";
 import { rateLimitAsync } from "@/lib/rate-limit";
-import { streamById, setStreamState } from "@/lib/streams";
+import {
+  streamById,
+  setStreamState,
+  projectStream,
+  streamOnchainEnabled,
+  isOnchainStreamId,
+  buildStreamPauseSponsored,
+} from "@/lib/streams";
 
 export const runtime = "nodejs";
 
 /**
  * POST /api/streams/[id]/pause
  *
- * Sender-only. Flips the stream's state to `paused` so the scheduler stops
- * releasing tranches. The escrow keeps the funds; resume picks up from the
- * cursor (the next_tranche_at the row already holds). Idempotent: pausing an
- * already-paused (or terminal) stream is a no-op.
+ * Sender-only. STEP 1 of a pause: returns Onara-SPONSORED bytes for the sender
+ * to sign, then POST the digest to /api/streams/[id]/confirm.
+ *
+ * The pause is ON CHAIN, not a row flip. That matters because `claim_accrued` is
+ * permissionless: only the contract's `paused` flag actually stops money moving.
+ * A mirror-only pause would leave the stream claimable by anyone who can build
+ * the PTB, which is not a pause at all.
+ *
+ * The PTB settles accrued tranches BEFORE pausing (see
+ * `buildStreamPauseSponsored`), so pausing never claws back money the Clock has
+ * already earned the recipient.
+ *
+ * The row flips to `paused` immediately, before the signature lands. That is the
+ * fail-safe direction: it stops the app-open auto-fire from pushing the stream
+ * while the sender is mid-signature, and the money simply stays locked in the
+ * Stream object either way. `confirm` then reconciles the row to the chain.
+ *
+ * Idempotent: pausing a paused or terminal stream is a no-op.
  */
 export async function POST(
   req: Request,
@@ -45,12 +66,41 @@ export async function POST(
   if (row.sender_user_id !== userId) {
     return NextResponse.json({ error: "only the sender can pause" }, { status: 403 });
   }
-  // Terminal states are immutable; an already-paused stream is a no-op.
-  if (row.state === "completed" || row.state === "cancelled") {
-    return NextResponse.json({ ok: true, state: row.state });
+
+  // Terminal (including DERIVED completed) is immutable, and an already-paused
+  // stream needs nothing done. Either way there is nothing to sign.
+  const p = projectStream(row);
+  if (p.state === "completed" || p.state === "cancelled" || p.state === "paused") {
+    return NextResponse.json({ ok: true, state: p.state, stream: p });
   }
-  if (row.state === "active" || row.state === "stalled") {
+
+  if (!streamOnchainEnabled() || !isOnchainStreamId(id)) {
+    // Legacy `str_…` row with no Stream object: the mirror is all there is.
     await setStreamState(id, "paused");
+    return NextResponse.json({ ok: true, state: "paused" });
   }
-  return NextResponse.json({ ok: true, state: "paused" });
+
+  // Stop the auto-fire trigger first (fail-safe), then hand back the bytes.
+  await setStreamState(id, "paused");
+
+  try {
+    const { bytes, sponsor } = await buildStreamPauseSponsored({
+      senderAddress: row.sender_address,
+      streamObjectId: id,
+      claimableTranches: p.claimableTranches,
+    });
+    return NextResponse.json({ ok: true, state: "paused", mode: "onchain", bytes, sponsor });
+  } catch (err) {
+    const msg = (err as Error).message ?? "pause build failed";
+    console.warn(`[streams/pause] build failed stream=${id}: ${msg}`);
+    // The row is paused regardless, so Talise stops pushing the stream. Surface
+    // a non-fatal note; resuming and re-pausing is safe to retry.
+    return NextResponse.json({
+      ok: true,
+      state: "paused",
+      mode: "onchain",
+      onchainPending: true,
+      detail: msg,
+    });
+  }
 }

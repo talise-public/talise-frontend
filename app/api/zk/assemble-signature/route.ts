@@ -5,6 +5,8 @@ import {
   isMobileRequest,
 } from "@/lib/mobile-sessions";
 import { userById } from "@/lib/db";
+import { denyUnlessAppApproved } from "@/lib/app-access";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import {
   assembleZkLoginSignature,
   readSigningCookie,
@@ -37,6 +39,26 @@ export async function POST(req: Request) {
   const userId = await readEntryIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+  // The header above claims this route's gate "matches the canonical
+  // gasless-submit route". It did not: gasless-submit applies
+  // denyUnlessAppApproved + a per-user rate limit, and this route applied
+  // neither, so a signed-in-but-unapproved account could obtain a
+  // broadcast-ready zkLogin signature here and skip the beta guardrail
+  // entirely. The rate limit also bounds prover cost (each cache miss is a
+  // paid Shinami round-trip). Mirrors gasless-submit exactly.
+  const denied = await denyUnlessAppApproved(userId);
+  if (denied) return denied;
+  const rl = await rateLimitAsync({
+    key: `zk-assemble:user:${userId}`,
+    limit: 30,
+    windowSec: 3600,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 3600) } }
+    );
   }
   const user = await userById(userId);
   if (!user) {

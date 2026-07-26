@@ -3,7 +3,7 @@ import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { userById } from "@/lib/db";
 import { denyUnlessAppApproved } from "@/lib/app-access";
 import { rateLimitAsync } from "@/lib/rate-limit";
-import { WATERX_ENABLED, WATERX_LOCAL_SIGN, localSigner, buildOrderTx, settle, addActiveMarket, friendlyPerpError } from "@/lib/waterx";
+import { WATERX_ENABLED, WATERX_LOCAL_SIGN, localSigner, buildOrderTx, settle, addActiveMarket, friendlyPerpError, assertOwnsPerpAccount } from "@/lib/waterx";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +24,12 @@ export async function POST(req: Request) {
 
   // Sender: dev key in local mode, else the authenticated zkLogin user.
   let sender: string;
+  let authedUserId: number | null = null;
   if (WATERX_LOCAL_SIGN && localSigner()) {
     sender = localSigner()!.toSuiAddress();
   } else {
     const userId = await readEntryIdFromRequest(req);
+    authedUserId = userId ?? null;
     if (!userId) return NextResponse.json({ error: "not authenticated" }, { status: 401 });
     const denied = await denyUnlessAppApproved(userId);
     if (denied) return denied;
@@ -56,6 +58,11 @@ export async function POST(req: Request) {
   const slPriceUsd = b.slPriceUsd && b.slPriceUsd > 0 ? Number(b.slPriceUsd) : undefined;
   if (!ticker || !accountId || sizeTokens <= 0 || collateralUsd <= 0 || acceptablePriceUsd <= 0) {
     return NextResponse.json({ error: "ticker, accountId, sizeTokens, collateralUsd, acceptablePriceUsd required" }, { status: 400 });
+  }
+  // MONEY-SAFETY (audit H13): accountId is client-supplied. Bind it to the
+  // authenticated user so nobody can open orders against another trader's account.
+  if (authedUserId != null && !(await assertOwnsPerpAccount(authedUserId, accountId))) {
+    return NextResponse.json({ error: "account does not belong to this user" }, { status: 403 });
   }
 
   try {

@@ -12,6 +12,9 @@ import {
   userById,
 } from "@/lib/db";
 import { POINTS } from "@/lib/rewards";
+import { requireGrowthAttest } from "@/lib/abuse/attest";
+import { guardGrowthRoute } from "@/lib/abuse/guard";
+import { ONBOARDING_IP, ONBOARDING_USER } from "@/lib/abuse/limits";
 
 export const runtime = "nodejs";
 
@@ -44,9 +47,31 @@ async function tryAttributeReferral(
   await clearReferralCookie();
 }
 
+/**
+ * POST /api/onboarding
+ *
+ * ABUSE (2026-07-24): this is where a referral actually pays out — it calls
+ * `attributeReferral`, which credits BOTH sides with points. It had no rate
+ * limit, no IP check and no device gate, so a farm of fresh zkLogin accounts
+ * could mint referral points as fast as it could sign in. Now:
+ *   • durable per-user + per-IP limits (fail closed, global across lambdas);
+ *   • App Attest for mobile callers, the same gate /api/cheques/create uses,
+ *     so scripted signups can't come from a non-device client.
+ * The one-shot `account_type` 409 below is still the real cap on repeat
+ * attribution for a single account; these limits cap the ACCOUNT FARM.
+ */
 export async function POST(req: Request) {
   const id = await readEntryIdFromRequest(req);
   if (!id) return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+
+  const guard = await guardGrowthRoute({
+    req,
+    route: "onboarding",
+    userId: id,
+    ip: ONBOARDING_IP,
+    user: ONBOARDING_USER,
+  });
+  if (!guard.ok) return guard.response;
 
   const user = await userById(id);
   if (!user) return NextResponse.json({ error: "user not found" }, { status: 404 });
@@ -57,6 +82,13 @@ export async function POST(req: Request) {
       { status: 409 }
     );
   }
+
+  // Raw body first: the App Attest assertion signs SHA256(rawBody), so the
+  // gate must see the exact bytes the client hashed (re-serialising a parsed
+  // object would not match).
+  const rawBody = await req.text();
+  const attestBlock = await requireGrowthAttest(req, rawBody);
+  if (attestBlock) return attestBlock;
 
   let body: {
     accountType?: string;
@@ -69,7 +101,9 @@ export async function POST(req: Request) {
     referralCode?: string | null;
   };
   try {
-    body = await req.json();
+    // Parse the raw string we already read (an empty body still throws here,
+    // so the 400 contract is unchanged from `await req.json()`).
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }

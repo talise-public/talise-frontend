@@ -14,6 +14,9 @@ import { getOnrampKyc } from "@/lib/onramp/kyc-store";
 import { findExistingCashout } from "@/lib/bridge/offramp";
 import { appendPaymentKitReceipt } from "@/lib/intents/wrap-payment-kit";
 import type { BridgeFiatCurrency } from "@/lib/bridge/onramp";
+import { checkDailyOfframpCapAllRails } from "@/lib/offramp/caps";
+import { recordAttempt } from "@/lib/offramp/store";
+import { randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 
@@ -81,6 +84,25 @@ export async function POST(req: Request) {
   }
   const currency = (body.currency ?? "usd").toLowerCase() as BridgeFiatCurrency;
   const wantRail = currency === "eur" ? "sepa" : "wire";
+
+  // DAILY CAP, previously ABSENT on this rail. `checkDailyOfframpCap` sums
+  // `linq_offramps` only, whose sole writer is the NGN rail, so this USD/EUR
+  // cash-out consumed no allowance and was bounded by nothing but a rate limit,
+  // while the product claimed a "$200/day per account" limit. The all-rails
+  // check sums both ledgers, and FAILS CLOSED if either is unreadable.
+  const cap = await checkDailyOfframpCapAllRails(userId, amountUsdc);
+  if (!cap.ok) {
+    return NextResponse.json(
+      {
+        error: cap.error,
+        code: cap.code,
+        maxUsd: cap.max,
+        usedToday: cap.used,
+        remainingToday: cap.remaining,
+      },
+      { status: cap.code === "CAP_CHECK_UNAVAILABLE" ? 503 : 400 }
+    );
+  }
 
   const kyc = await getOnrampKyc(userId);
   const customerId = kyc?.providerCustomerId;
@@ -154,14 +176,36 @@ export async function POST(req: Request) {
     tx.setGasPrice(BigInt(gasPrice));
     const bytes = await tx.build({ client: client as never });
 
+    // LEDGER the attempt. This rail previously left NO record anywhere: a USD
+    // cash-out existed only as an on-chain transfer plus whatever Bridge knew, so
+    // a failed payout had nothing in Talise to reconcile or refund against, and
+    // the daily cap had nothing to count. Recorded BEFORE the bytes are returned,
+    // because the moment the client signs them the money is gone.
+    const attemptId = randomUUID();
+    try {
+      await recordAttempt({
+        id: attemptId,
+        userId,
+        provider: "bridge",
+        corridor: currency.toUpperCase(),
+        usdAmount: amountUsdc,
+        destAmount: amountUsdc,
+        depositAddress: route.address,
+        state: "prepared",
+      });
+    } catch (e) {
+      console.warn(`[offramp/send-usdc] attempt ledger failed: ${(e as Error).message}`);
+    }
+
     console.log(
-      `[offramp/send-usdc] user=${userId} amount=${amountMicros} → ${route.address} rail=${route.rail} sponsor=${sponsor}`
+      `[offramp/send-usdc] user=${userId} attempt=${attemptId} amount=${amountMicros} → ${route.address} rail=${route.rail} sponsor=${sponsor}`
     );
     return NextResponse.json({
       bytes: toBase64(bytes),
       mode: "sponsored-usdc-send",
       amountUsdc,
       destinationPaymentRail: route.rail,
+      attemptId,
     });
   } catch (err) {
     console.warn(`[offramp/send-usdc] user=${userId} failed: ${(err as Error).message}`);

@@ -81,8 +81,8 @@ export async function cachedFetch<T>(
 export async function cachedSpotFor(symbol: string): Promise<number | null> {
   const q = await readCache<{ spot: number; change24h: number }>(`perp:quote:${symbol}`);
   if (q && typeof q.data?.spot === "number" && q.data.spot > 0) return q.data.spot;
-  const all = await readCache<Record<string, number>>("perp:quotes:all");
-  const s = all?.data?.[symbol];
+  const all = await readCache<Record<string, { spot: number; change24h: number }>>("perp:quotes:all:v2");
+  const s = all?.data?.[symbol]?.spot;
   return typeof s === "number" && s > 0 ? s : null;
 }
 

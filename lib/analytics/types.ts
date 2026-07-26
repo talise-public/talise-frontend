@@ -58,6 +58,16 @@ export type AnalyticsSnapshot = {
   streams: number;
   goals: number;
   waitlist: number;
+  /**
+   * Provenance of the three lifetime figures (txCount / activeAccounts /
+   * volumeUsd).
+   *   'ledger'        — derived from analytics_tx_ledger. Trustworthy.
+   *   'capped_window' — written before the ledger existed, from the trimmed
+   *                     recent-tx feed. Under-reports lifetime totals; treat as
+   *                     a floor, label it as an estimate, never quote it as a
+   *                     measured figure.
+   */
+  basis: "ledger" | "capped_window";
 };
 
 export type AnalyticsSummary = {

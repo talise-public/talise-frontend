@@ -54,6 +54,16 @@ export function shieldConfigured(): boolean {
   return !!SHIELD.packageId && !!SHIELD.poolUsdsui;
 }
 
+/**
+ * Maintenance lock for private (shielded) sends. When `SHIELD_MAINTENANCE=true`
+ * the /app/private page shows a maintenance notice and the money routes
+ * (relay + deposit/prepare) fail closed, independently of `shieldConfigured()`.
+ * Reversible via the env var alone.
+ */
+export function shieldMaintenance(): boolean {
+  return process.env.SHIELD_MAINTENANCE === "true";
+}
+
 /** Fully-qualified Move event type for a `talise_privacy::events` struct. */
 export function shieldEventType(struct: string): string {
   if (!SHIELD.packageId) {

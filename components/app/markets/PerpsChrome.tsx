@@ -15,7 +15,7 @@ export function PerpsChrome({ me, children }: { me: PerpsUser; children: ReactNo
   const initial = (me.name?.trim()?.[0] ?? "T").toUpperCase();
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 flex h-14 flex-none items-center justify-between border-b border-[var(--color-line)] bg-[#edf0ea]/85 px-4 backdrop-blur-md lg:px-8">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[var(--color-line)] bg-[#edf0ea]/85 px-4 backdrop-blur-md lg:px-8">
         <a href="/perps" className="flex items-center gap-2.5" aria-label="Talise Perps">
           <Diamond />
           <span className="text-[18px] font-[500] leading-none tracking-[-0.05em]" style={{ fontFamily: '"TWK Everett", var(--font-display-v2), system-ui, sans-serif' }}>talise</span>
@@ -44,7 +44,7 @@ export function PerpsChrome({ me, children }: { me: PerpsUser; children: ReactNo
           </span>
         </div>
       </header>
-      <main className="w-full flex-1 px-4 pb-10 pt-4 lg:px-6">
+      <main className="w-full flex-1 px-4 pb-10 pt-[4.75rem] lg:px-6">
         {children}
       </main>
     </div>

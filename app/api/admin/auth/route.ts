@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE, adminToken, tokenMatches } from "@/lib/admin-auth";
+import { getClientIp, rateLimitAsync } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,25 @@ export async function POST(req: Request) {
           "ADMIN_TOKEN is not configured on the server. Set it in .env.local (or your deploy env) and restart.",
       },
       { status: 400 }
+    );
+  }
+
+  // Brute-force guard. `tokenMatches` is constant-time, which defends against a
+  // timing oracle but not against unlimited guessing: this route had no rate
+  // limit and no lockout, so ADMIN_TOKEN was online-guessable at wire speed. A
+  // hit grants a 12h cookie over /api/admin/raw (whole-table dumps of users and
+  // KYC) and /api/admin/app-access (grants money access). Keyed on the
+  // platform-resolved client IP, which `getClientIp` takes from the
+  // non-spoofable x-vercel-forwarded-for when present.
+  const ipRl = await rateLimitAsync({
+    key: `admin-auth:ip:${getClientIp(req)}`,
+    limit: 10,
+    windowSec: 900,
+  });
+  if (!ipRl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(ipRl.retryAfterSec ?? 900) } }
     );
   }
 

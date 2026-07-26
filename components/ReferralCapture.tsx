@@ -9,9 +9,14 @@ const CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/;
 /**
  * Captures a referral code from `?ref=CODE` on ANY page into the signed,
  * httpOnly `talise_ref` cookie (via POST /api/referral/capture). Mounted once
- * in the root layout so an invite link works no matter where it lands. The
- * cookie is read + attributed to the inviter on the new user's first Google
- * sign-in (see app/auth/callback/route.ts). Renders nothing.
+ * in the root layout so an invite link works no matter where it lands, and it
+ * is the belt to `/r/<CODE>`'s braces (that route sets the cookie server-side
+ * AND forwards `?ref=`, so either half alone attributes).
+ *
+ * The cookie is read + attributed to the inviter on the new user's FIRST Google
+ * sign-in, in `completeSignIn` (lib/auth-exchange.ts). Native clients have no
+ * cookie jar and take a different route entirely: they hold the code on-device
+ * and POST it to /api/auth/exchange/referral after signing in. Renders nothing.
  */
 export function ReferralCapture() {
   useEffect(() => {

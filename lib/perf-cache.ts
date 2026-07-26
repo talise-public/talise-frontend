@@ -65,46 +65,11 @@ export function readSendLatencySamples(): SendLatencySample[] {
   return sendLatencyRing.slice().reverse();
 }
 
-// ───────────────────────────────────────────────────────────────────
-// Pending-roundup stash
-//
-// USDsui sends always take the gasless rail now, so the Spend-and-Save
-// NAVI supply leg can't be co-bundled in the PTB. We bridge prepare ↔
-// submit with a tiny per-user in-memory stash: `sponsor-prepare` writes
-// `{ amountUsd, atMs }` for the user, `gasless-submit` reads + clears
-// after the broadcast lands and enqueues into `roundup_queue`.
-//
-// Why in-memory and not the DB: this is a coupling between two
-// requests in the same web process within seconds. A DB round-trip on
-// the hot send path would undo the speed win we just bought. The
-// 2-minute TTL is wide enough to cover even a slow prover + cold
-// network, and short enough that a missed submit doesn't strand a
-// roundup intent indefinitely.
-//
-// Safety net: if the stash misses (process restart between prepare and
-// submit, or the user retries with a different bytes payload), the
-// roundup is simply skipped for that send. The user's next send will
-// re-trigger it. This is preferable to a half-applied save.
-
-type PendingRoundup = { amountUsd: number; atMs: number };
-const pendingRoundupByUser = new Map<number, PendingRoundup>();
-const PENDING_ROUNDUP_TTL_MS = 120_000;
-
-export function setPendingRoundup(userId: number, amountUsd: number): void {
-  if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
-    pendingRoundupByUser.delete(userId);
-    return;
-  }
-  pendingRoundupByUser.set(userId, { amountUsd, atMs: Date.now() });
-}
-
-export function takePendingRoundup(userId: number): number | null {
-  const hit = pendingRoundupByUser.get(userId);
-  if (!hit) return null;
-  pendingRoundupByUser.delete(userId);
-  if (Date.now() - hit.atMs > PENDING_ROUNDUP_TTL_MS) return null;
-  return hit.amountUsd;
-}
+// The PENDING-ROUNDUP STASH used to live here: `sponsor-prepare` wrote the
+// round-up amount for a user and `gasless-submit` read it back after the
+// broadcast to enqueue into `roundup_queue`. Spend + Save is one atomic PTB
+// now, so the amount never has to survive between two requests: it is inside
+// the transaction the user signed. Removed along with the queue and its cron.
 
 // Pending inbound-settlement notification. Stashed by the SENDER's userId at
 // sponsor-prepare (which knows the recipient + amount) and consumed at

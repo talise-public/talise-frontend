@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { registerDeviceToken } from "@/lib/db";
+import { trackPushEnabled } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,12 @@ export async function POST(req: Request) {
 
   try {
     await registerDeviceToken(userId, token, platform);
+    // GROWTH: a registered token is SERVER-SIDE PROOF the OS permission prompt
+    // was granted — the OS only hands the app a token after the user accepts. So
+    // this stamps `push_enabled_at` from a fact rather than from a client claim,
+    // and it is what makes push reachability + notification CTR measurable. The
+    // token itself is never passed to analytics (it is a device identifier).
+    trackPushEnabled(userId, platform);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.warn(

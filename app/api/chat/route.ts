@@ -2,6 +2,8 @@ import { streamText, type UIMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { withMemWal } from "@mysten-incubation/memwal/ai";
 import { readSessionEntryId } from "@/lib/session";
+import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { userById } from "@/lib/db";
 import { getSuiBalance, getUsdsuiBalance } from "@/lib/sui";
 import { getYieldComparison } from "@/lib/yield";
@@ -56,6 +58,28 @@ export async function POST(req: Request) {
           "AI provider not configured. Set ZG_DEEPSEEK_V4_PROVIDER_URL + ZG_DEEPSEEK_V4_API_KEY.",
       },
       { status: 500 }
+    );
+  }
+
+  // AUTH (added 2026-07-24). This route had NO auth gate at all: anonymous
+  // callers reached `streamText` against the paid provider key with a fully
+  // attacker-controlled message array, i.e. a free general-purpose LLM proxy
+  // billed to Talise. Its sibling /api/chat/stream has always required a
+  // session; this one is unused by every client (web and mobile both call
+  // /api/chat/stream) and had simply never been gated. Mirrors the sibling.
+  const authedUserId = await readEntryIdFromRequest(req);
+  if (!authedUserId) {
+    return Response.json({ error: "not authenticated" }, { status: 401 });
+  }
+  const rl = await rateLimitAsync({
+    key: `chat:user:${authedUserId}`,
+    limit: 60,
+    windowSec: 3600,
+  });
+  if (!rl.ok) {
+    return Response.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 3600) } }
     );
   }
 

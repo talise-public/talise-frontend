@@ -3,6 +3,10 @@ import { readEntryIdFromRequest } from "@/lib/mobile-sessions";
 import { getRewardsSummary, userById } from "@/lib/db";
 import { getRewardsExtras, POINT_RATES } from "@/lib/rewards/earn";
 import { getRoundupConfig } from "@/lib/rewards/roundup";
+import { requireGrowthAttest } from "@/lib/abuse/attest";
+import { guardGrowthRoute } from "@/lib/abuse/guard";
+import { REFERRAL_SUMMARY_IP, REFERRAL_SUMMARY_USER } from "@/lib/abuse/limits";
+import { inviteSharePayload } from "@/components/app/rewards/share-copy";
 
 export const runtime = "nodejs";
 
@@ -54,6 +58,12 @@ function withTimeout<T>(
  * Every leg is fenced with a hard per-leg timeout. Outer 8s ceiling on the
  * orchestrator guarantees iOS sees a response before its URLSession default
  * (60s) and the cascading -1001 retries fires.
+ *
+ * ABUSE (2026-07-24): three DB reads per call and no limit at all, so a
+ * single bearer could saturate the (small) prod connection pool. Now metered
+ * per user AND per IP through the durable growth guard. Fail-closed is free
+ * here: the limiter's fallback and the route's payload come from the same
+ * Postgres, so a DB outage fails this route either way.
  */
 export async function GET(req: Request) {
   const t0 = Date.now();
@@ -61,6 +71,20 @@ export async function GET(req: Request) {
   if (!userId) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
+
+  const guard = await guardGrowthRoute({
+    req,
+    route: "referral-summary",
+    userId,
+    ip: REFERRAL_SUMMARY_IP,
+    user: REFERRAL_SUMMARY_USER,
+  });
+  if (!guard.ok) return guard.response;
+
+  // Bodyless GET → the assertion signs SHA256("").
+  const attestBlock = await requireGrowthAttest(req, "");
+  if (attestBlock) return attestBlock;
+
   const user = await userById(userId);
   if (!user) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
@@ -134,6 +158,12 @@ export async function GET(req: Request) {
       // Point-earning rates so iOS can render "1 pt / $1 sent, 3 pts / $1 saved"
       // without hardcoding the values in two places.
       pointRates: POINT_RATES,
+      // Canonical invite copy + link, from components/app/rewards/share-copy.ts.
+      // Web imports that module directly; native clients can't, so they render
+      // THIS and keep only an offline fallback string. Before this there were
+      // three different hardcoded invite messages across web/iOS/Android.
+      // Null when the user has no code yet so clients can hide the share row.
+      share: summary.code ? inviteSharePayload(summary.code) : null,
       recentEvents: summary.recentEvents.map((e) => ({
         id: String(e.id),
         kind: e.kind,

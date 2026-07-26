@@ -1,12 +1,12 @@
-import { PerpsTerminal } from "@/components/app/markets/PerpsTerminal";
+import { PerpsFlow } from "@/components/app/markets/PerpsFlow";
 
 export const dynamic = "force-dynamic";
 
 /**
  * /perps, the dedicated Talise Perps surface (served at perps.talise.io via
- * middleware host-routing). Same audited terminal as /app/markets, but with its
- * own focused chrome instead of the full app nav (see ./layout.tsx).
+ * middleware host-routing). The guided conviction flow (Market → Direction →
+ * Size → Launch) on the same audited WaterX rails as the /app/markets terminal.
  */
 export default function PerpsPage() {
-  return <PerpsTerminal />;
+  return <PerpsFlow />;
 }

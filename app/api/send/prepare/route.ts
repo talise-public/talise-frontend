@@ -7,8 +7,6 @@ import { toBase64 } from "@mysten/sui/utils";
 import { sui, COIN_TYPES, USDSUI_DECIMALS } from "@/lib/sui";
 import { USDSUI_TYPE } from "@/lib/usdsui";
 import { appendPaymentKitReceipt } from "@/lib/intents/wrap-payment-kit";
-import { getRoundupConfig } from "@/lib/rewards/roundup";
-import { appendNaviSupply, SAVE_TREASURY_FEE_BPS } from "@/lib/navi-supply";
 import { checkSendAllowed, recordSend } from "@/lib/send-limits";
 import { screenTransfer } from "@/lib/screening";
 
@@ -162,66 +160,20 @@ export async function POST(req: Request) {
         amountUsdsui: amountNum,
       });
 
-      // Round-up & Save (Phase 2 v2, real on-chain auto-supply).
-      // If the user has toggled round-up on, we append a NAVI supply
-      // for `amount × percentage / 100` USDsui to the SAME PTB so the
-      // send + the save land atomically in one user-signed tx. No
-      // delegation key needed, the user signs once for both legs.
-      // If the supply leg fails on chain (insufficient balance after
-      // the send), the WHOLE tx fails, the user sees a clean error
-      // rather than a half-applied state.
-      let roundupUsd = 0;
-      try {
-        const cfg = await getRoundupConfig(userId);
-        // Diagnostic, surfaces in the dev log so we can tell at a
-        // glance whether the toggle was read correctly + what the
-        // computed amount worked out to. Critical for debugging
-        // "I turned it on but nothing happened" reports.
-        console.log(
-          `[send/prepare] roundup config: enabled=${cfg.enabled} pct=${cfg.percentage}`
-        );
-        if (cfg.enabled && cfg.percentage > 0) {
-          const computed = (amountNum * cfg.percentage) / 100;
-          // Floor at "any positive on-chain integer" rather than a
-          // dollar threshold. A user sending ₦50 at 2% gets ₦1 of
-          // round-up = $0.0007 USDsui = 700 micro-USDsui, which is
-          // a perfectly valid on-chain supply (NAVI accepts any
-          // positive amount). Earlier revision used a $0.01 floor
-          // that silently swallowed every small-NGN test, exactly
-          // the case the user reported.
-          const cappedUsd = Math.min(computed, amountNum);
-          const microUnits = Math.round(cappedUsd * 1e6);
-          if (microUnits > 0) {
-            roundupUsd = cappedUsd;
-            await appendNaviSupply(tx, user.sui_address, roundupUsd, { treasuryFeeBps: SAVE_TREASURY_FEE_BPS });
-            // Tag the supply leg with a Payment Kit marker so the
-            // activity classifier + rewards engine recognize it as
-            // a round-up (not a manual invest). Same digest, second
-            // PaymentRecord under the talise registry.
-            appendPaymentKitReceipt(tx, {
-              kind: "invest",
-              sender: user.sui_address,
-              refs: { venue: "navi" },
-            });
-            console.log(
-              `[send/prepare] roundup APPENDED: $${roundupUsd.toFixed(6)} USDsui (${microUnits} micro-units)`
-            );
-          } else {
-            console.log(
-              `[send/prepare] roundup skipped: computed $${computed.toFixed(8)} rounds to 0 micro-units`
-            );
-          }
-        }
-      } catch (err) {
-        // Defensive, a round-up build failure must NOT block the
-        // send. If we can't compose the supply leg (NAVI SDK init
-        // failure, etc.), fall back to a send-only PTB.
-        console.warn(
-          "[send/prepare] round-up append failed, falling back to send-only:",
-          (err as Error).message
-        );
-        roundupUsd = 0;
-      }
+      // ── NO Spend + Save leg on this route ───────────────────────────
+      // This endpoint returns TRANSACTION-KIND bytes, which `/api/zk/sponsor`
+      // then wraps into full TransactionData. That means the digest is not
+      // known here, and the digest is exactly what the save proof has to be
+      // bound to (lib/rewards/roundup.ts): without it there is no way to
+      // credit the savings tally against the transaction that actually
+      // carried the save. Appending a supply leg we could never prove is how
+      // the tally came to rise with no money behind it in the first place.
+      //
+      // Spend + Save therefore lives ONLY on `/api/send/sponsor-prepare`,
+      // which builds the full sponsor-ready bytes itself and so can mint a
+      // digest-bound proof. Clients that want round-up must use that route;
+      // this one stays a plain transfer builder for the legacy Earn/vault
+      // flows that still need the prepare→sponsor split.
 
       const kind = await tx.build({
         client: sui() as never,
@@ -238,11 +190,10 @@ export async function POST(req: Request) {
         amount: amountNum,
         to,
         receiptNonce: nonce,
-        // Server-blessed round-up amount, in USDsui. iOS forwards
-        // this to /api/zk/sponsor-execute as `meta.roundupUsd` so
-        // the rewards engine credits both legs (send points + 5
-        // pts/$1 for the round-up). 0 when round-up didn't fire.
-        roundupUsd,
+        // DEPRECATED, always 0. Spend + Save is not available on this route
+        // (see above) and a non-zero value here would make a pre-atomic
+        // client fire a second, standalone save transaction.
+        roundupUsd: 0,
       });
     }
 

@@ -4,6 +4,7 @@ import { db, userById } from "@/lib/db";
 import { normalizeHandle, RESERVED_USERNAMES } from "@/lib/handle";
 import { mintSubname, suins, suinsOperatorEnabled, LowOperatorGasError } from "@/lib/suins-operator";
 import { findTaliseSubnameForOwner } from "@/lib/suins-lookup";
+import { trackHandleClaimed } from "@/lib/analytics/emit";
 
 export const runtime = "nodejs";
 
@@ -148,6 +149,16 @@ export async function POST(req: Request) {
 /// throws (the on-chain mint is the source of truth, a DB hiccup must not
 /// fail the claim).
 async function backfillTaliseUsername(userId: number, username: string): Promise<void> {
+  // GROWTH: the only place every claim SUCCESS path converges (fresh mint,
+  // already-owned subname, and name-record-targets-caller), so one call here
+  // covers all three without touching the mint control flow. Emitted before the
+  // DB write on purpose: the on-chain mint is the source of truth for "claimed",
+  // and this must not depend on the backfill UPDATE landing.
+  //
+  // An idempotent re-claim emits again; `handle_claimed_at` is written
+  // LEAST(COALESCE(existing, new), new), so the first occurrence keeps the
+  // column and the replay is a no-op. Non-blocking and self-guarded.
+  trackHandleClaimed(userId);
   try {
     await db().execute({
       sql: `UPDATE users

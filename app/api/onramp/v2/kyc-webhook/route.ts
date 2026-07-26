@@ -45,14 +45,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "verify failed" }, { status: 400 });
   }
 
-  // Fail closed: if a secret IS configured the adapter should have verified.
-  // When no secret is set the adapter returns verified=false and we still
-  // process in dev (the table is the no-op safety net), but we log it.
+  // Fail closed IN PRODUCTION. This block previously only logged and then fell
+  // through to the write below, so an unsigned POST naming a known
+  // provider_customer_id / kyc_link_id could forge a KYC verdict (status, tier,
+  // daily/monthly limits) for that user. Those fields are trusted downstream:
+  // /api/offramp/bridge/cashout-address short-circuits its live Bridge re-check
+  // when the cached status is "approved", and /api/onramp/v2/requirements reads
+  // `tier` straight from this table. Mirrors the fail-closed posture of the
+  // sibling eKYC webhook (app/api/kyc/webhook/route.ts).
+  //
+  // Dev/preview keeps the unsigned path so local testing works without a
+  // provider secret, matching the original documented intent.
   if (!event.verified) {
-    console.warn("[onramp/v2/kyc-webhook] unverified event (no/invalid sig)", {
-      provider: providerName,
-      kind: event.kind,
-    });
+    if (process.env.NODE_ENV === "production") {
+      console.error("[onramp/v2/kyc-webhook] REJECTED unverified event", {
+        provider: providerName,
+        kind: event.kind,
+      });
+      return NextResponse.json({ error: "unverified" }, { status: 401 });
+    }
+    console.warn(
+      "[onramp/v2/kyc-webhook] accepting UNVERIFIED event in dev only (no/invalid sig)",
+      { provider: providerName, kind: event.kind }
+    );
   }
 
   if (!event.providerCustomerId) {

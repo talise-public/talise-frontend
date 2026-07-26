@@ -9,7 +9,9 @@ import {
   normalizeReasonMessage,
   normalizeWaitlistHandle,
 } from "@/lib/handle-claim";
-import { getClientIp, rateLimitAsync } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/rate-limit";
+import { guardGrowthRoute } from "@/lib/abuse/guard";
+import { WAITLIST_CLAIM_IP, WAITLIST_CLAIM_USER } from "@/lib/abuse/limits";
 import { readSessionEntryId } from "@/lib/session";
 import { mintSubname, suinsOperatorEnabled, LowOperatorGasError } from "@/lib/suins-operator";
 
@@ -63,20 +65,18 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
 }
 
 export async function POST(req: Request) {
+  // `ip` is still needed below for the `waitlist_signups.ip` audit column.
   const ip = getClientIp(req);
-  // Claim writes, tighter than availability. 6/min is well above any
-  // human retry cadence.
-  const rl = await rateLimitAsync({
-    key: `waitlist-claim:${ip}`,
-    limit: 6,
-    windowSec: 60,
+  // Claim writes, tighter than availability: this one spends OUR gas on a
+  // real on-chain mint. Per-IP burst + sustained windows (lib/abuse/limits.ts),
+  // now durable + fail-closed instead of a per-lambda Map. The precise cap is
+  // the per-USER one applied below, once the session is resolved.
+  const guard = await guardGrowthRoute({
+    req,
+    route: "waitlist-claim",
+    ip: WAITLIST_CLAIM_IP,
   });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many attempts. Try again shortly." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 60) } }
-    );
-  }
+  if (!guard.ok) return guard.response;
 
   let body: { handle?: unknown };
   try {
@@ -118,6 +118,18 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  // Per-user ceiling, checked once the session is resolved: a user can only
+  // ever own ONE name, so the only legitimate repeats are retries after a
+  // taken-handle 409. This is what stops one account cycling IPs (VPN hop /
+  // mobile-data reconnect) to grind the namespace or the operator's gas.
+  const userGuard = await guardGrowthRoute({
+    req,
+    route: "waitlist-claim",
+    userId,
+    user: WAITLIST_CLAIM_USER,
+  });
+  if (!userGuard.ok) return userGuard.response;
 
   try {
     await ensureSchema();

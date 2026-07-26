@@ -530,6 +530,61 @@ export async function signAndSubmit(
 }
 
 /**
+ * Sign + submit a transaction the SERVER already prepared.
+ *
+ * Unlike signAndSubmit (which builds its own PTB and fetches the sponsored
+ * bytes from /api/zk/sponsor), this consumes the base64 `bytes` an endpoint has
+ * already returned — the full sponsored TransactionData built server-side, e.g.
+ * the Bridge off-ramp swap-to-usdc / send-usdc prepare routes. We add only the
+ * sender signature with the ephemeral key; /api/zk/sponsor-execute wraps it into
+ * a zkLoginSignature, adds the sponsor signature, and broadcasts. The JWT and
+ * salt never leave the server. Mirrors the sponsored branch of signAndSubmit.
+ */
+export async function signAndSubmitPreparedBytes(
+  bytesB64: string
+): Promise<SignAndSubmitResult> {
+  const { keypair, stored } = loadEphemeralKeypair();
+
+  // Sender signature over the server-prepared TransactionData bytes.
+  const { signature: userSignature } = await keypair.signTransaction(
+    fromBase64(bytesB64)
+  );
+
+  const er = await fetch("/api/zk/sponsor-execute", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      bytesB64,
+      ephemeralPubKeyB64: stored.pubKeyB64,
+      maxEpoch: stored.maxEpoch,
+      randomness: stored.randomness,
+      userSignature,
+      cachedProof: stored.proof,
+    }),
+  });
+  if (!er.ok) {
+    const err = await er.json().catch(() => ({ error: "execute failed" }));
+    throw new Error(err.error || `execute failed (HTTP ${er.status})`);
+  }
+  const { digest, effects, objectChanges, freshProof } = (await er.json()) as {
+    digest: string;
+    effects?: { status?: { status?: string; error?: string } };
+    objectChanges?: unknown[];
+    freshProof?: StoredZkProof;
+  };
+
+  if (effects?.status?.status && effects.status.status !== "success") {
+    const reason = effects.status.error ?? "unknown failure";
+    throw new Error(`transaction failed: ${reason}`);
+  }
+
+  // Persist a fresh proof so subsequent sends skip the Shinami round trip.
+  if (freshProof) writeCachedProof(freshProof);
+
+  return { digest, created: groupCreated(objectChanges) };
+}
+
+/**
  * Build a SUI transfer PTB. Includes a no-op MoveCall so the PTB is
  * sponsor-policy compatible (Onara's `targets: ["*"]` rejects pure-native
  * PTBs that contain no MoveCalls).

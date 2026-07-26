@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 describe("legacy /api/waitlist is retired (410 Gone)", () => {
   it("POST → 410, no row, no email", async () => {
     const { POST } = await import("@/app/api/waitlist/route");
-    const res = await POST();
+    const res = await POST(new Request("http://test.local/api/waitlist", { method: "POST" }));
     expect(res.status).toBe(410);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toMatch(/retired/i);
@@ -23,14 +23,14 @@ describe("legacy /api/waitlist is retired (410 Gone)", () => {
 
   it("GET → 410", async () => {
     const { GET } = await import("@/app/api/waitlist/route");
-    const res = await GET();
+    const res = await GET(new Request("http://test.local/api/waitlist"));
     expect(res.status).toBe(410);
   });
 
   it("PUT / PATCH / DELETE → 410", async () => {
     const mod = await import("@/app/api/waitlist/route");
     for (const m of [mod.PUT, mod.PATCH, mod.DELETE]) {
-      const res = await m();
+      const res = await m(new Request("http://test.local/api/waitlist", { method: "PUT" }));
       expect(res.status).toBe(410);
     }
   });

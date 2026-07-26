@@ -8,6 +8,7 @@ import {
   streamOnchainEnabled,
   isOnchainStreamId,
   buildClaimAccruedSponsored,
+  projectStream,
 } from "@/lib/streams";
 
 export const runtime = "nodejs";
@@ -15,18 +16,20 @@ export const runtime = "nodejs";
 /**
  * POST /api/streams/[id]/claim
  *
- * The CRON-LESS, clock-based release path. Builds the Onara-SPONSORED
+ * STEP 1 of the cron-less, Clock-based release. Builds the Onara-SPONSORED
  * `stream::claim_accrued<USDSUI>` PTB and returns sponsor-ready bytes; the
- * caller (the recipient, in practice) signs with their zkLogin ephemeral key
- * and POSTs to /api/zk/sponsor-execute. The on-chain contract walks the
- * schedule against `Clock`, releases every tranche now due, and transfers it to
- * the stream's HARDWIRED recipient, so even though the call is permissionless,
- * funds can only ever go to the recipient, never the signer.
+ * caller signs with their zkLogin ephemeral key and POSTs to
+ * /api/zk/sponsor-execute, then confirms the digest to
+ * POST /api/streams/[id]/confirm (STEP 2) so the mirror picks up the contract's
+ * new release cursor.
  *
- * No worker key, no scheduler. The recipient pulls their accrued balance
- * whenever they like; gas is sponsored so it's free.
+ * EITHER PARTY may fire it. `claim_accrued` is permissionless on chain and
+ * hard-transfers to the stream's HARDWIRED recipient, so the sender pushing a
+ * stream forward can only ever move money to the destination — which is why
+ * both apps fire due claims on open, and why a stream now advances without the
+ * recipient hunting for a button.
  *
- * On-chain streams only, escrow streams are gone with the cron.
+ * No worker key, no scheduler, no cron.
  */
 export async function POST(
   req: Request,
@@ -64,8 +67,16 @@ export async function POST(
   if (!row) {
     return NextResponse.json({ error: "stream not found" }, { status: 404 });
   }
+  // The contract aborts `claim_accrued` on ECancelled / EPaused, so don't spend
+  // an Onara-sponsored tx on a call that can only revert.
   if (row.state === "cancelled") {
     return NextResponse.json({ error: "stream is cancelled" }, { status: 409 });
+  }
+  if (row.state === "paused") {
+    return NextResponse.json(
+      { error: "stream is paused", code: "PAUSED" },
+      { status: 409 }
+    );
   }
 
   // Authorize: the recipient (by address) or the sender may trigger the claim.
@@ -82,9 +93,15 @@ export async function POST(
     );
   }
 
-  // Nothing left to release.
-  if (Number(row.released_micros) >= Number(row.total_micros)) {
-    return NextResponse.json({ ok: true, nothingToClaim: true });
+  // Nothing the Clock has earned that the chain hasn't already paid. Firing
+  // anyway would be a successful no-op tx burning sponsor gas, so short-circuit.
+  const p = projectStream(row);
+  if (p.claimableTranches <= 0) {
+    return NextResponse.json({
+      ok: true,
+      nothingToClaim: true,
+      stream: p,
+    });
   }
 
   try {
@@ -93,8 +110,16 @@ export async function POST(
       // Sign as the recipient when they're the caller; otherwise the sender
       // signs (funds still route to the recipient on chain).
       signerAddress: isRecipient ? row.recipient_address : row.sender_address,
+      claimableTranches: p.claimableTranches,
     });
-    return NextResponse.json({ ok: true, mode: "onchain", bytes, sponsor });
+    return NextResponse.json({
+      ok: true,
+      mode: "onchain",
+      bytes,
+      sponsor,
+      claimableUsd: p.claimableUsd,
+      claimableTranches: p.claimableTranches,
+    });
   } catch (err) {
     const msg = (err as Error).message ?? "claim build failed";
     console.warn(`[streams/claim] build failed stream=${id}: ${msg}`);

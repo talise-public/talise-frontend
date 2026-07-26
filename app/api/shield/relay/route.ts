@@ -18,6 +18,7 @@ import {
   ShieldValidationError,
 } from "@/lib/shield/validate-commands";
 import { jsonRpcResolutionPlugin } from "@/lib/shield/resolve";
+import { shieldMaintenance } from "@/lib/shield/onchain";
 
 export const runtime = "nodejs";
 
@@ -46,6 +47,12 @@ const ADDRESS_RE = /^0x[a-f0-9]{1,64}$/i;
  * 503 when the relayer is not configured.
  */
 export async function POST(req: Request) {
+  if (shieldMaintenance()) {
+    return NextResponse.json(
+      { error: "Private sends are currently in maintenance.", code: "SHIELD_MAINTENANCE" },
+      { status: 503 }
+    );
+  }
   if (!shieldConfigured()) {
     return NextResponse.json(
       { error: "shield relayer not configured" },

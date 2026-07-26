@@ -2,6 +2,14 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { providerBaseUrl } from "@/lib/offramp/config";
+import {
+  providerErrorForStatus,
+  ProviderTransportError,
+  withBreaker,
+} from "@/lib/offramp/breaker";
+import { phaseOf } from "@/lib/offramp/status";
+
 /**
  * Linq B2B off-ramp client, USDSUI → NGN bank payout.
  *
@@ -24,8 +32,17 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * (0x44f838…::usdsui::USDSUI), verified identical to USDSUI_TYPE.
  */
 
-const DEFAULT_BASE_URL =
-  "https://confidential-brianna-uselinq-52e2b233.koyeb.app";
+/**
+ * NO HARDCODED HOSTNAME.
+ *
+ * This file used to carry the partner's free-tier PaaS hostname as a literal
+ * default, which meant a real-money payout rail's endpoint was pinned by a code
+ * deploy and could not be moved during an incident. `LINQ_BASE_URL` is now
+ * REQUIRED: with it unset, `linqConfigured()` is false and every off-ramp route
+ * returns "off-ramp not configured" instead of quietly calling a hobby host.
+ * See `lib/offramp/config.ts` for the validation (https-in-production, plus a
+ * loud warning when the host looks like a free-tier deployment).
+ */
 
 /**
  * The ONLY coin Talise off-ramps. Linq also supports USDC, but we move USDSUI
@@ -49,7 +66,34 @@ export interface LinqConfig {
   apiKey: string;
 }
 
-/** API config for authenticated calls. Throws if LINQ_API_KEY is unset. */
+/**
+ * Is the Linq rail fully wired up? Returns the REASON when it isn't, so a route
+ * (or the provider router) can report exactly what is missing instead of a bare
+ * 503. Both the API key and the base URL are required, and the webhook secret is
+ * required too: without it every settlement callback is rejected as unverifiable
+ * and the corridor runs blind, which is how a failed payout goes unnoticed.
+ */
+export function linqReadiness(): { ok: true } | { ok: false; reason: string } {
+  if (!process.env.LINQ_API_KEY?.trim()) {
+    return {
+      ok: false,
+      reason:
+        "LINQ_API_KEY is not set (run POST /b2b/signup with your invite code to obtain one)",
+    };
+  }
+  const base = providerBaseUrl("linq", "LINQ_BASE_URL");
+  if (!base.ok) return { ok: false, reason: base.reason };
+  if (!process.env.LINQ_WEBHOOK_SECRET?.trim()) {
+    return {
+      ok: false,
+      reason:
+        "LINQ_WEBHOOK_SECRET is not set, settlement webhooks cannot be verified so payouts would be unobservable",
+    };
+  }
+  return { ok: true };
+}
+
+/** API config for authenticated calls. Throws if the rail isn't configured. */
 export function linqConfig(): LinqConfig {
   const apiKey = process.env.LINQ_API_KEY;
   if (!apiKey) {
@@ -57,36 +101,38 @@ export function linqConfig(): LinqConfig {
       "Linq client misconfigured: missing LINQ_API_KEY (run POST /b2b/signup with your invite code to obtain one)"
     );
   }
-  return {
-    baseUrl: process.env.LINQ_BASE_URL?.trim() || DEFAULT_BASE_URL,
-    apiKey,
-  };
-}
-
-/** Whether the Linq off-ramp is configured (API key present). */
-export function linqConfigured(): boolean {
-  return Boolean(process.env.LINQ_API_KEY?.trim());
+  const base = providerBaseUrl("linq", "LINQ_BASE_URL");
+  if (!base.ok) {
+    throw new Error(`Linq client misconfigured: ${base.reason}`);
+  }
+  return { baseUrl: base.baseUrl, apiKey };
 }
 
 /**
- * Product gate for bank cash-out. CLOSED by default for the TestFlight launch.
- * Open by setting `FEATURE_CASHOUT=true` in Vercel, the SAME flag the app's
- * UI reads via /api/me, so one env var opens both the UI and this backend at
- * once. Gating here (not just the UI) closes cash-out for already-installed
- * builds and any direct API call too.
+ * Whether the Linq off-ramp is configured. Now requires the BASE URL too: the
+ * hardcoded partner hostname is gone, so a missing `LINQ_BASE_URL` must read as
+ * "not configured" rather than falling back to a host baked into the binary.
  */
-export function cashoutFeatureOpen(): boolean {
-  // OPEN by default now that failed payouts auto-refund (refundAddress is set
-  // on every order). Close again by setting FEATURE_CASHOUT=false in Vercel.
-  return process.env.FEATURE_CASHOUT?.trim().toLowerCase() !== "false";
+export function linqConfigured(): boolean {
+  return linqReadiness().ok;
 }
 
-/** User-facing copy when cash-out is gated closed. */
-export const CASHOUT_CLOSED_MESSAGE =
-  "Cash-out to bank isn't available yet, it's coming soon. Your balance is untouched.";
+/**
+ * Product gate for bank cash-out. Re-exported from `lib/offramp/config.ts`,
+ * which now FAILS CLOSED.
+ *
+ * It previously read `FEATURE_CASHOUT !== "false"`, i.e. the rail was OPEN
+ * whenever the variable was unset, misspelled, or lost in a project migration.
+ * That is backwards for a money rail: the flag existed because the provider was
+ * 500-ing without refunding, and an ops mistake could silently re-open it. It is
+ * now open ONLY on an explicit affirmative value.
+ */
+export { cashoutOpen as cashoutFeatureOpen, CASHOUT_CLOSED_MESSAGE } from "@/lib/offramp/config";
 
 function baseUrl(): string {
-  return process.env.LINQ_BASE_URL?.trim() || DEFAULT_BASE_URL;
+  const base = providerBaseUrl("linq", "LINQ_BASE_URL");
+  if (!base.ok) throw new Error(`Linq client misconfigured: ${base.reason}`);
+  return base.baseUrl;
 }
 
 interface LinqErrorBody {
@@ -94,7 +140,29 @@ interface LinqErrorBody {
   [k: string]: unknown;
 }
 
-async function linqFetch<T>(
+/**
+ * Every Linq call goes through the circuit breaker.
+ *
+ * This is the single most important behavioural change on the payout path. In
+ * the known incident the provider's downstream was 500-ing and NOT refunding,
+ * yet the app happily issued a fresh deposit address to every user who asked,
+ * so each request during the outage created a new stranded user. With the
+ * breaker in front of the transport, three consecutive provider-side failures
+ * stop the corridor BEFORE anybody sends funds, and the corridor self-heals via
+ * a single probe after the cooldown.
+ *
+ * Placed at the transport layer on purpose: the live `app/api/offramp/linq/*`
+ * routes keep their bespoke deposit-address choreography and still get gated,
+ * with no route-by-route retrofit to forget.
+ */
+function linqFetch<T>(
+  path: string,
+  init: { method: "GET" | "POST"; auth?: boolean; body?: unknown }
+): Promise<T> {
+  return withBreaker("linq", () => linqFetchRaw<T>(path, init));
+}
+
+async function linqFetchRaw<T>(
   path: string,
   init: { method: "GET" | "POST"; auth?: boolean; body?: unknown }
 ): Promise<T> {
@@ -112,7 +180,12 @@ async function linqFetch<T>(
       cache: "no-store",
     });
   } catch (e) {
-    throw new Error(`Linq ${path} network error: ${(e as Error).message}`);
+    // Transport failure (DNS, TLS, timeout, cold-start): PROVIDER-side, so it
+    // counts against Linq's health and can trip the circuit breaker.
+    throw new ProviderTransportError(
+      `Linq ${path} network error: ${(e as Error).message}`,
+      "linq"
+    );
   }
 
   const text = await resp.text();
@@ -120,13 +193,20 @@ async function linqFetch<T>(
   try {
     json = text ? JSON.parse(text) : {};
   } catch {
-    throw new Error(
-      `Linq ${path} returned non-JSON (HTTP ${resp.status}): ${text.slice(0, 200)}`
+    // A payout API answering with non-JSON is a broken payout API (this is what
+    // an HTML 502 page from a PaaS edge looks like), not a caller mistake.
+    throw new ProviderTransportError(
+      `Linq ${path} returned non-JSON (HTTP ${resp.status}): ${text.slice(0, 200)}`,
+      "linq",
+      resp.status
     );
   }
   if (!resp.ok) {
     const msg = (json as LinqErrorBody)?.message ?? `HTTP ${resp.status}`;
-    throw new Error(`Linq ${path} failed: ${msg}`);
+    // CLASSIFY: a 5xx/timeout/429 is the rail being unhealthy; a 4xx is the
+    // request being wrong. Only the former may trip the breaker, otherwise one
+    // user's mistyped account number could take the whole corridor offline.
+    throw providerErrorForStatus("linq", resp.status, `Linq ${path} failed: ${msg}`);
   }
   return json as T;
 }
@@ -252,27 +332,19 @@ export async function getOrderStatus(id: string): Promise<LinqOrderStatus> {
 /** Map Linq's free-text status strings to a coarse terminal/in-flight state. */
 export type LinqPhase = "initiated" | "processing" | "completed" | "failed";
 
+/**
+ * Delegates to the corridor-agnostic mapper in `lib/offramp/status.ts` so there
+ * is ONE definition of "what phase is this payout in". Two copies of this logic
+ * (one here, one in the status writer) is how a webhook and a poll end up
+ * disagreeing about whether a payout is terminal.
+ *
+ * Semantics preserved: a Linq "timeout" is a lagging bank payout, not a dead
+ * one, so it stays `processing` and pollable rather than flashing a premature
+ * "failed" the user then watches succeed. Un-funded orders are closed out by
+ * `lib/offramp/reconcile.ts` on age instead.
+ */
 export function phaseFromStatus(status: string): LinqPhase {
-  const s = (status ?? "").toLowerCase();
-  if (s.includes("disbursed") || s.includes("settled") || s.includes("completed")) {
-    return "completed";
-  }
-  // Terminal failure ONLY. A Linq "timeout" is transient (the bank payout is
-  // lagging, not dead), so we treat it as still-processing and keep polling
-  // instead of flashing a premature "failed" the user then watches succeed.
-  if (s.includes("failed") || s.includes("reject")) {
-    return "failed";
-  }
-  if (
-    s.includes("processing") ||
-    s.includes("queue") ||
-    s.includes("worker") ||
-    s.includes("timeout") ||
-    s.includes("pending")
-  ) {
-    return "processing";
-  }
-  return "initiated";
+  return phaseOf(status);
 }
 
 // ─── Webhook verification ──────────────────────────────────────────────

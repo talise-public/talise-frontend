@@ -7,6 +7,7 @@ import {
   createWorkContract,
   workContractsFor,
   projectContract,
+  resolveContractNames,
   isCadence,
 } from "@/lib/work-contracts";
 
@@ -156,6 +157,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
   const rows = await workContractsFor(userId);
-  const contracts = await Promise.all(rows.map((r) => projectContract(r)));
+  // One batched name resolve for the whole list, before the per-row projection.
+  const names = await resolveContractNames(rows);
+  const contracts = await Promise.all(rows.map((r) => projectContract(r, names)));
   return NextResponse.json({ contracts });
 }

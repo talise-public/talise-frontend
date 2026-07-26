@@ -5,7 +5,8 @@ import {
   normalizeReasonMessage,
   normalizeWaitlistHandle,
 } from "@/lib/handle-claim";
-import { getClientIp, rateLimitAsync } from "@/lib/rate-limit";
+import { guardGrowthRoute } from "@/lib/abuse/guard";
+import { WAITLIST_AVAILABILITY_IP } from "@/lib/abuse/limits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,37 +31,22 @@ export const dynamic = "force-dynamic";
  * cap, the live-availability UI calls this on every (debounced)
  * keystroke, but a scripted enumerator scraping the taken-handle space
  * trips the burst limit fast.
+ *
+ * Both windows moved to the durable growth guard (2026-07-24): they are now
+ * GLOBAL across lambdas and fail CLOSED. Under `rateLimitAsync` with Upstash
+ * unset the real cap was N_instances × 30, which for a namespace scan is no
+ * cap at all — a scraper just needed to be spread across warm instances. See
+ * lib/abuse/limits.ts for the numbers and why the per-minute window got
+ * looser as the enforcement got real.
  */
 
 export async function POST(req: Request) {
-  const ip = getClientIp(req);
-  // Per-minute throttle, a normal keystroke flow (debounced 350ms on
-  // the client) stays well under 30/min.
-  const rl = await rateLimitAsync({
-    key: `waitlist-avail:${ip}`,
-    limit: 30,
-    windowSec: 60,
+  const guard = await guardGrowthRoute({
+    req,
+    route: "waitlist-availability",
+    ip: WAITLIST_AVAILABILITY_IP,
   });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many checks. Slow down." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec ?? 60) } }
-    );
-  }
-  // Tighter burst limit on a short window, blunts a fast scripted scan
-  // of the handle namespace (enumerating which names are taken) while
-  // still comfortably allowing human typing.
-  const burst = await rateLimitAsync({
-    key: `waitlist-avail-burst:${ip}`,
-    limit: 8,
-    windowSec: 5,
-  });
-  if (!burst.ok) {
-    return NextResponse.json(
-      { error: "Too many checks. Slow down." },
-      { status: 429, headers: { "Retry-After": String(burst.retryAfterSec ?? 5) } }
-    );
-  }
+  if (!guard.ok) return guard.response;
 
   let body: { handle?: unknown };
   try {

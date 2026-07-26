@@ -1,6 +1,127 @@
 /* @ts-self-types="./talise_privacy_circuit.d.ts" */
 
 /**
+ * Deserialize the compressed proving key ONCE and keep it. Time this call to
+ * get the one-off stage-2 cost.
+ * @param {string} proving_key_hex
+ * @returns {number}
+ */
+export function bench_cache_pk(proving_key_hex) {
+    const ptr0 = passStringToWasm0(proving_key_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bench_cache_pk(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] >>> 0;
+}
+
+/**
+ * Stage 2 as `prove()` does it today: hex-decode + compressed deserialize with
+ * full validation. Returns the key's point count.
+ * @param {string} proving_key_hex
+ * @returns {number}
+ */
+export function bench_load_pk_compressed(proving_key_hex) {
+    const ptr0 = passStringToWasm0(proving_key_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bench_load_pk_compressed(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] >>> 0;
+}
+
+/**
+ * Same, skipping subgroup validation. Isolates how much of stage 2 is the
+ * subgroup check versus the point decompression.
+ * @param {string} proving_key_hex
+ * @returns {number}
+ */
+export function bench_load_pk_compressed_unchecked(proving_key_hex) {
+    const ptr0 = passStringToWasm0(proving_key_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bench_load_pk_compressed_unchecked(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] >>> 0;
+}
+
+/**
+ * Stage 2 if the key were served UNCOMPRESSED. Expects hex of an
+ * arkworks-uncompressed proving key (see `bench_recompress_pk_uncompressed`).
+ * @param {string} proving_key_hex
+ * @returns {number}
+ */
+export function bench_load_pk_uncompressed(proving_key_hex) {
+    const ptr0 = passStringToWasm0(proving_key_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bench_load_pk_uncompressed(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] >>> 0;
+}
+
+/**
+ * Prove a representative deposit against the cached key — stages 3 + 4 only,
+ * no key reload. Returns the same JSON shape as `wasm::prove`, so
+ * `wasm::verify` can check it.
+ * @param {bigint} amount
+ * @param {bigint} out0
+ * @param {bigint} out1
+ * @returns {string}
+ */
+export function bench_prove_deposit_cached(amount, out0, out1) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ret = wasm.bench_prove_deposit_cached(amount, out0, out1);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * One-shot converter so the benchmark can produce an uncompressed key in the
+ * browser without a new build asset: compressed hex in, uncompressed hex out.
+ * This is a measurement convenience, NOT how a real deployment should do it —
+ * a real deployment would ship the uncompressed key as the static asset.
+ * @param {string} proving_key_hex
+ * @returns {string}
+ */
+export function bench_recompress_pk_uncompressed(proving_key_hex) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(proving_key_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bench_recompress_pk_uncompressed(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * Build a valid DEPOSIT [`ProofInput`] JSON for a pool, without the caller
  * having to reimplement Poseidon in JS. Mirrors the native
  * `prover::build_deposit_circuit_for_pool`: dummy (zero) input notes + two
